@@ -32,7 +32,7 @@ def get_selected_runtime() -> OciRuntimeBase:
     )
 
 
-def pytest_generate_tests(metafunc):
+def auto_container_parametrize(metafunc):
     container_images = getattr(metafunc.module, "CONTAINER_IMAGES", None)
     if container_images is not None:
         for fixture_name in ("auto_container", "auto_container_per_test"):
