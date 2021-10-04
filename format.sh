@@ -5,7 +5,7 @@ if [ "$1" = "--check" ]; then
     args="--check"
 fi
 
-black . pytest_container ${args}
-for f in $(ls pytest_container/*py); do
+black . ${args}
+for f in $(fd '.*py$'); do
     reorder-python-imports $f
 done
