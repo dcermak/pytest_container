@@ -12,6 +12,8 @@ LEAP_WITH_MAN_AND_LUA = DerivedContainer(
     base=LEAP_WITH_MAN, containerfile="RUN zypper -n in lua"
 )
 
+CONTAINER_IMAGES = [LEAP, LEAP_WITH_MAN, LEAP_WITH_MAN_AND_LUA]
+
 
 @pytest.mark.parametrize("container", [LEAP], indirect=["container"])
 def test_tumbleweed(container):
@@ -35,9 +37,9 @@ def test_tumbleweed_with_man_and_info(container):
 
 
 def test_container_objects():
-    for cont in (
-        LEAP,
-        LEAP_WITH_MAN,
-        LEAP_WITH_MAN_AND_LUA,
-    ):
+    for cont in CONTAINER_IMAGES:
         assert cont.get_base() == LEAP
+
+
+def test_auto_container_fixture(auto_container):
+    auto_container.connection.file("/etc/os-release").exists
