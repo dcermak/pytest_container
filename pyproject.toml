@@ -4,6 +4,9 @@ version = "0.0.1"
 description = "Pytest fixtures for writing container based tests"
 authors = ["Dan Čermák <dcermak@suse.com>"]
 license = "GPLv2.0"
+packages = [
+    { include = "pytest_container", from = "src" },
+]
 
 [tool.poetry.dependencies]
 python = ">=3.6.2,<4.0"

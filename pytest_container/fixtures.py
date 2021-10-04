@@ -1,6 +1,4 @@
 from subprocess import check_output
-from typing import Any
-from typing import NamedTuple
 from typing import Optional
 from typing import Union
 
@@ -8,6 +6,7 @@ import pytest
 import testinfra
 
 from pytest_container.container import Container
+from pytest_container.container import ContainerData
 from pytest_container.container import DerivedContainer
 from pytest_container.helpers import get_selected_runtime
 
@@ -68,13 +67,3 @@ auto_container_per_test = pytest.fixture(scope="function")(
     _auto_container_fixture
 )
 container_per_test = auto_container_per_test
-
-
-def pytest_generate_tests(metafunc):
-    container_images = getattr(metafunc.module, "CONTAINER_IMAGES", None)
-    if container_images is not None:
-        for fixture_name in ("auto_container", "auto_container_per_test"):
-            if fixture_name in metafunc.fixturenames:
-                metafunc.parametrize(
-                    fixture_name, container_images, indirect=True
-                )
