@@ -4,8 +4,10 @@ from dataclasses import dataclass
 from dataclasses import field
 from string import Template
 from subprocess import check_output
+from typing import Any
 from typing import Dict
 from typing import List
+from typing import NamedTuple
 from typing import Optional
 from typing import Union
 
@@ -150,3 +152,13 @@ class MultiStageBuild:
 
         with open(tmp_dir / "Dockerfile", "w") as containerfile:
             containerfile.write(self.containerfile)
+
+
+class ContainerData(NamedTuple):
+    #: url to the container image on the registry or the id of the local image
+    #: if the container has been build locally
+    image_url_or_id: str
+    #: ID of the started container
+    container_id: str
+    #: the testinfra connection to the running container
+    connection: Any

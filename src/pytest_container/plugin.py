@@ -4,24 +4,13 @@ from typing import Union
 
 import pytest
 import testinfra
-
 from pytest_container.container import Container
 from pytest_container.container import ContainerData
 from pytest_container.container import DerivedContainer
 from pytest_container.helpers import get_selected_runtime
 
 
-class ContainerData(NamedTuple):
-    #: url to the container image on the registry or the id of the local image
-    #: if the container has been build locally
-    image_url_or_id: str
-    #: ID of the started container
-    container_id: str
-    #: the testinfra connection to the running container
-    connection: Any
-
-
-@pytest.fixture(scope="module")
+@pytest.fixture(scope="session")
 def container_runtime():
     return get_selected_runtime()
 

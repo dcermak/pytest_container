@@ -30,3 +30,13 @@ def get_selected_runtime() -> OciRuntimeBase:
     raise ValueError(
         "Selected runtime " + runtime_choice + " does not exist on the system"
     )
+
+
+def pytest_generate_tests(metafunc):
+    container_images = getattr(metafunc.module, "CONTAINER_IMAGES", None)
+    if container_images is not None:
+        for fixture_name in ("auto_container", "auto_container_per_test"):
+            if fixture_name in metafunc.fixturenames:
+                metafunc.parametrize(
+                    fixture_name, container_images, indirect=True
+                )
