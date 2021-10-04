@@ -123,7 +123,7 @@ class DerivedContainer(ContainerBase):
 
             self.container_id = runtime.get_image_id_from_stdout(
                 check_output(
-                    [runtime.build_command]
+                    runtime.build_command
                     + (extra_build_args or [])
                     + [tmpdirname]
                 )
