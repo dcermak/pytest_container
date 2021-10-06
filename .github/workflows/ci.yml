@@ -51,3 +51,28 @@ jobs:
         env:
           CONTAINER_RUNTIME: ${{ matrix.container_runtime }}
           PY_VER: ${{ matrix.python_version }}
+
+  install:
+    name: Build and install the package
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        python_version: ["3.6", "3.7", "3.8", "3.9"]
+
+    steps:
+      - uses: actions/checkout@v2
+      - uses: actions/setup-python@v2
+        with:
+          python-version: ${{ matrix.python_version }}
+      - uses: Gr1N/setup-poetry@v7
+      - uses: actions/cache@v2
+        with:
+          path: ~/.cache/pypoetry/virtualenvs
+          key: poetry-${{ matrix.python_version }}-${{ hashFiles('poetry.lock') }}
+
+      - run: |
+          poetry install
+          poetry build
+          pip install --user dist/pytest_container*whl
+          python -c "import pytest_container; print (pytest_container.__name__)"
