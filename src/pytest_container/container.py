@@ -91,8 +91,12 @@ class Container(ContainerBase):
 
 @dataclass
 class DerivedContainer(ContainerBase):
-    base: Union[Container, "DerivedContainer"] = None
+    base: Union[Container, "DerivedContainer", str] = ""
     containerfile: str = ""
+
+    def __post_init__(self) -> None:
+        if not self.base:
+            raise ValueError("A base container must be provided")
 
     def __str__(self) -> str:
         return (
@@ -100,7 +104,9 @@ class DerivedContainer(ContainerBase):
             or f"container derived from {self.base.__str__()}"
         )
 
-    def get_base(self) -> "Container":
+    def get_base(self) -> Container:
+        if isinstance(self.base, str):
+            return Container(url=self.base)
         return self.base.get_base()
 
     def prepare_container(
@@ -113,7 +119,9 @@ class DerivedContainer(ContainerBase):
             containerfile_path = os.path.join(tmpdirname, "Dockerfile")
             with open(containerfile_path, "w") as containerfile:
                 from_id = (
-                    getattr(self.base, "url", self.base.container_id)
+                    self.base
+                    if isinstance(self.base, str)
+                    else getattr(self.base, "url", self.base.container_id)
                     or self.base.container_id
                 )
                 assert from_id
