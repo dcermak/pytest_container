@@ -12,6 +12,17 @@ LEAP_WITH_MAN_AND_LUA = DerivedContainer(
     base=LEAP_WITH_MAN, containerfile="RUN zypper -n in lua"
 )
 
+BUSYBOX_WITH_ENTRYPOINT = Container(
+    url="registry.opensuse.org/opensuse/busybox:latest",
+    custom_entry_point="/bin/sh",
+)
+
+SLEEP_CONTAINER = DerivedContainer(
+    base="registry.opensuse.org/opensuse/leap:latest",
+    containerfile="""ENTRYPOINT ["/usr/bin/sleep", "3600"]""",
+    default_entry_point=True,
+)
+
 CONTAINER_IMAGES = [LEAP, LEAP_WITH_MAN, LEAP_WITH_MAN_AND_LUA]
 
 
@@ -43,3 +54,19 @@ def test_container_objects():
 
 def test_auto_container_fixture(auto_container):
     auto_container.connection.file("/etc/os-release").exists
+
+
+@pytest.mark.parametrize(
+    "container", [BUSYBOX_WITH_ENTRYPOINT], indirect=["container"]
+)
+def test_custom_entry_point(container):
+    container.connection.run_expect([0], "true")
+
+
+@pytest.mark.parametrize(
+    "container", [SLEEP_CONTAINER], indirect=["container"]
+)
+def test_default_entry_point(container):
+    sleep = container.connection.process.filter(comm="sleep")
+    assert len(sleep) == 1
+    assert "/usr/bin/sleep 3600" == sleep[0].args
