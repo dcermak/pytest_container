@@ -2,6 +2,7 @@ import os
 import tempfile
 from dataclasses import dataclass
 from dataclasses import field
+from pathlib import Path
 from string import Template
 from subprocess import check_output
 from typing import Any
@@ -81,7 +82,7 @@ class Container(ContainerBase):
         runtime = get_selected_runtime()
         check_output([runtime.runner_binary, "pull", self.url])
 
-    def prepare_container(self) -> None:
+    def prepare_container(self, rootdir: Path) -> None:
         """Prepares the container so that it can be launched."""
         self.pull_container()
 
@@ -110,11 +111,13 @@ class DerivedContainer(ContainerBase):
         return self.base.get_base()
 
     def prepare_container(
-        self, extra_build_args: Optional[List[str]] = None
+        self, rootdir: Path, extra_build_args: Optional[List[str]] = None
     ) -> None:
-        self.base.prepare_container()
+        if not isinstance(self.base, str):
+            self.base.prepare_container(rootdir)
 
         runtime = get_selected_runtime()
+
         with tempfile.TemporaryDirectory() as tmpdirname:
             containerfile_path = os.path.join(tmpdirname, "Dockerfile")
             with open(containerfile_path, "w") as containerfile:
@@ -135,7 +138,8 @@ class DerivedContainer(ContainerBase):
                 check_output(
                     runtime.build_command
                     + (extra_build_args or [])
-                    + [tmpdirname]
+                    + ["-f", containerfile_path, str(rootdir)],
+                    cwd=rootdir,
                 )
                 .decode()
                 .strip()
@@ -153,10 +157,10 @@ class MultiStageBuild:
             **{k: str(v) for k, v in self.containers.items()}
         )
 
-    def prepare_build(self, tmp_dir):
+    def prepare_build(self, tmp_dir: Path, rootdir: Path):
         for _, container in self.containers.items():
             if not isinstance(container, str):
-                container.prepare_container()
+                container.prepare_container(rootdir)
 
         with open(tmp_dir / "Dockerfile", "w") as containerfile:
             containerfile.write(self.containerfile)

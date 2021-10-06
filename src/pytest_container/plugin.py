@@ -15,7 +15,7 @@ def container_runtime():
     return get_selected_runtime()
 
 
-def _auto_container_fixture(request, container_runtime):
+def _auto_container_fixture(request, container_runtime, pytestconfig):
     """Fixture that will build & launch a container that is either passed as a
     request parameter or it will be automatically parametrized via
     pytest_generate_tests.
@@ -24,7 +24,7 @@ def _auto_container_fixture(request, container_runtime):
 
     container_id: Optional[str] = None
     try:
-        launch_data.prepare_container()
+        launch_data.prepare_container(rootdir=pytestconfig.rootdir)
         container_id = (
             check_output(
                 [container_runtime.runner_binary]
