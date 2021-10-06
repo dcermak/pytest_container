@@ -120,7 +120,7 @@ toml = ["tomli"]
 name = "dataclasses"
 version = "0.8"
 description = "A backport of the dataclasses module for Python 3.6"
-category = "dev"
+category = "main"
 optional = false
 python-versions = ">=3.6, <3.7"
 
@@ -453,7 +453,7 @@ testing = ["pytest (>=4.6)", "pytest-checkdocs (>=2.4)", "pytest-flake8", "pytes
 [metadata]
 lock-version = "1.1"
 python-versions = ">=3.6.2,<4.0"
-content-hash = "3baeef5aa3d373f52030cdb14c3091ef3313da10878cdd1f87102d46345f3bab"
+content-hash = "8288d49a31a9989693ad9c5fc0bacaff815eaa13a5d5816d1e257579565482a3"
 
 [metadata.files]
 "aspy.refactor-imports" = [
