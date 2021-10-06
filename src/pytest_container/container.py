@@ -36,6 +36,12 @@ class ContainerBase:
     #: created by `shlex.split`
     extra_launch_args: List[str] = field(default_factory=list)
 
+    def __post_init__(self) -> None:
+        if self.default_entry_point and self.custom_entry_point:
+            raise ValueError(
+                f"A custom entry point has been provided ({self.custom_entry_point}) with default_entry_point being set to True"
+            )
+
     def __str__(self) -> str:
         return self.url or self.container_id
 
@@ -96,6 +102,7 @@ class DerivedContainer(ContainerBase):
     containerfile: str = ""
 
     def __post_init__(self) -> None:
+        super().__post_init__()
         if not self.base:
             raise ValueError("A base container must be provided")
 
