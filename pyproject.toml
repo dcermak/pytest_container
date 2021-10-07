@@ -3,7 +3,7 @@ name = "pytest_container"
 version = "0.0.1"
 description = "Pytest fixtures for writing container based tests"
 authors = ["Dan Čermák <dcermak@suse.com>"]
-license = "GPLv2.0"
+license = "LGPL-2.1-or-later"
 packages = [
     { include = "pytest_container", from = "src" },
 ]
@@ -12,7 +12,7 @@ classifiers = [
     "Framework :: Pytest",
     "Intended Audience :: Developers",
     "License :: OSI Approved",
-    "License :: OSI Approved :: GNU General Public License v2 (GPLv2)",
+    "License :: OSI Approved :: GNU Lesser General Public License v2 or later (LGPLv2+)",
     "Programming Language :: Python :: 3 :: Only",
     "Programming Language :: Python :: 3.6",
     "Programming Language :: Python :: 3.7",
