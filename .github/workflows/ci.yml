@@ -52,6 +52,11 @@ jobs:
           CONTAINER_RUNTIME: ${{ matrix.container_runtime }}
           PY_VER: ${{ matrix.python_version }}
 
+      - name: Upload coverage to Codecov
+        uses: codecov/codecov-action@v2
+        with:
+          fail_ci_if_error: true
+
   install:
     name: Build and install the package
     runs-on: ubuntu-latest
