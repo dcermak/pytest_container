@@ -81,3 +81,20 @@ jobs:
           poetry build
           pip install --user dist/pytest_container*whl
           python -c "import pytest_container; print (pytest_container.__name__)"
+
+  documentation:
+    name: Build the documentation
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v2
+      - uses: actions/setup-python@v2
+      - uses: Gr1N/setup-poetry@v7
+      - uses: actions/cache@v2
+        with:
+          path: ~/.tox
+          key: tox-${{ hashFiles('poetry.lock') }}
+
+      - run: pip install --user --upgrade tox
+
+      - run: 'tox -e doc'
