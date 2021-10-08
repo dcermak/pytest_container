@@ -1,7 +1,13 @@
 from dataclasses import dataclass
 from os import path
+from pathlib import Path
+from pytest_container.container import Container
+from pytest_container.container import DerivedContainer
 from pytest_container.runtime import ToParamMixin
+from string import Template
+from typing import Dict
 from typing import Optional
+from typing import Union
 
 
 @dataclass(frozen=True)
@@ -53,3 +59,23 @@ class GitRepositoryBuild(ToParamMixin):
         if self.build_command:
             return f"{cd_cmd} && {self.build_command}"
         return cd_cmd
+
+
+@dataclass
+class MultiStageBuild:
+    containers: Dict[str, Union[Container, DerivedContainer, str]]
+    dockerfile_template: str
+
+    @property
+    def containerfile(self) -> str:
+        return Template(self.dockerfile_template).substitute(
+            **{k: str(v) for k, v in self.containers.items()}
+        )
+
+    def prepare_build(self, tmp_dir: Path, rootdir: Path):
+        for _, container in self.containers.items():
+            if not isinstance(container, str):
+                container.prepare_container(rootdir)
+
+        with open(tmp_dir / "Dockerfile", "w") as containerfile:
+            containerfile.write(self.containerfile)
