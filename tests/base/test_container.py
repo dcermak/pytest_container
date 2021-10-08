@@ -1,6 +1,7 @@
-import pytest
 from pytest_container import Container
 from pytest_container import DerivedContainer
+
+import pytest
 
 
 def test_container_default_entry_point_and_custom_one_set():

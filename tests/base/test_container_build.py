@@ -1,6 +1,7 @@
-import pytest
 from pytest_container import Container
 from pytest_container import DerivedContainer
+
+import pytest
 
 LEAP = Container(url="registry.opensuse.org/opensuse/leap:latest")
 

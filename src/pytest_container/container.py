@@ -3,14 +3,13 @@ import tempfile
 from dataclasses import dataclass
 from dataclasses import field
 from pathlib import Path
+from pytest_container.runtime import get_selected_runtime
 from subprocess import check_output
 from typing import Any
 from typing import List
 from typing import NamedTuple
 from typing import Optional
 from typing import Union
-
-from pytest_container.helpers import get_selected_runtime
 
 
 @dataclass
