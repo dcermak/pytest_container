@@ -71,7 +71,6 @@ class ContainerBase:
         return cmd
 
 
-@dataclass
 class Container(ContainerBase):
     """This class stores information about the BCI images under test.
 
