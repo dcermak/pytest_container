@@ -52,3 +52,10 @@ branch = true
 
 [tool.coverage.report]
 show_missing = true
+
+[tool.mypy]
+strict = true
+
+[[tool.mypy.overrides]]
+module = "testinfra"
+ignore_missing_imports = true
