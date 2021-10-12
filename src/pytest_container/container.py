@@ -1,8 +1,9 @@
 import os
 import tempfile
+from abc import ABC
+from abc import abstractmethod
 from dataclasses import dataclass
 from dataclasses import field
-from pathlib import Path
 from pytest_container.runtime import get_selected_runtime
 from subprocess import check_output
 from typing import Any
@@ -10,6 +11,8 @@ from typing import List
 from typing import NamedTuple
 from typing import Optional
 from typing import Union
+
+from py.path import local
 
 
 @dataclass
@@ -71,7 +74,18 @@ class ContainerBase:
         return cmd
 
 
-class Container(ContainerBase):
+class ContainerBaseABC(ABC):
+    @abstractmethod
+    def prepare_container(self, rootdir: local) -> None:
+        """Prepares the container so that it can be launched."""
+        pass
+
+    @abstractmethod
+    def get_base(self) -> "Container":
+        pass
+
+
+class Container(ContainerBase, ContainerBaseABC):
     """This class stores information about the BCI images under test.
 
     Instances of this class are constructed from the contents of
@@ -84,7 +98,7 @@ class Container(ContainerBase):
         runtime = get_selected_runtime()
         check_output([runtime.runner_binary, "pull", self.url])
 
-    def prepare_container(self, rootdir: Path) -> None:
+    def prepare_container(self, rootdir: local) -> None:
         """Prepares the container so that it can be launched."""
         self.pull_container()
 
@@ -93,7 +107,7 @@ class Container(ContainerBase):
 
 
 @dataclass
-class DerivedContainer(ContainerBase):
+class DerivedContainer(ContainerBase, ContainerBaseABC):
     base: Union[Container, "DerivedContainer", str] = ""
     containerfile: str = ""
 
@@ -114,7 +128,7 @@ class DerivedContainer(ContainerBase):
         return self.base.get_base()
 
     def prepare_container(
-        self, rootdir: Path, extra_build_args: Optional[List[str]] = None
+        self, rootdir: local, extra_build_args: Optional[List[str]] = None
     ) -> None:
         if not isinstance(self.base, str):
             self.base.prepare_container(rootdir)

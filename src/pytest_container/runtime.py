@@ -6,9 +6,16 @@ from os import getenv
 from subprocess import check_output
 from typing import Any
 from typing import List
+from typing import TYPE_CHECKING
+from typing import Union
 
 import pytest
 import testinfra
+from _pytest.mark.structures import ParameterSet
+
+if TYPE_CHECKING:
+    from pytest_container.container import Container
+    from pytest_container.container import DerivedContainer
 
 
 @dataclass(frozen=True)
@@ -20,18 +27,32 @@ class ToParamMixin:
 
     marks: Any = None
 
-    def to_pytest_param(self):
+    def to_pytest_param(self) -> ParameterSet:
         return pytest.param(self, id=self.__str__(), marks=self.marks or ())
 
 
 @dataclass(frozen=True)
-class OciRuntimeBase(ABC, ToParamMixin):
+class _OciRuntimeBase:
     #: command that builds the Dockerfile in the current working directory
     build_command: List[str] = field(default_factory=list)
     #: the "main" binary of this runtime, e.g. podman or docker
     runner_binary: str = ""
     _runtime_functional: bool = False
 
+
+# @dataclass(frozen=True)
+class OciRuntimeABC(ABC):
+    @staticmethod
+    @abstractmethod
+    def _runtime_error_message() -> str:
+        pass
+
+    @abstractmethod
+    def get_image_id_from_stdout(self, stdout: str) -> str:
+        pass
+
+
+class OciRuntimeBase(_OciRuntimeBase, OciRuntimeABC, ToParamMixin):
     def __post_init__(self) -> None:
         if not self.build_command or not self.runner_binary:
             raise ValueError(
@@ -44,16 +65,15 @@ class OciRuntimeBase(ABC, ToParamMixin):
                 + self._runtime_error_message()
             )
 
-    @staticmethod
-    @abstractmethod
-    def _runtime_error_message() -> str:
-        pass
-
-    @abstractmethod
-    def get_image_id_from_stdout(self, stdout: str) -> str:
-        pass
-
-    def get_image_size(self, image_or_id: str) -> float:
+    def get_image_size(
+        self,
+        image_or_id_or_container: Union[str, "Container", "DerivedContainer"],
+    ) -> float:
+        id_to_inspect = (
+            image_or_id_or_container
+            if isinstance(image_or_id_or_container, str)
+            else str(image_or_id_or_container)
+        )
         return float(
             check_output(
                 [
@@ -61,7 +81,7 @@ class OciRuntimeBase(ABC, ToParamMixin):
                     "inspect",
                     "-f",
                     '"{{ .Size }}"',
-                    image_or_id,
+                    id_to_inspect,
                 ]
             )
             .decode()
@@ -89,12 +109,12 @@ class PodmanRuntime(OciRuntimeBase):
             return ""
         podman_ps = LOCALHOST.run("podman ps")
         if not podman_ps.succeeded:
-            return podman_ps.stderr
+            return str(podman_ps.stderr)
         buildah = LOCALHOST.run("buildah")
         assert (
             not buildah.succeeded
         ), "buildah command must not succeed as PodmanRuntime is not functional"
-        return buildah.stderr
+        return str(buildah.stderr)
 
     def __init__(self) -> None:
         super().__init__(
@@ -122,7 +142,7 @@ class DockerRuntime(OciRuntimeBase):
         assert (
             not docker_ps.succeeded
         ), "docker runtime is not functional, but 'docker ps' succeeded"
-        return docker_ps.stderr
+        return str(docker_ps.stderr)
 
     def __init__(self) -> None:
         super().__init__(
