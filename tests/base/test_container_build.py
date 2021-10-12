@@ -1,5 +1,6 @@
 from pytest_container import Container
 from pytest_container import DerivedContainer
+from pytest_container.runtime import OciRuntimeBase
 
 import pytest
 
@@ -16,6 +17,12 @@ LEAP_WITH_MAN_AND_LUA = DerivedContainer(
 BUSYBOX_WITH_ENTRYPOINT = Container(
     url="registry.opensuse.org/opensuse/busybox:latest",
     custom_entry_point="/bin/sh",
+)
+#: This is just a busybox container with 4MB of random data in there
+BUSYBOX_WITH_GARBAGE = DerivedContainer(
+    base=BUSYBOX_WITH_ENTRYPOINT,
+    containerfile="""RUN dd if=/dev/random of=/foobar bs=4M count=1
+""",
 )
 
 SLEEP_CONTAINER = DerivedContainer(
@@ -71,3 +78,17 @@ def test_default_entry_point(container):
     sleep = container.connection.process.filter(comm="sleep")
     assert len(sleep) == 1
     assert "/usr/bin/sleep 3600" == sleep[0].args
+
+
+def test_container_size(container_runtime: OciRuntimeBase, pytestconfig):
+    for container in [BUSYBOX_WITH_ENTRYPOINT, BUSYBOX_WITH_GARBAGE]:
+        container.prepare_container(pytestconfig.rootdir)
+
+    assert container_runtime.get_image_size(
+        BUSYBOX_WITH_ENTRYPOINT
+    ) < container_runtime.get_image_size(BUSYBOX_WITH_GARBAGE)
+    assert (
+        container_runtime.get_image_size(BUSYBOX_WITH_ENTRYPOINT)
+        - container_runtime.get_image_size(BUSYBOX_WITH_GARBAGE)
+        < 4096 * 1024 * 1024
+    )
