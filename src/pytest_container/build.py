@@ -9,6 +9,8 @@ from typing import Dict
 from typing import Optional
 from typing import Union
 
+from py.path import local
+
 
 @dataclass(frozen=True)
 class GitRepositoryBuild(ToParamMixin):
@@ -72,7 +74,7 @@ class MultiStageBuild:
             **{k: str(v) for k, v in self.containers.items()}
         )
 
-    def prepare_build(self, tmp_dir: Path, rootdir: Path):
+    def prepare_build(self, tmp_dir: Path, rootdir: local) -> None:
         for _, container in self.containers.items():
             if not isinstance(container, str):
                 container.prepare_container(rootdir)

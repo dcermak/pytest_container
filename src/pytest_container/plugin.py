@@ -2,20 +2,28 @@ from pytest_container.container import Container
 from pytest_container.container import ContainerData
 from pytest_container.container import DerivedContainer
 from pytest_container.runtime import get_selected_runtime
+from pytest_container.runtime import OciRuntimeBase
 from subprocess import check_output
+from typing import Generator
 from typing import Optional
 from typing import Union
 
 import pytest
 import testinfra
+from _pytest.config import Config
+from _pytest.fixtures import SubRequest
 
 
 @pytest.fixture(scope="session")
-def container_runtime():
+def container_runtime() -> OciRuntimeBase:
     return get_selected_runtime()
 
 
-def _auto_container_fixture(request, container_runtime, pytestconfig):
+def _auto_container_fixture(
+    request: SubRequest,
+    container_runtime: OciRuntimeBase,
+    pytestconfig: Config,
+) -> Generator[ContainerData, None, None]:
     """Fixture that will build & launch a container that is either passed as a
     request parameter or it will be automatically parametrized via
     pytest_generate_tests.
