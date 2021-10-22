@@ -16,6 +16,10 @@ from _pytest.fixtures import SubRequest
 
 @pytest.fixture(scope="session")
 def container_runtime() -> OciRuntimeBase:
+    """pytest fixture that returns the currently selected container runtime
+    according to the rules outlined :ref:`here <runtime selection rules>`.
+
+    """
     return get_selected_runtime()
 
 
