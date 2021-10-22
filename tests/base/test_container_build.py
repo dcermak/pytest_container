@@ -1,8 +1,11 @@
 from pytest_container import Container
 from pytest_container import DerivedContainer
+from pytest_container.build import MultiStageBuild
+from pytest_container.runtime import LOCALHOST
 from pytest_container.runtime import OciRuntimeBase
 
 import pytest
+from _pytest.config import Config
 
 LEAP = Container(url="registry.opensuse.org/opensuse/leap:latest")
 
@@ -32,6 +35,28 @@ SLEEP_CONTAINER = DerivedContainer(
 )
 
 CONTAINER_IMAGES = [LEAP, LEAP_WITH_MAN, LEAP_WITH_MAN_AND_LUA]
+
+MULTI_STAGE_BUILD = MultiStageBuild(
+    containers={
+        "builder": LEAP_WITH_MAN,
+        "runner1": LEAP,
+        "runner2": "docker.io/alpine",
+    },
+    containerfile_template=r"""FROM $builder as builder
+WORKDIR /src
+RUN echo $$'#!/bin/sh \n\
+echo "foobar"' > test.sh && chmod +x test.sh
+
+FROM $runner1 as runner1
+WORKDIR /bin
+COPY --from=builder /src/test.sh .
+ENTRYPOINT ["/bin/test.sh"]
+
+FROM $runner2 as runner2
+WORKDIR /bin
+COPY --from=builder /src/test.sh .
+""",
+)
 
 
 @pytest.mark.parametrize("container", [LEAP], indirect=["container"])
@@ -92,3 +117,51 @@ def test_container_size(container_runtime: OciRuntimeBase, pytestconfig):
         - container_runtime.get_image_size(BUSYBOX_WITH_GARBAGE)
         < 4096 * 1024 * 1024
     )
+
+
+def test_multistage_containerfile():
+    assert "FROM docker.io/alpine" in MULTI_STAGE_BUILD.containerfile
+
+
+def test_multistage_build(tmp_path, pytestconfig, container_runtime):
+    MULTI_STAGE_BUILD.build(tmp_path, pytestconfig.rootdir, container_runtime)
+
+
+def test_multistage_build_target(
+    tmp_path, pytestconfig: Config, container_runtime
+):
+    first_target = MULTI_STAGE_BUILD.build(
+        tmp_path, pytestconfig.rootdir, container_runtime, "runner1"
+    )
+    assert (
+        LOCALHOST.run_expect(
+            [0],
+            f"{container_runtime.runner_binary} run --rm {first_target}",
+        ).stdout.strip()
+        == "foobar"
+    )
+
+    second_target = MULTI_STAGE_BUILD.build(
+        tmp_path, pytestconfig, container_runtime, "runner2"
+    )
+
+    assert first_target != second_target
+    assert (
+        LOCALHOST.run_expect(
+            [0],
+            f"{container_runtime.runner_binary} run --rm {second_target} /bin/test.sh",
+        ).stdout.strip()
+        == "foobar"
+    )
+
+    for (distro, target) in (
+        ("Leap", first_target),
+        ("Alpine", second_target),
+    ):
+        assert (
+            distro
+            in LOCALHOST.run_expect(
+                [0],
+                f"{container_runtime.runner_binary} run --rm --entrypoint= {target} cat /etc/os-release",
+            ).stdout.strip()
+        )
