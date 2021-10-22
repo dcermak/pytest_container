@@ -66,11 +66,11 @@ class GitRepositoryBuild(ToParamMixin):
 @dataclass
 class MultiStageBuild:
     containers: Dict[str, Union[Container, DerivedContainer, str]]
-    dockerfile_template: str
+    containerfile_template: str
 
     @property
     def containerfile(self) -> str:
-        return Template(self.dockerfile_template).substitute(
+        return Template(self.containerfile_template).substitute(
             **{k: str(v) for k, v in self.containers.items()}
         )
 
