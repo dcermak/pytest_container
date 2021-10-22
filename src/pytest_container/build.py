@@ -3,12 +3,15 @@ from os import path
 from pathlib import Path
 from pytest_container.container import Container
 from pytest_container.container import DerivedContainer
+from pytest_container.runtime import OciRuntimeBase
 from pytest_container.runtime import ToParamMixin
 from string import Template
+from subprocess import check_output
 from typing import Dict
 from typing import Optional
 from typing import Union
 
+from _pytest.config import Config
 from py.path import local
 
 
@@ -81,3 +84,32 @@ class MultiStageBuild:
 
         with open(tmp_dir / "Dockerfile", "w") as containerfile:
             containerfile.write(self.containerfile)
+
+    def run_build_step(
+        self,
+        tmp_dir: Path,
+        runtime: OciRuntimeBase,
+        target: Optional[str] = None,
+    ) -> bytes:
+        return check_output(
+            runtime.build_command
+            + (["--target", target] if target else [])
+            + [str(tmp_dir)]
+        )
+
+    def build(
+        self,
+        tmp_dir: Path,
+        rootdir_or_pytestconfig: Union[local, Config],
+        runtime: OciRuntimeBase,
+        target: Optional[str] = None,
+    ) -> str:
+        self.prepare_build(
+            tmp_dir,
+            getattr(
+                rootdir_or_pytestconfig, "rootdir", rootdir_or_pytestconfig
+            ),
+        )
+        return runtime.get_image_id_from_stdout(
+            self.run_build_step(tmp_dir, runtime, target).decode()
+        )
