@@ -14,12 +14,13 @@ Pytest container
            :target: https://app.fossa.com/projects/git%2Bgithub.com%2Fdcermak%2Fpytest_container?ref=badge_shield
 
 A simple `pytest <https://pytest.org>`_ plugin to test container images with
-python and `testinfra <https://testinfra.readthedocs.io/en/latest/>`_.
+via pytest fixtures and `testinfra <https://testinfra.readthedocs.io/en/latest/>`_.
 
 This module provides a set of fixtures and helper functions to ease testing of
-container images via `testinfra
-<https://testinfra.readthedocs.io/en/latest/>`_. For example, the `container`
-fixture will automatically create and launch a previously defined container:
+container images leveraging `testinfra
+<https://testinfra.readthedocs.io/en/latest/>`_. Assuming you want to
+automatically spin up a container for a test, then the `container` will do
+exactly that (plus it will cleanup after itself):
 
 .. code-block:: python
 
@@ -37,12 +38,21 @@ container that is directly pulled from `registry.opensuse.org
 container via pytest's parametrization and returns a
 :py:class:`pytest_container.container.ContainerData` to the test function. In
 the test function itself, we can leverage testinfra to run some basic tests
-inside the container itself.
+inside the container itself, e.g. check whether files are there, packages are
+installed, etc.pp.
 
+You can also customize the container to be used, e.g. build it from a
+``Containerfile`` or specify an entry point:
 
+.. code-block:: python
 
-License
--------
+   BUSYBOX_WITH_ENTRYPOINT = Container(
+       url="registry.opensuse.org/opensuse/busybox:latest",
+       custom_entry_point="/bin/sh",
+   )
 
-.. image:: https://app.fossa.com/api/projects/git%2Bgithub.com%2Fdcermak%2Fpytest_container.svg?type=large
-           :target: https://app.fossa.com/projects/git%2Bgithub.com%2Fdcermak%2Fpytest_container?ref=badge_large
+   @pytest.mark.parametrize(
+       "container", [BUSYBOX_WITH_ENTRYPOINT], indirect=["container"]
+   )
+   def test_custom_entry_point(container):
+       container.connection.run_expect([0], "true")

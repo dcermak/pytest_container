@@ -9,7 +9,11 @@
    :maxdepth: 2
    :caption: Contents:
 
+   prerequisites
 
+   fixtures
+
+   api
 
 Indices and tables
 ==================
