@@ -43,7 +43,13 @@ class GitRepositoryBuild(ToParamMixin):
     @property
     def repo_name(self) -> str:
         """Name of the directory to which the repository will be checked out"""
-        return path.basename(self.repository_url.replace(".git", ""))
+        repo_without_dot_git = self.repository_url.replace(".git", "")
+        repo_without_trailing_slash = (
+            repo_without_dot_git[0:-1]
+            if repo_without_dot_git[-1] == "/"
+            else repo_without_dot_git
+        )
+        return path.basename(repo_without_trailing_slash)
 
     @property
     def clone_command(self) -> str:
