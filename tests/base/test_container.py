@@ -20,3 +20,15 @@ def test_derived_container_default_entry_point_and_custom_one_set():
             custom_entry_point="foobar",
         )
     assert "A custom entry point has been provided" in str(ve.value)
+
+
+def test_derived_container_fails_without_base():
+    with pytest.raises(ValueError) as ve:
+        DerivedContainer()
+
+    assert str(ve.value) == "A base container must be provided"
+
+
+def test_get_base_of_derived_container():
+    url = "registry.foobar.org/my_img:latest"
+    assert DerivedContainer(base=url).get_base() == Container(url=url)
