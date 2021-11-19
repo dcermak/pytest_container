@@ -13,6 +13,10 @@ Pytest container
 .. image:: https://app.fossa.com/api/projects/git%2Bgithub.com%2Fdcermak%2Fpytest_container.svg?type=shield
            :target: https://app.fossa.com/projects/git%2Bgithub.com%2Fdcermak%2Fpytest_container?ref=badge_shield
 
+.. image:: https://img.shields.io/pypi/v/pytest-container
+           :alt: PyPI
+           :target: https://pypi.org/project/pytest-container/
+
 A simple `pytest <https://pytest.org>`_ plugin to test container images with
 via pytest fixtures and `testinfra <https://testinfra.readthedocs.io/en/latest/>`_.
 
