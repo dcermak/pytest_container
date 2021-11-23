@@ -1,5 +1,6 @@
 from pytest_container import Container
 from pytest_container import DerivedContainer
+from pytest_container.container import ImageFormat
 
 import pytest
 
@@ -32,3 +33,8 @@ def test_derived_container_fails_without_base():
 def test_get_base_of_derived_container():
     url = "registry.foobar.org/my_img:latest"
     assert DerivedContainer(base=url).get_base() == Container(url=url)
+
+
+def test_image_format():
+    assert str(ImageFormat.DOCKER) == "docker"
+    assert str(ImageFormat.OCIv1) == "oci"

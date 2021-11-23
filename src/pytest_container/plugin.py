@@ -1,6 +1,9 @@
+import datetime
+import time
 from pytest_container.container import Container
 from pytest_container.container import ContainerData
 from pytest_container.container import DerivedContainer
+from pytest_container.runtime import ContainerHealth
 from pytest_container.runtime import get_selected_runtime
 from pytest_container.runtime import OciRuntimeBase
 from subprocess import check_output
@@ -45,6 +48,30 @@ def _auto_container_fixture(
             .decode()
             .strip()
         )
+        start = datetime.datetime.now()
+        timeout_ms = launch_data.healthcheck_timeout
+
+        if timeout_ms is not None:
+            while True:
+                health = container_runtime.get_container_health(container_id)
+
+                if (
+                    health == ContainerHealth.NO_HEALTH_CHECK
+                    or health == ContainerHealth.HEALTHY
+                ):
+                    break
+                delta = datetime.datetime.now() - start
+                delta_ms = (
+                    delta.days * 24 * 3600 * 1000
+                    + delta.seconds * 1000
+                    + delta.microseconds / 1000
+                )
+                if delta_ms > timeout_ms:
+                    raise RuntimeError(
+                        f"Container {container_id} did not become healthy within {timeout_ms}ms, took {delta_ms} and state is {str(health)}"
+                    )
+                time.sleep(max(500, timeout_ms / 10) / 1000)
+
         yield ContainerData(
             image_url_or_id=launch_data.url or launch_data.container_id,
             container_id=container_id,

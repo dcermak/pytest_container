@@ -5,6 +5,10 @@ API documentation
    :members:
    :undoc-members:
 
+.. automodule:: pytest_container.runtime
+   :members:
+   :undoc-members:
+
 .. automodule:: pytest_container.container
    :members:
    :undoc-members:
