@@ -1,3 +1,4 @@
+import enum
 import os
 import tempfile
 from abc import ABC
@@ -13,6 +14,21 @@ from typing import Optional
 from typing import Union
 
 from py.path import local
+
+
+@enum.unique
+class ImageFormat(enum.Enum):
+    """Image formats supported by buildah."""
+
+    #: The default OCIv1 image format.
+    OCIv1 = "oci"
+
+    #: Docker's default image format that supports additional properties, like
+    #: ``HEALTHCHECK``
+    DOCKER = "docker"
+
+    def __str__(self) -> str:
+        return "oci" if self == ImageFormat.OCIv1 else "docker"
 
 
 @dataclass
@@ -35,6 +51,11 @@ class ContainerBase:
     #: `docker/podman run -d`. The list must be properly escaped, e.g. as
     #: created by `shlex.split`
     extra_launch_args: List[str] = field(default_factory=list)
+
+    #: time in ms for the container to become healthy (the timeout is ignored
+    #: when the container image defined no ``HEALTHCHECK`` or when the timeout is
+    #: ``None``)
+    healthcheck_timeout: Optional[int] = 10 * 1000
 
     def __post_init__(self) -> None:
         if self.default_entry_point and self.custom_entry_point:
@@ -109,7 +130,16 @@ class Container(ContainerBase, ContainerBaseABC):
 @dataclass
 class DerivedContainer(ContainerBase, ContainerBaseABC):
     base: Union[Container, "DerivedContainer", str] = ""
+
+    #: The :file:`Containerfile` that is used to build this container derived
+    #: from :py:attr:`base`.
     containerfile: str = ""
+
+    #: An optional image format when building images with :command:`buildah`.
+    #: This attribute can be used to instruct :command:`buildah` to build images
+    #: in the ``docker`` format, instead of the default (``oci``).
+    #: This attribute is ignored by :command:`docker`.
+    image_format: Optional[ImageFormat] = None
 
     def __post_init__(self) -> None:
         super().__post_init__()
@@ -151,9 +181,17 @@ class DerivedContainer(ContainerBase, ContainerBaseABC):
 """
                 )
 
+            image_format_args: List[str] = []
+            if (
+                self.image_format is not None
+                and "buildah" in runtime.build_command
+            ):
+                image_format_args = ["--format", str(self.image_format)]
+
             self.container_id = runtime.get_image_id_from_stdout(
                 check_output(
                     runtime.build_command
+                    + image_format_args
                     + (extra_build_args or [])
                     + ["-f", containerfile_path, str(rootdir)],
                     cwd=rootdir,

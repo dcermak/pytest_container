@@ -1,3 +1,4 @@
+import enum
 from abc import ABC
 from abc import abstractmethod
 from dataclasses import dataclass
@@ -40,8 +41,21 @@ class _OciRuntimeBase:
     _runtime_functional: bool = False
 
 
-# @dataclass(frozen=True)
+@enum.unique
+class ContainerHealth(enum.Enum):
+    #: the container has no health check defined
+    NO_HEALTH_CHECK = enum.auto()
+    #: the container is healthy
+    HEALTHY = enum.auto()
+    #: the health check did not complete yet or did not fail often enough
+    STARTING = enum.auto()
+    #: the healthcheck failed
+    UNHEALTHY = enum.auto()
+
+
 class OciRuntimeABC(ABC):
+    """The abstract base class defining the interface of a container runtime."""
+
     @staticmethod
     @abstractmethod
     def _runtime_error_message() -> str:
@@ -49,6 +63,14 @@ class OciRuntimeABC(ABC):
 
     @abstractmethod
     def get_image_id_from_stdout(self, stdout: str) -> str:
+        pass
+
+    @abstractmethod
+    def get_container_health(self, container_id: str) -> ContainerHealth:
+        """Inspects the running container with the supplied id and returns its current
+        health.
+
+        """
         pass
 
 
@@ -129,6 +151,21 @@ class PodmanRuntime(OciRuntimeBase):
             filter(None, map(lambda l: l.strip(), stdout.split("\n")))
         )[-1]
 
+    def get_container_health(self, container_id: str) -> ContainerHealth:
+        res = LOCALHOST.run_expect(
+            [0],
+            'podman inspect -f "{{ .State.Healthcheck.Status }}" '
+            + container_id,
+        )
+        stdout = res.stdout.strip()
+        if stdout == "":
+            return ContainerHealth.NO_HEALTH_CHECK
+        elif stdout == "healthy":
+            return ContainerHealth.HEALTHY
+        elif stdout == "starting":
+            return ContainerHealth.STARTING
+        return ContainerHealth.UNHEALTHY
+
 
 class DockerRuntime(OciRuntimeBase):
 
@@ -159,6 +196,23 @@ class DockerRuntime(OciRuntimeBase):
             filter(None, map(lambda l: l.strip(), stdout.split("\n")))
         )[-1]
         return last_line.split()[-1]
+
+    def get_container_health(self, container_id: str) -> ContainerHealth:
+        res = LOCALHOST.run_expect(
+            [0, 1],
+            'docker inspect -f "{{ .State.Health.Status }}" ' + container_id,
+        )
+        if (
+            res.rc == 1
+            and 'map has no entry for key "Health"' in res.stderr.strip()
+        ):
+            return ContainerHealth.NO_HEALTH_CHECK
+        stdout = res.stdout.strip()
+        if stdout == "healthy":
+            return ContainerHealth.HEALTHY
+        elif stdout == "starting":
+            return ContainerHealth.STARTING
+        return ContainerHealth.UNHEALTHY
 
 
 def get_selected_runtime() -> OciRuntimeBase:
