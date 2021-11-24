@@ -1,4 +1,5 @@
 import enum
+import itertools
 import os
 import tempfile
 from abc import ABC
@@ -8,6 +9,7 @@ from dataclasses import field
 from pytest_container.runtime import get_selected_runtime
 from subprocess import check_output
 from typing import Any
+from typing import Dict
 from typing import List
 from typing import NamedTuple
 from typing import Optional
@@ -57,6 +59,10 @@ class ContainerBase:
     #: ``None``)
     healthcheck_timeout: Optional[int] = 10 * 1000
 
+    #: additional environment variables that should be injected into the
+    #: container
+    extra_environment_variables: Optional[Dict[str, str]] = None
+
     def __post_init__(self) -> None:
         if self.default_entry_point and self.custom_entry_point:
             raise ValueError(
@@ -85,7 +91,23 @@ class ContainerBase:
         """Returns the command to launch this container image (excluding the
         leading podman or docker binary name).
         """
-        cmd = ["run", "-d"] + (extra_run_args or []) + self.extra_launch_args
+        cmd = (
+            ["run", "-d"]
+            + (extra_run_args or [])
+            + self.extra_launch_args
+            + (
+                list(
+                    itertools.chain(
+                        *[
+                            ("-e", f"{k}={v}")
+                            for k, v in self.extra_environment_variables.items()
+                        ]
+                    )
+                )
+                if self.extra_environment_variables
+                else []
+            )
+        )
 
         if self.entry_point is None:
             cmd.append(self.container_id or self.url)
