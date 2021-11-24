@@ -57,7 +57,7 @@ class ContainerBase:
     #: time in ms for the container to become healthy (the timeout is ignored
     #: when the container image defined no ``HEALTHCHECK`` or when the timeout is
     #: ``None``)
-    healthcheck_timeout: Optional[int] = 10 * 1000
+    healthcheck_timeout_ms: Optional[int] = 10 * 1000
 
     #: additional environment variables that should be injected into the
     #: container
