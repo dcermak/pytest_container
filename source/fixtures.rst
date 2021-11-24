@@ -15,7 +15,7 @@ with a ``HEALTHCHECK``, the container will become available once it is healthy.
 
 In certain cases it makes sense to not wait for the health check or to
 explicitly ignore it. In that case set the attribute
-:py:attr:`pytest_container.container.ContainerBase.healthcheck_timeout` to
+:py:attr:`pytest_container.container.ContainerBase.healthcheck_timeout_ms` to
 ``None``. The container launch fixtures will then treat this container as if it
 had no ``HEALTHCHECK`` attribute at all.
 
@@ -28,7 +28,7 @@ using the function
    CONTAINER_WITH_HEALTHCHECK = DerivedContainer(
        base="registry.opensuse.org/opensuse/leap:latest",
        containerfile="HEALTHCHECK CMD true",
-       healthcheck_timeout=None,
+       healthcheck_timeout_ms=None,
    )
 
    @pytest.mark.parametrize("container", [CONTAINER_WITH_HEALTHCHECK], indirect=True)

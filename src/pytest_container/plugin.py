@@ -49,7 +49,7 @@ def _auto_container_fixture(
             .strip()
         )
         start = datetime.datetime.now()
-        timeout_ms = launch_data.healthcheck_timeout
+        timeout_ms = launch_data.healthcheck_timeout_ms
 
         if timeout_ms is not None:
             while True:

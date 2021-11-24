@@ -26,7 +26,7 @@ CONTAINER_WITH_FAILING_HEALTHCHECK = DerivedContainer(
     image_format=ImageFormat.DOCKER,
     containerfile="""CMD sleep 600
 HEALTHCHECK --retries=2 --interval=2s CMD false""",
-    healthcheck_timeout=None,
+    healthcheck_timeout_ms=None,
 )
 
 
