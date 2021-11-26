@@ -2,7 +2,10 @@ from .build import GitRepositoryBuild
 from .build import MultiStageBuild
 from .container import Container
 from .container import DerivedContainer
+from .helpers import add_extra_run_and_build_args_options
 from .helpers import auto_container_parametrize
+from .helpers import get_extra_build_args
+from .helpers import get_extra_run_args
 from .runtime import DockerRuntime
 from .runtime import get_selected_runtime
 from .runtime import OciRuntimeBase

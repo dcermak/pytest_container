@@ -1,5 +1,6 @@
 from pytest_container import Container
 from pytest_container import DerivedContainer
+from pytest_container import get_extra_build_args
 from pytest_container.build import MultiStageBuild
 from pytest_container.runtime import LOCALHOST
 from pytest_container.runtime import OciRuntimeBase
@@ -124,14 +125,23 @@ def test_multistage_containerfile():
 
 
 def test_multistage_build(tmp_path, pytestconfig, container_runtime):
-    MULTI_STAGE_BUILD.build(tmp_path, pytestconfig.rootdir, container_runtime)
+    MULTI_STAGE_BUILD.build(
+        tmp_path,
+        pytestconfig.rootdir,
+        container_runtime,
+        extra_build_args=get_extra_build_args(pytestconfig),
+    )
 
 
 def test_multistage_build_target(
     tmp_path, pytestconfig: Config, container_runtime
 ):
     first_target = MULTI_STAGE_BUILD.build(
-        tmp_path, pytestconfig.rootdir, container_runtime, "runner1"
+        tmp_path,
+        pytestconfig.rootdir,
+        container_runtime,
+        "runner1",
+        extra_build_args=get_extra_build_args(pytestconfig),
     )
     assert (
         LOCALHOST.run_expect(
@@ -142,7 +152,11 @@ def test_multistage_build_target(
     )
 
     second_target = MULTI_STAGE_BUILD.build(
-        tmp_path, pytestconfig, container_runtime, "runner2"
+        tmp_path,
+        pytestconfig,
+        container_runtime,
+        "runner2",
+        extra_build_args=get_extra_build_args(pytestconfig),
     )
 
     assert first_target != second_target

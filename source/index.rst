@@ -13,6 +13,8 @@
 
    fixtures
 
+   usage
+
    api
 
 Indices and tables
