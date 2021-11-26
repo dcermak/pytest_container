@@ -129,8 +129,10 @@ class MultiStageBuild:
     containerfile_template: str
 
     #: A dictionary mapping the container names used in
-    #: :py:attr:`containerfile_template` to :py:class:`Container` or
-    #: :py:class:`DerivedContainer` objects or strings.
+    #: :py:attr:`containerfile_template` to
+    #: :py:class:`~pytest_container.container.Container` or
+    #: :py:class:`~pytest_container.container.DerivedContainer` objects or
+    #: strings.
     containers: Dict[str, Union[Container, DerivedContainer, str]]
 
     @property
