@@ -49,7 +49,7 @@ def get_extra_run_args(pytestconfig: Config) -> List[str]:
     called in :file:`conftest.py`.
 
     """
-    return pytestconfig.getoption("extra_run_args") or []
+    return pytestconfig.getoption("extra_run_args", default=[]) or []
 
 
 def get_extra_build_args(pytestconfig: Config) -> List[str]:
@@ -60,4 +60,4 @@ def get_extra_build_args(pytestconfig: Config) -> List[str]:
     called in :file:`conftest.py`.
 
     """
-    return pytestconfig.getoption("extra_build_args") or []
+    return pytestconfig.getoption("extra_build_args", default=[]) or []
