@@ -7,12 +7,14 @@ from _pytest.python import Metafunc
 
 def auto_container_parametrize(metafunc: Metafunc) -> None:
     container_images = getattr(metafunc.module, "CONTAINER_IMAGES", None)
-    if container_images is not None:
-        for fixture_name in ("auto_container", "auto_container_per_test"):
-            if fixture_name in metafunc.fixturenames:
-                metafunc.parametrize(
-                    fixture_name, container_images, indirect=True
+
+    for fixture_name in ("auto_container", "auto_container_per_test"):
+        if fixture_name in metafunc.fixturenames:
+            if container_images is None:
+                raise ValueError(
+                    f"The test function {metafunc.function.__name__} is using the {fixture_name} fixture but the parent module is not setting the 'CONTAINER_IMAGES' variable"
                 )
+            metafunc.parametrize(fixture_name, container_images, indirect=True)
 
 
 def add_extra_run_and_build_args_options(parser: Parser) -> None:
