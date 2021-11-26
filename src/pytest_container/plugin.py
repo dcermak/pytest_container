@@ -3,6 +3,8 @@ import time
 from pytest_container.container import Container
 from pytest_container.container import ContainerData
 from pytest_container.container import DerivedContainer
+from pytest_container.helpers import get_extra_build_args
+from pytest_container.helpers import get_extra_run_args
 from pytest_container.runtime import ContainerHealth
 from pytest_container.runtime import get_selected_runtime
 from pytest_container.runtime import OciRuntimeBase
@@ -39,11 +41,16 @@ def _auto_container_fixture(
 
     container_id: Optional[str] = None
     try:
-        launch_data.prepare_container(rootdir=pytestconfig.rootdir)
+        launch_data.prepare_container(
+            rootdir=pytestconfig.rootdir,
+            extra_build_args=get_extra_build_args(pytestconfig),
+        )
         container_id = (
             check_output(
                 [container_runtime.runner_binary]
-                + launch_data.get_launch_cmd()
+                + launch_data.get_launch_cmd(
+                    extra_run_args=get_extra_run_args(pytestconfig)
+                )
             )
             .decode()
             .strip()

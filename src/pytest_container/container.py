@@ -119,7 +119,9 @@ class ContainerBase:
 
 class ContainerBaseABC(ABC):
     @abstractmethod
-    def prepare_container(self, rootdir: local) -> None:
+    def prepare_container(
+        self, rootdir: local, extra_build_args: Optional[List[str]]
+    ) -> None:
         """Prepares the container so that it can be launched."""
         pass
 
@@ -141,7 +143,9 @@ class Container(ContainerBase, ContainerBaseABC):
         runtime = get_selected_runtime()
         check_output([runtime.runner_binary, "pull", self.url])
 
-    def prepare_container(self, rootdir: local) -> None:
+    def prepare_container(
+        self, rootdir: local, extra_build_args: Optional[List[str]] = None
+    ) -> None:
         """Prepares the container so that it can be launched."""
         self.pull_container()
 
