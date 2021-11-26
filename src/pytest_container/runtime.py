@@ -15,8 +15,7 @@ import testinfra
 from _pytest.mark.structures import ParameterSet
 
 if TYPE_CHECKING:
-    from pytest_container.container import Container
-    from pytest_container.container import DerivedContainer
+    import pytest_container
 
 
 @dataclass(frozen=True)
@@ -89,7 +88,11 @@ class OciRuntimeBase(_OciRuntimeBase, OciRuntimeABC, ToParamMixin):
 
     def get_image_size(
         self,
-        image_or_id_or_container: Union[str, "Container", "DerivedContainer"],
+        image_or_id_or_container: Union[
+            str,
+            "pytest_container.container.Container",
+            "pytest_container.container.DerivedContainer",
+        ],
     ) -> float:
         id_to_inspect = (
             image_or_id_or_container

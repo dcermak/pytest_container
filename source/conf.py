@@ -56,3 +56,7 @@ html_theme = "alabaster"
 html_static_path = ["_static"]
 
 intersphinx_mapping = {"python": ("https://docs.python.org/3", None)}
+
+nitpicky = True
+nitpick_ignore = [("py:class", "py._path.local.LocalPath")]
+nitpick_ignore_regex = [("py:class", "_pytest.*")]
