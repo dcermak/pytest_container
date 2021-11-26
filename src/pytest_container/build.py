@@ -76,7 +76,8 @@ class GitRepositoryBuild(ToParamMixin):
 @dataclass
 class MultiStageBuild:
     """Helper class to perform multi-stage container builds using the
-    :py:class:`Container` and :py:class:`DerivedContainer` classes.
+    :py:class:`~pytest_container.container.Container` and
+    :py:class:`~pytest_container.container.DerivedContainer` classes.
 
     This class is essentially just a very simple helper that will replace all
     variables in :py:attr:`containerfile_template` with the correct container
@@ -117,7 +118,8 @@ class MultiStageBuild:
 
     Where ``tmp_path`` and ``pytestconfig`` are the pytest fixtures and
     ``container_runtime`` is an instance of a child class of
-    :py:class:`OciRuntimeBase`. For further details, see :py:meth:`build`.
+    :py:class:`~pytest_container.runtime.OciRuntimeBase`. For further details,
+    see :py:meth:`build`.
 
     """
 
