@@ -17,6 +17,7 @@ import pytest
 import testinfra
 from _pytest.config import Config
 from _pytest.fixtures import SubRequest
+from _pytest.mark.structures import ParameterSet
 
 
 @pytest.fixture(scope="session")
@@ -37,7 +38,20 @@ def _auto_container_fixture(
     request parameter or it will be automatically parametrized via
     pytest_generate_tests.
     """
-    launch_data: Union[Container, DerivedContainer] = request.param
+
+    launch_data: Union[Container, DerivedContainer]
+    if isinstance(request.param, (Container, DerivedContainer)):
+        launch_data = request.param
+    elif (
+        isinstance(request.param, ParameterSet)
+        and len(request.param.values) > 0
+        and isinstance(request.param.values[0], (Container, DerivedContainer))
+    ):
+        launch_data = request.param.values[0]
+    else:
+        raise ValueError(
+            f"Invalid fixture request parameter type: {type(request.param)}"
+        )
 
     container_id: Optional[str] = None
     try:

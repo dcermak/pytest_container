@@ -9,12 +9,16 @@ from dataclasses import field
 from pytest_container.runtime import get_selected_runtime
 from subprocess import check_output
 from typing import Any
+from typing import Collection
 from typing import Dict
 from typing import List
 from typing import NamedTuple
 from typing import Optional
 from typing import Union
 
+import pytest
+from _pytest.mark.structures import MarkDecorator
+from _pytest.mark.structures import ParameterSet
 from py.path import local
 
 
@@ -115,6 +119,24 @@ class ContainerBase:
             cmd += ["-it", self.container_id or self.url, self.entry_point]
 
         return cmd
+
+
+def container_to_pytest_param(
+    container: ContainerBase,
+    marks: Optional[Union[Collection[MarkDecorator], MarkDecorator]] = None,
+) -> ParameterSet:
+    """Converts a subclass of
+    :py:class:`~pytest_container.container.ContainerBase`
+    (:py:class:`~pytest_container.container.Container` or
+    :py:class:`~pytest_container.container.DerivedContainer`) into a
+    `pytest.param
+    <https://docs.pytest.org/en/stable/reference.html?#pytest.param>`_ with the
+    given marks and sets the id of the parameter to the pretty printed version
+    of the container (i.e. its
+    :py:attr:`~pytest_container.container.ContainerBase.url` or
+    :py:attr:`~pytest_container.container.ContainerBase.container_id`)
+    """
+    return pytest.param(container, marks=marks or [], id=str(container))
 
 
 class ContainerBaseABC(ABC):
