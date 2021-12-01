@@ -1,3 +1,5 @@
+from pytest_container import container_from_pytest_param
+from pytest_container import DerivedContainer
 from pytest_container import get_extra_build_args
 from pytest_container import MultiStageBuild
 from pytest_container import OciRuntimeBase
@@ -86,3 +88,21 @@ def test_container_to_pytest_param():
         len(param_with_marks_2.marks) == 1
         and param_with_marks_2.marks[0] == skip_mark
     )
+
+
+def test_container_from_pytest_param():
+    assert container_from_pytest_param(container_to_pytest_param(LEAP)) == LEAP
+    assert container_from_pytest_param(pytest.param(LEAP, 1, "a")) == LEAP
+    assert container_from_pytest_param(LEAP) == LEAP
+
+    derived = DerivedContainer(base=LEAP, containerfile="ENV foo=bar")
+    assert (
+        container_from_pytest_param(container_to_pytest_param(derived))
+        == derived
+    )
+    assert container_from_pytest_param(derived) == derived
+
+    with pytest.raises(ValueError) as ve:
+        container_from_pytest_param(pytest.param(16, 45))
+    assert "Invalid pytest.param values" in str(ve.value)
+    assert "(16, 45)" in str(ve.value)

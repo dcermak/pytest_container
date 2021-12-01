@@ -1,6 +1,7 @@
 from .build import GitRepositoryBuild
 from .build import MultiStageBuild
 from .container import Container
+from .container import container_from_pytest_param
 from .container import container_to_pytest_param
 from .container import DerivedContainer
 from .helpers import add_extra_run_and_build_args_options
