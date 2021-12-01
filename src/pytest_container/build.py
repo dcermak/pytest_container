@@ -2,6 +2,7 @@ from dataclasses import dataclass
 from os import path
 from pathlib import Path
 from pytest_container.container import Container
+from pytest_container.container import container_from_pytest_param
 from pytest_container.container import DerivedContainer
 from pytest_container.runtime import OciRuntimeBase
 from pytest_container.runtime import ToParamMixin
@@ -147,7 +148,9 @@ class MultiStageBuild:
         """
         return Template(self.containerfile_template).substitute(
             **{
-                k: str(v.values[0]) if isinstance(v, ParameterSet) else str(v)
+                k: v
+                if isinstance(v, str)
+                else str(container_from_pytest_param(v))
                 for k, v in self.containers.items()
             }
         )
@@ -164,26 +167,11 @@ class MultiStageBuild:
         to the preparation of the containers
 
         """
-
-        def prep(c: Union[Container, DerivedContainer, str]) -> None:
-            if not isinstance(c, str):
-                c.prepare_container(rootdir, extra_build_args)
-
         for _, container in self.containers.items():
-            if isinstance(container, ParameterSet):
-                if len(container.values) == 0:
-                    raise ValueError("pytest.param has no values in it")
-                if not isinstance(
-                    container.values[0], (str, DerivedContainer, Container)
-                ):
-                    raise ValueError(
-                        f"Invalid type of the pytest.param value: {type(container.values[0])}"
-                    )
-
-                prep(container.values[0])
-
-            else:
-                prep(container)
+            if not isinstance(container, str):
+                container_from_pytest_param(container).prepare_container(
+                    rootdir, extra_build_args
+                )
 
         with open(tmp_dir / "Dockerfile", "w") as containerfile:
             containerfile.write(self.containerfile)
