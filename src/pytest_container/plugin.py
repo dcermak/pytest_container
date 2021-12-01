@@ -1,8 +1,7 @@
 import datetime
 import time
-from pytest_container.container import Container
+from pytest_container.container import container_from_pytest_param
 from pytest_container.container import ContainerData
-from pytest_container.container import DerivedContainer
 from pytest_container.helpers import get_extra_build_args
 from pytest_container.helpers import get_extra_run_args
 from pytest_container.runtime import ContainerHealth
@@ -11,13 +10,11 @@ from pytest_container.runtime import OciRuntimeBase
 from subprocess import check_output
 from typing import Generator
 from typing import Optional
-from typing import Union
 
 import pytest
 import testinfra
 from _pytest.config import Config
 from _pytest.fixtures import SubRequest
-from _pytest.mark.structures import ParameterSet
 
 
 @pytest.fixture(scope="session")
@@ -39,19 +36,7 @@ def _auto_container_fixture(
     pytest_generate_tests.
     """
 
-    launch_data: Union[Container, DerivedContainer]
-    if isinstance(request.param, (Container, DerivedContainer)):
-        launch_data = request.param
-    elif (
-        isinstance(request.param, ParameterSet)
-        and len(request.param.values) > 0
-        and isinstance(request.param.values[0], (Container, DerivedContainer))
-    ):
-        launch_data = request.param.values[0]
-    else:
-        raise ValueError(
-            f"Invalid fixture request parameter type: {type(request.param)}"
-        )
+    launch_data = container_from_pytest_param(request.param)
 
     container_id: Optional[str] = None
     try:

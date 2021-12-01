@@ -121,24 +121,6 @@ class ContainerBase:
         return cmd
 
 
-def container_to_pytest_param(
-    container: ContainerBase,
-    marks: Optional[Union[Collection[MarkDecorator], MarkDecorator]] = None,
-) -> ParameterSet:
-    """Converts a subclass of
-    :py:class:`~pytest_container.container.ContainerBase`
-    (:py:class:`~pytest_container.container.Container` or
-    :py:class:`~pytest_container.container.DerivedContainer`) into a
-    `pytest.param
-    <https://docs.pytest.org/en/stable/reference.html?#pytest.param>`_ with the
-    given marks and sets the id of the parameter to the pretty printed version
-    of the container (i.e. its
-    :py:attr:`~pytest_container.container.ContainerBase.url` or
-    :py:attr:`~pytest_container.container.ContainerBase.container_id`)
-    """
-    return pytest.param(container, marks=marks or [], id=str(container))
-
-
 class ContainerBaseABC(ABC):
     @abstractmethod
     def prepare_container(
@@ -257,3 +239,44 @@ class ContainerData(NamedTuple):
     container_id: str
     #: the testinfra connection to the running container
     connection: Any
+
+
+def container_to_pytest_param(
+    container: ContainerBase,
+    marks: Optional[Union[Collection[MarkDecorator], MarkDecorator]] = None,
+) -> ParameterSet:
+    """Converts a subclass of :py:class:`~pytest_container.container.ContainerBase`
+    (:py:class:`~pytest_container.container.Container` or
+    :py:class:`~pytest_container.container.DerivedContainer`) into a
+    `pytest.param
+    <https://docs.pytest.org/en/stable/reference.html?#pytest.param>`_ with the
+    given marks and sets the id of the parameter to the pretty printed version
+    of the container (i.e. its
+    :py:attr:`~pytest_container.container.ContainerBase.url` or
+    :py:attr:`~pytest_container.container.ContainerBase.container_id`)
+
+    """
+    return pytest.param(container, marks=marks or [], id=str(container))
+
+
+def container_from_pytest_param(
+    param: Union[ParameterSet, Container, DerivedContainer],
+) -> Union[Container, DerivedContainer]:
+    """Extracts the :py:class:`~pytest_container.container.Container` or
+    :py:class:`~pytest_container.container.DerivedContainer` from a
+    `pytest.param
+    <https://docs.pytest.org/en/stable/reference.html?#pytest.param>`_ or just
+    returns the value directly, if it is either a
+    :py:class:`~pytest_container.container.Container` or a
+    :py:class:`~pytest_container.container.DerivedContainer`.
+
+    """
+    if isinstance(param, (Container, DerivedContainer)):
+        return param
+
+    if len(param.values) > 0 and isinstance(
+        param.values[0], (Container, DerivedContainer)
+    ):
+        return param.values[0]
+
+    raise ValueError(f"Invalid pytest.param values: {param.values}")
