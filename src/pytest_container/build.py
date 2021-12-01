@@ -13,6 +13,7 @@ from typing import Optional
 from typing import Union
 
 from _pytest.config import Config
+from _pytest.mark.structures import ParameterSet
 from py.path import local
 
 
@@ -132,8 +133,11 @@ class MultiStageBuild:
     #: :py:attr:`containerfile_template` to
     #: :py:class:`~pytest_container.container.Container` or
     #: :py:class:`~pytest_container.container.DerivedContainer` objects or
-    #: strings.
-    containers: Dict[str, Union[Container, DerivedContainer, str]]
+    #: strings or any of the previous classes wrapped inside a `pytest.param
+    #: <https://docs.pytest.org/en/stable/reference.html?#pytest.param>`_.
+    containers: Dict[
+        str, Union[Container, DerivedContainer, str, ParameterSet]
+    ]
 
     @property
     def containerfile(self) -> str:
@@ -142,7 +146,10 @@ class MultiStageBuild:
 
         """
         return Template(self.containerfile_template).substitute(
-            **{k: str(v) for k, v in self.containers.items()}
+            **{
+                k: str(v.values[0]) if isinstance(v, ParameterSet) else str(v)
+                for k, v in self.containers.items()
+            }
         )
 
     def prepare_build(
@@ -157,9 +164,26 @@ class MultiStageBuild:
         to the preparation of the containers
 
         """
+
+        def prep(c: Union[Container, DerivedContainer, str]) -> None:
+            if not isinstance(c, str):
+                c.prepare_container(rootdir, extra_build_args)
+
         for _, container in self.containers.items():
-            if not isinstance(container, str):
-                container.prepare_container(rootdir, extra_build_args)
+            if isinstance(container, ParameterSet):
+                if len(container.values) == 0:
+                    raise ValueError("pytest.param has no values in it")
+                if not isinstance(
+                    container.values[0], (str, DerivedContainer, Container)
+                ):
+                    raise ValueError(
+                        f"Invalid type of the pytest.param value: {type(container.values[0])}"
+                    )
+
+                prep(container.values[0])
+
+            else:
+                prep(container)
 
         with open(tmp_dir / "Dockerfile", "w") as containerfile:
             containerfile.write(self.containerfile)
