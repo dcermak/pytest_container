@@ -236,11 +236,14 @@ class MultiStageBuild:
             Id of the target container or of the last one (when no target was
             supplied) that was build
         """
+        root = (
+            rootdir_or_pytestconfig.rootdir
+            if isinstance(rootdir_or_pytestconfig, Config)
+            else rootdir_or_pytestconfig
+        )
         self.prepare_build(
             tmp_dir,
-            getattr(
-                rootdir_or_pytestconfig, "rootdir", rootdir_or_pytestconfig
-            ),
+            root,
             extra_build_args,
         )
         return runtime.get_image_id_from_stdout(
