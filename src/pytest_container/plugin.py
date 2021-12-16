@@ -1,4 +1,5 @@
 import datetime
+import os
 import time
 from pytest_container.container import container_from_pytest_param
 from pytest_container.container import ContainerData
@@ -15,6 +16,7 @@ import pytest
 import testinfra
 from _pytest.config import Config
 from _pytest.fixtures import SubRequest
+from filelock import FileLock
 
 
 @pytest.fixture(scope="session")
@@ -39,6 +41,15 @@ def _auto_container_fixture(
     launch_data = container_from_pytest_param(request.param)
 
     container_id: Optional[str] = None
+    filelock_fname = launch_data.filelock_filename
+    lock = (
+        FileLock(pytestconfig.rootdir / filelock_fname)
+        if filelock_fname
+        else None
+    )
+    if lock:
+        lock.acquire()
+
     try:
         launch_data.prepare_container(
             rootdir=pytestconfig.rootdir,
@@ -88,6 +99,9 @@ def _auto_container_fixture(
     except RuntimeError as exc:
         raise exc
     finally:
+        if lock:
+            lock.release()
+            os.unlink(lock.lock_file)
         if container_id is not None:
             check_output(
                 [container_runtime.runner_binary, "rm", "-f", container_id]

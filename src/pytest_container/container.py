@@ -6,6 +6,7 @@ from abc import ABC
 from abc import abstractmethod
 from dataclasses import dataclass
 from dataclasses import field
+from hashlib import md5
 from pytest_container.runtime import get_selected_runtime
 from subprocess import check_output
 from typing import Any
@@ -67,6 +68,10 @@ class ContainerBase:
     #: container
     extra_environment_variables: Optional[Dict[str, str]] = None
 
+    #: Indicate whether there must never be more than one running container of
+    #: this type at all times (e.g. because it opens a shared port).
+    singleton: bool = False
+
     def __post_init__(self) -> None:
         if self.default_entry_point and self.custom_entry_point:
             raise ValueError(
@@ -120,6 +125,22 @@ class ContainerBase:
 
         return cmd
 
+    @property
+    def filelock_filename(self) -> Optional[str]:
+        all_elements = []
+        for _, v in self.__dict__.items():
+            if isinstance(v, list):
+                all_elements.append("".join(v))
+            elif isinstance(v, dict):
+                all_elements.append("".join(v.values()))
+            else:
+                all_elements.append(str(v))
+        return (
+            f"{md5((''.join(all_elements)).encode()).hexdigest()}.lock"
+            if self.singleton
+            else None
+        )
+
 
 class ContainerBaseABC(ABC):
     @abstractmethod
@@ -134,6 +155,7 @@ class ContainerBaseABC(ABC):
         pass
 
 
+@dataclass(unsafe_hash=True)
 class Container(ContainerBase, ContainerBaseABC):
     """This class stores information about the BCI images under test.
 
@@ -157,7 +179,7 @@ class Container(ContainerBase, ContainerBaseABC):
         return self
 
 
-@dataclass
+@dataclass(unsafe_hash=True)
 class DerivedContainer(ContainerBase, ContainerBaseABC):
     base: Union[Container, "DerivedContainer", str] = ""
 
