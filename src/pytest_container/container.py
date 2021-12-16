@@ -1,5 +1,6 @@
 import enum
 import itertools
+import logging
 import os
 import tempfile
 from abc import ABC
@@ -167,6 +168,7 @@ class Container(ContainerBase, ContainerBaseABC):
         """Pulls the container with the given url using the currently selected
         container runtime"""
         runtime = get_selected_runtime()
+        logging.debug("Pulling %s via %s", self.url, runtime.runner_binary)
         check_output([runtime.runner_binary, "pull", self.url])
 
     def prepare_container(
@@ -212,6 +214,7 @@ class DerivedContainer(ContainerBase, ContainerBaseABC):
     def prepare_container(
         self, rootdir: local, extra_build_args: Optional[List[str]] = None
     ) -> None:
+        logging.debug("Preparing derived container based on %s", self.base)
         if not isinstance(self.base, str):
             self.base.prepare_container(rootdir)
 
@@ -227,11 +230,15 @@ class DerivedContainer(ContainerBase, ContainerBaseABC):
                     or self.base.container_id
                 )
                 assert from_id
-                containerfile.write(
-                    f"""FROM {from_id}
+                containerfile_contents = f"""FROM {from_id}
 {self.containerfile}
 """
+                logging.debug(
+                    "Writing containerfile to %s: %s",
+                    containerfile_path,
+                    containerfile_contents,
                 )
+                containerfile.write(containerfile_contents)
 
             image_format_args: List[str] = []
             if (
@@ -240,16 +247,18 @@ class DerivedContainer(ContainerBase, ContainerBaseABC):
             ):
                 image_format_args = ["--format", str(self.image_format)]
 
+            cmd = (
+                runtime.build_command
+                + image_format_args
+                + (extra_build_args or [])
+                + ["-f", containerfile_path, str(rootdir)]
+            )
+            logging.debug("Building image via: %s", cmd)
             self.container_id = runtime.get_image_id_from_stdout(
-                check_output(
-                    runtime.build_command
-                    + image_format_args
-                    + (extra_build_args or [])
-                    + ["-f", containerfile_path, str(rootdir)],
-                    cwd=rootdir,
-                )
-                .decode()
-                .strip()
+                check_output(cmd).decode().strip()
+            )
+            logging.debug(
+                "Successfully build the container image %d", self.container_id
             )
 
 
