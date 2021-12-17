@@ -20,3 +20,7 @@ API documentation
 .. automodule:: pytest_container.plugin
    :members:
    :undoc-members:
+
+.. automodule:: pytest_container.logging
+   :members:
+   :undoc-members:

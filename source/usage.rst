@@ -58,3 +58,32 @@ follows:
            # the flags are added here:
            extra_build_args=get_extra_build_args(pytestconfig),
        )
+
+
+Configuring logging
+-------------------
+
+The plugin uses python's internal logging module to log debugging messages. You
+can set the logging level in your own module by calling the function
+:py:func:`~pytest_container.logging.set_internal_logging_level`. This needs to
+happen before any tests are run, preferably in a pytest hook,
+e.g. `pytest_configure
+<https://docs.pytest.org/en/latest/reference/reference.html#_pytest.hookspec.pytest_configure>`_.
+
+Sometimes it makes sense to allow the end users to configure the logging
+level. You can accomplish this via the
+:py:func:`~pytest_container.helpers.add_logging_level_options` function, which
+adds an option to the pytest CLI flags. To actually implement this setting, call
+:py:func:`~pytest_container.helpers.set_logging_level_from_cli_args` in a hook
+function of your choice in :file:`conftest.py`, e.g. as follows:
+
+.. code-block:: python
+   :caption: conftest.py
+
+   def pytest_addoption(parser):
+       add_logging_level_options(parser)
+
+
+   def pytest_configure(config):
+       set_logging_level_from_cli_args(config)
+

@@ -1,10 +1,10 @@
-import logging
 from dataclasses import dataclass
 from os import path
 from pathlib import Path
 from pytest_container.container import Container
 from pytest_container.container import container_from_pytest_param
 from pytest_container.container import DerivedContainer
+from pytest_container.logging import _logger
 from pytest_container.runtime import OciRuntimeBase
 from pytest_container.runtime import ToParamMixin
 from string import Template
@@ -168,7 +168,7 @@ class MultiStageBuild:
         to the preparation of the containers
 
         """
-        logging.debug("Preparing multistage build")
+        _logger.debug("Preparing multistage build")
         for _, container in self.containers.items():
             if not isinstance(container, str):
                 container_from_pytest_param(container).prepare_container(
@@ -177,7 +177,7 @@ class MultiStageBuild:
 
         dockerfile_dest = tmp_dir / "Dockerfile"
         with open(dockerfile_dest, "w") as containerfile:
-            logging.debug(
+            _logger.debug(
                 "Writing the following dockerfile into %s: %s",
                 dockerfile_dest,
                 self.containerfile,
@@ -209,7 +209,7 @@ class MultiStageBuild:
             + (["--target", target] if target else [])
             + [str(tmp_dir)]
         )
-        logging.debug("Running multistage container build: %s", cmd)
+        _logger.debug("Running multistage container build: %s", cmd)
         return check_output(cmd)
 
     def build(
