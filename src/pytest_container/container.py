@@ -1,6 +1,5 @@
 import enum
 import itertools
-import logging
 import os
 import tempfile
 from abc import ABC
@@ -8,6 +7,7 @@ from abc import abstractmethod
 from dataclasses import dataclass
 from dataclasses import field
 from hashlib import md5
+from pytest_container.logging import _logger
 from pytest_container.runtime import get_selected_runtime
 from subprocess import check_output
 from typing import Any
@@ -168,7 +168,7 @@ class Container(ContainerBase, ContainerBaseABC):
         """Pulls the container with the given url using the currently selected
         container runtime"""
         runtime = get_selected_runtime()
-        logging.debug("Pulling %s via %s", self.url, runtime.runner_binary)
+        _logger.debug("Pulling %s via %s", self.url, runtime.runner_binary)
         check_output([runtime.runner_binary, "pull", self.url])
 
     def prepare_container(
@@ -214,7 +214,7 @@ class DerivedContainer(ContainerBase, ContainerBaseABC):
     def prepare_container(
         self, rootdir: local, extra_build_args: Optional[List[str]] = None
     ) -> None:
-        logging.debug("Preparing derived container based on %s", self.base)
+        _logger.debug("Preparing derived container based on %s", self.base)
         if not isinstance(self.base, str):
             self.base.prepare_container(rootdir)
 
@@ -233,7 +233,7 @@ class DerivedContainer(ContainerBase, ContainerBaseABC):
                 containerfile_contents = f"""FROM {from_id}
 {self.containerfile}
 """
-                logging.debug(
+                _logger.debug(
                     "Writing containerfile to %s: %s",
                     containerfile_path,
                     containerfile_contents,
@@ -253,12 +253,12 @@ class DerivedContainer(ContainerBase, ContainerBaseABC):
                 + (extra_build_args or [])
                 + ["-f", containerfile_path, str(rootdir)]
             )
-            logging.debug("Building image via: %s", cmd)
+            _logger.debug("Building image via: %s", cmd)
             self.container_id = runtime.get_image_id_from_stdout(
                 check_output(cmd).decode().strip()
             )
-            logging.debug(
-                "Successfully build the container image %d", self.container_id
+            _logger.debug(
+                "Successfully build the container image %s", self.container_id
             )
 
 

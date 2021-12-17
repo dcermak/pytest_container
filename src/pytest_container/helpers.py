@@ -1,3 +1,5 @@
+import logging
+from pytest_container.logging import set_internal_logging_level
 from typing import List
 
 from _pytest.config import Config
@@ -38,6 +40,40 @@ def add_extra_run_and_build_args_options(parser: Parser) -> None:
         nargs="*",
         default=[],
         help="Specify additional CLI arguments to be passed to 'buildah bud' or 'docker build'. Each argument must be passed as an individual argument itself",
+    )
+
+
+def add_logging_level_options(parser: Parser) -> None:
+    """Add the command line parameter ``--pytest-container-log-level`` to the pytest
+    parser. The user can then configure the log level of this pytest plugin.
+
+    This function needs to be called in your :file:`conftest.py` in
+    ``pytest_addoption``. To actually set the log level, you need to call
+    :py:func:`set_logging_level_from_cli_args` as well.
+    """
+    parser.addoption(
+        "--pytest-container-log-level",
+        type=str,
+        nargs=1,
+        default=["INFO"],
+        choices=list(logging._levelToName.values()),
+        help="Set the internal logging level of the pytest_container library",
+    )
+
+
+def set_logging_level_from_cli_args(config: Config) -> None:
+    """Sets the internal logging level of this plugin to the value supplied by the
+    cli argument ``--pytest-container-log-level``.
+
+    This function has to be called before all tests get executed, but after the
+    parser option has been added. A good place is for example the
+    `pytest_configure
+    <https://docs.pytest.org/en/latest/reference/reference.html#_pytest.hookspec.pytest_configure>`_
+    hook which has to be added to :file:`conftest.py`.
+
+    """
+    set_internal_logging_level(
+        config.getoption("pytest_container_log_level")[0]
     )
 
 
