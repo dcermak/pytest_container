@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "pytest_container"
-version = "0.0.1"
+version = "0.0.2"
 description = "Pytest fixtures for writing container based tests"
 authors = ["Dan Čermák <dcermak@suse.com>"]
 license = "LGPL-2.1-or-later"
