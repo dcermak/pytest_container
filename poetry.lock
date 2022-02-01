@@ -447,6 +447,17 @@ py = "*"
 pytest = ">=3.10"
 
 [[package]]
+name = "pytest-rerunfailures"
+version = "10.2"
+description = "pytest plugin to re-run tests to eliminate flaky failures"
+category = "dev"
+optional = false
+python-versions = ">= 3.6"
+
+[package.dependencies]
+pytest = ">=5.3"
+
+[[package]]
 name = "pytest-testinfra"
 version = "6.5.0"
 description = "Test infrastructures"
@@ -697,7 +708,7 @@ testing = ["pytest (>=4.6)", "pytest-checkdocs (>=2.4)", "pytest-flake8", "pytes
 [metadata]
 lock-version = "1.1"
 python-versions = ">=3.6.2,<4.0"
-content-hash = "88104602d4dd5661bcb7d6e72dac018112224a76ff0ca5789539e02119665149"
+content-hash = "e77284e53973f0c9e2a045b9e8c1c5c9ab628dc17b388b7c7ec64e095ea0bfad"
 
 [metadata.files]
 alabaster = [
@@ -1026,6 +1037,10 @@ pytest-cov = [
 pytest-forked = [
     {file = "pytest-forked-1.4.0.tar.gz", hash = "sha256:8b67587c8f98cbbadfdd804539ed5455b6ed03802203485dd2f53c1422d7440e"},
     {file = "pytest_forked-1.4.0-py3-none-any.whl", hash = "sha256:bbbb6717efc886b9d64537b41fb1497cfaf3c9601276be8da2cccfea5a3c8ad8"},
+]
+pytest-rerunfailures = [
+    {file = "pytest-rerunfailures-10.2.tar.gz", hash = "sha256:9e1e1bad51e07642c5bbab809fc1d4ec8eebcb7de86f90f1a26e6ef9de446697"},
+    {file = "pytest_rerunfailures-10.2-py3-none-any.whl", hash = "sha256:d31d8e828dfd39363ad99cd390187bf506c7a433a89f15c3126c7d16ab723fe2"},
 ]
 pytest-testinfra = [
     {file = "pytest-testinfra-6.5.0.tar.gz", hash = "sha256:724df78576ca6a9fc82f2eba5575505f0556a10d615d870014ec30b258e997c8"},

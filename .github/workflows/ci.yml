@@ -50,7 +50,7 @@ jobs:
           export CUR_USER="$(whoami)"
           sudo loginctl enable-linger ${CUR_USER}
 
-      - run: 'tox -e py${PY_VER//\./} -- -n auto --pytest-container-log-level DEBUG'
+      - run: 'tox -e py${PY_VER//\./} -- -n auto  --reruns 3 --pytest-container-log-level DEBUG'
         env:
           CONTAINER_RUNTIME: ${{ matrix.container_runtime }}
           PY_VER: ${{ matrix.python_version }}
