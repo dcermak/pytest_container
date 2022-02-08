@@ -7,6 +7,7 @@ from abc import abstractmethod
 from dataclasses import dataclass
 from dataclasses import field
 from hashlib import md5
+from pathlib import Path
 from pytest_container.logging import _logger
 from pytest_container.runtime import get_selected_runtime
 from subprocess import check_output
@@ -21,7 +22,6 @@ from typing import Union
 import pytest
 from _pytest.mark.structures import MarkDecorator
 from _pytest.mark.structures import ParameterSet
-from py.path import local
 
 
 @enum.unique
@@ -146,7 +146,7 @@ class ContainerBase:
 class ContainerBaseABC(ABC):
     @abstractmethod
     def prepare_container(
-        self, rootdir: local, extra_build_args: Optional[List[str]]
+        self, rootdir: Path, extra_build_args: Optional[List[str]]
     ) -> None:
         """Prepares the container so that it can be launched."""
         pass
@@ -172,7 +172,7 @@ class Container(ContainerBase, ContainerBaseABC):
         check_output([runtime.runner_binary, "pull", self.url])
 
     def prepare_container(
-        self, rootdir: local, extra_build_args: Optional[List[str]] = None
+        self, rootdir: Path, extra_build_args: Optional[List[str]] = None
     ) -> None:
         """Prepares the container so that it can be launched."""
         self.pull_container()
@@ -212,7 +212,7 @@ class DerivedContainer(ContainerBase, ContainerBaseABC):
         return self.base.get_base()
 
     def prepare_container(
-        self, rootdir: local, extra_build_args: Optional[List[str]] = None
+        self, rootdir: Path, extra_build_args: Optional[List[str]] = None
     ) -> None:
         _logger.debug("Preparing derived container based on %s", self.base)
         if not isinstance(self.base, str):
