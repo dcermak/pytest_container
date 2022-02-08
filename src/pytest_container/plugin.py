@@ -45,7 +45,7 @@ def _auto_container_fixture(
     container_id: Optional[str] = None
     filelock_fname = launch_data.filelock_filename
     lock = (
-        FileLock(pytestconfig.rootdir / filelock_fname)
+        FileLock(pytestconfig.rootpath / filelock_fname)
         if filelock_fname
         else None
     )
@@ -57,7 +57,7 @@ def _auto_container_fixture(
 
     try:
         launch_data.prepare_container(
-            rootdir=pytestconfig.rootdir,
+            rootdir=pytestconfig.rootpath,
             extra_build_args=get_extra_build_args(pytestconfig),
         )
 

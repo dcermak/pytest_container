@@ -159,7 +159,7 @@ class MultiStageBuild:
     def prepare_build(
         self,
         tmp_dir: Path,
-        rootdir: local,
+        rootdir: Path,
         extra_build_args: Optional[List[str]] = None,
     ) -> None:
         """Prepares the multistage build: it writes the rendered :file:`Containerfile`
@@ -215,7 +215,7 @@ class MultiStageBuild:
     def build(
         self,
         tmp_dir: Path,
-        rootdir_or_pytestconfig: Union[local, Config],
+        rootdir_or_pytestconfig: Union[Path, Config],
         runtime: OciRuntimeBase,
         target: Optional[str] = None,
         extra_build_args: Optional[List[str]] = None,
@@ -247,7 +247,7 @@ class MultiStageBuild:
             supplied) that was build
         """
         root = (
-            rootdir_or_pytestconfig.rootdir
+            rootdir_or_pytestconfig.rootpath
             if isinstance(rootdir_or_pytestconfig, Config)
             else rootdir_or_pytestconfig
         )
