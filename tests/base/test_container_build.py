@@ -67,10 +67,24 @@ def test_leap(container):
     assert not container.connection.exists("lua")
 
 
+@pytest.mark.parametrize("container", [LEAP], indirect=["container"])
+def test_container_data(container):
+    assert container.container_id
+    assert container.image_url_or_id == LEAP.url
+    assert container.container == LEAP
+
+
 @pytest.mark.parametrize("container", [LEAP_WITH_MAN], indirect=["container"])
 def test_leap_with_man(container):
     assert container.connection.exists("man")
     assert not container.connection.exists("lua")
+
+
+@pytest.mark.parametrize("container", [LEAP_WITH_MAN], indirect=["container"])
+def test_derived_container_data(container):
+    assert container.container_id
+    assert container.image_url_or_id == LEAP_WITH_MAN.container_id
+    assert container.container == LEAP_WITH_MAN
 
 
 @pytest.mark.parametrize(

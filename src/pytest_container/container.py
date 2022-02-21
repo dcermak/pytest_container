@@ -270,6 +270,8 @@ class ContainerData(NamedTuple):
     container_id: str
     #: the testinfra connection to the running container
     connection: Any
+    #: the container data class that has been used in this test
+    container: ContainerBase
 
 
 def container_to_pytest_param(

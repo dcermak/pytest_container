@@ -105,6 +105,7 @@ def _auto_container_fixture(
             connection=testinfra.get_host(
                 f"{container_runtime.runner_binary}://{container_id}"
             ),
+            container=launch_data,
         )
     except RuntimeError as exc:
         raise exc
