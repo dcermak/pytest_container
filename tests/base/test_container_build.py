@@ -1,3 +1,4 @@
+from pathlib import Path
 from pytest_container import Container
 from pytest_container import DerivedContainer
 from pytest_container import get_extra_build_args
@@ -10,13 +11,27 @@ from _pytest.config import Config
 
 LEAP = Container(url="registry.opensuse.org/opensuse/leap:latest")
 
+TAG1 = "local/foobar/bazbarf"
+
+LEAP_WITH_TAG = DerivedContainer(
+    base=LEAP.url, add_build_tags=[TAG1, "localhost/opensuse/leap/man:latest"]
+)
+
+# HACK: create this container before collecting tests… dirty, but otherwise the
+# local container test fails because we cannot really express a dependency on
+# the local image
+LEAP_WITH_TAG.prepare_container(Path("."))
+
 LEAP_WITH_MAN = DerivedContainer(
-    base=LEAP, containerfile="RUN zypper -n in man"
+    base=LEAP,
+    containerfile="RUN zypper -n in man",
 )
 
 LEAP_WITH_MAN_AND_LUA = DerivedContainer(
     base=LEAP_WITH_MAN, containerfile="RUN zypper -n in lua"
 )
+
+LOCAL_CONTAINER = Container(url=f"containers-storage:{TAG1}")
 
 BUSYBOX_WITH_ENTRYPOINT = Container(
     url="registry.opensuse.org/opensuse/busybox:latest",
@@ -72,6 +87,15 @@ def test_container_data(container):
     assert container.container_id
     assert container.image_url_or_id == LEAP.url
     assert container.container == LEAP
+
+
+@pytest.mark.parametrize("container", [LOCAL_CONTAINER], indirect=True)
+def test_local_container_image_ref(container):
+    assert container.connection.file("/etc/os-release").exists
+    assert (
+        'ID="opensuse-leap"'
+        in container.connection.file("/etc/os-release").content_string
+    )
 
 
 @pytest.mark.parametrize("container", [LEAP_WITH_MAN], indirect=["container"])

@@ -1,5 +1,7 @@
 import enum
+import functools
 import itertools
+import operator
 import os
 import tempfile
 from abc import ABC
@@ -209,6 +211,10 @@ class DerivedContainer(ContainerBase, ContainerBaseABC):
     #: This attribute is ignored by :command:`docker`.
     image_format: Optional[ImageFormat] = None
 
+    #: Additional build tags/names that should be added to the container once it
+    #: has been built
+    add_build_tags: List[str] = field(default_factory=list)
+
     def __post_init__(self) -> None:
         super().__post_init__()
         if not self.base:
@@ -265,6 +271,14 @@ class DerivedContainer(ContainerBase, ContainerBaseABC):
                 runtime.build_command
                 + image_format_args
                 + (extra_build_args or [])
+                + (
+                    functools.reduce(
+                        operator.add,
+                        (["-t", tag] for tag in self.add_build_tags),
+                    )
+                    if self.add_build_tags
+                    else []
+                )
                 + ["-f", containerfile_path, str(rootdir)]
             )
             _logger.debug("Building image via: %s", cmd)
