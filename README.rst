@@ -17,14 +17,14 @@ Pytest container
            :alt: PyPI
            :target: https://pypi.org/project/pytest-container/
 
-A simple `pytest <https://pytest.org>`_ plugin to test container images with
+A simple `pytest <https://pytest.org>`_ plugin to test Container Images
 via pytest fixtures and `testinfra <https://testinfra.readthedocs.io/en/latest/>`_.
 
 This module provides a set of fixtures and helper functions to ease testing of
 container images leveraging `testinfra
 <https://testinfra.readthedocs.io/en/latest/>`_. Assuming you want to
-automatically spin up a container for a test, then the `container` will do
-exactly that (plus it will cleanup after itself):
+automatically spin up a container for a test, then the `container` fixture will
+do exactly that (plus it will cleanup after itself):
 
 .. code-block:: python
 
