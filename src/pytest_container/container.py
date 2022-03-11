@@ -41,7 +41,10 @@ class ImageFormat(enum.Enum):
 
 @dataclass
 class ContainerBase:
-    #: full url to this container via which it can be pulled
+    #: Full url to this container via which it can be pulled
+    #:
+    #: If your container image is not available via a registry and only locally,
+    #: then you can use the following syntax: ``containers-storage:$local_name``
     url: str = ""
 
     #: id of the container if it is not available via a registry URL
@@ -73,14 +76,24 @@ class ContainerBase:
     #: this type at all times (e.g. because it opens a shared port).
     singleton: bool = False
 
+    _is_local: bool = False
+
     def __post_init__(self) -> None:
         if self.default_entry_point and self.custom_entry_point:
             raise ValueError(
                 f"A custom entry point has been provided ({self.custom_entry_point}) with default_entry_point being set to True"
             )
 
+        if self.url.split(":")[0] == "containers-storage":
+            self._is_local = True
+            self.url = self.url.replace("containers-storage:", "")
+
     def __str__(self) -> str:
         return self.url or self.container_id
+
+    @property
+    def local_image(self) -> bool:
+        return self._is_local
 
     @property
     def entry_point(self) -> Optional[str]:
@@ -175,7 +188,8 @@ class Container(ContainerBase, ContainerBaseABC):
         self, rootdir: Path, extra_build_args: Optional[List[str]] = None
     ) -> None:
         """Prepares the container so that it can be launched."""
-        self.pull_container()
+        if not self._is_local:
+            self.pull_container()
 
     def get_base(self) -> "Container":
         return self
