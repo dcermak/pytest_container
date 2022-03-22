@@ -31,7 +31,7 @@ filelock = "^3.4"
 
 [tool.poetry.dev-dependencies]
 black = ">=21.9b0"
-mypy = "<0.940"
+mypy = "<0.942"
 pylint = ">=2.10.2"
 reorder-python-imports = ">=2.6.0"
 pytest-cov = ">=3.0.0"
