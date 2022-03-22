@@ -16,7 +16,7 @@ jobs:
       - uses: actions/checkout@v3
       - uses: actions/setup-python@v3
       - uses: Gr1N/setup-poetry@v7
-      - uses: actions/cache@v2
+      - uses: actions/cache@v3
         with:
           path: ~/.cache/pypoetry/virtualenvs
           key: poetry-${{ hashFiles('poetry.lock') }}
@@ -40,7 +40,7 @@ jobs:
         with:
           python-version: ${{ matrix.python_version }}
       - uses: Gr1N/setup-poetry@v7
-      - uses: actions/cache@v2
+      - uses: actions/cache@v3
         with:
           path: ~/.tox
           key: tox-${{ matrix.python_version }}-${{ hashFiles('poetry.lock') }}
@@ -74,7 +74,7 @@ jobs:
         with:
           python-version: ${{ matrix.python_version }}
       - uses: Gr1N/setup-poetry@v7
-      - uses: actions/cache@v2
+      - uses: actions/cache@v3
         with:
           path: ~/.cache/pypoetry/virtualenvs
           key: poetry-${{ matrix.python_version }}-${{ hashFiles('poetry.lock') }}
@@ -93,7 +93,7 @@ jobs:
       - uses: actions/checkout@v3
       - uses: actions/setup-python@v3
       - uses: Gr1N/setup-poetry@v7
-      - uses: actions/cache@v2
+      - uses: actions/cache@v3
         with:
           path: ~/.tox
           key: tox-${{ hashFiles('poetry.lock') }}
@@ -110,7 +110,7 @@ jobs:
       - uses: actions/checkout@v3
       - uses: actions/setup-python@v3
       - uses: Gr1N/setup-poetry@v7
-      - uses: actions/cache@v2
+      - uses: actions/cache@v3
         with:
           path: ~/.tox
           key: tox-${{ hashFiles('poetry.lock') }}
