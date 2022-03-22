@@ -1,3 +1,4 @@
+from pathlib import Path
 from pytest_container import Container
 from pytest_container import DerivedContainer
 from pytest_container.container import ImageFormat
@@ -38,3 +39,12 @@ def test_get_base_of_derived_container():
 def test_image_format():
     assert str(ImageFormat.DOCKER) == "docker"
     assert str(ImageFormat.OCIv1) == "oci"
+
+
+def test_local_image_url():
+    url = "docker.io/library/iDontExistHopefully/bazbarf/something"
+    cont = Container(url=f"containers-storage:{url}")
+    assert cont.local_image
+    assert cont.url == url
+    # prepare must not call `$runtime pull` as that would fail
+    cont.prepare_container(Path("."), [])

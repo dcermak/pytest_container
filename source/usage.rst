@@ -87,3 +87,17 @@ function of your choice in :file:`conftest.py`, e.g. as follows:
    def pytest_configure(config):
        set_logging_level_from_cli_args(config)
 
+
+Testing local images
+--------------------
+
+Sometimes it is necessary to run your tests against a locally build image
+instead of a remote one. For such a case, you can use the following
+syntax for the Container's url, which is inspired by skopeo's syntax:
+
+.. code-block:: python
+
+   local = Container(url="containers-storage:my/local/image/name")
+
+A Container defined in this way can be used like any other Container
+instance.
