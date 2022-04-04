@@ -36,7 +36,7 @@ pylint = ">=2.10.2"
 reorder-python-imports = ">=2.6.0"
 pytest-cov = ">=3.0.0"
 pytest-xdist = ">=2.4.0"
-Sphinx = "^4.3"
+Sphinx = "^4.5"
 pytest-rerunfailures = "^10.2"
 
 [build-system]
