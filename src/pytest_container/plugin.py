@@ -43,23 +43,26 @@ def _auto_container_fixture(
     _logger.debug("Requesting the container %s", str(launch_data))
 
     container_id: Optional[str] = None
+
     filelock_fname = launch_data.filelock_filename
-    lock = (
-        FileLock(pytestconfig.rootpath / filelock_fname)
-        if filelock_fname
-        else None
-    )
-    if lock:
-        _logger.debug(
-            "Container is a singleton, locking via file %s", lock.lock_file
-        )
-        lock.acquire()
+    lock = FileLock(pytestconfig.rootpath / filelock_fname)
+    _logger.debug("Locking container preparation via file %s", lock.lock_file)
+    lock.acquire()
+
+    def release_lock() -> None:
+        _logger.debug("Releasing lock %s", lock.lock_file)
+        lock.release()
+        os.unlink(lock.lock_file)
 
     try:
         launch_data.prepare_container(
             rootdir=pytestconfig.rootpath,
             extra_build_args=get_extra_build_args(pytestconfig),
         )
+        # ordinary containers are only locked during the build,
+        # singleton containers are unlocked after everything
+        if not launch_data.singleton:
+            release_lock()
 
         launch_cmd = [
             container_runtime.runner_binary
@@ -110,10 +113,8 @@ def _auto_container_fixture(
     except RuntimeError as exc:
         raise exc
     finally:
-        if lock:
-            _logger.debug("Releasing lock %s", lock.lock_file)
-            lock.release()
-            os.unlink(lock.lock_file)
+        if launch_data.singleton:
+            release_lock()
         if container_id is not None:
             _logger.debug(
                 "Removing container %s via %s",

@@ -142,7 +142,7 @@ class ContainerBase:
         return cmd
 
     @property
-    def filelock_filename(self) -> Optional[str]:
+    def filelock_filename(self) -> str:
         all_elements = []
         for _, v in self.__dict__.items():
             if isinstance(v, list):
@@ -151,11 +151,7 @@ class ContainerBase:
                 all_elements.append("".join(v.values()))
             else:
                 all_elements.append(str(v))
-        return (
-            f"{md5((''.join(all_elements)).encode()).hexdigest()}.lock"
-            if self.singleton
-            else None
-        )
+        return f"{md5((''.join(all_elements)).encode()).hexdigest()}.lock"
 
 
 class ContainerBaseABC(ABC):
