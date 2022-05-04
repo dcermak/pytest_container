@@ -113,8 +113,6 @@ def _auto_container_fixture(
     except RuntimeError as exc:
         raise exc
     finally:
-        if launch_data.singleton:
-            release_lock()
         if container_id is not None:
             _logger.debug(
                 "Removing container %s via %s",
@@ -124,6 +122,8 @@ def _auto_container_fixture(
             check_output(
                 [container_runtime.runner_binary, "rm", "-f", container_id]
             )
+        if launch_data.singleton:
+            release_lock()
 
 
 auto_container = pytest.fixture(scope="session")(_auto_container_fixture)
