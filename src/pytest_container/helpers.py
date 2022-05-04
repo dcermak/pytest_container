@@ -51,12 +51,14 @@ def add_logging_level_options(parser: Parser) -> None:
     ``pytest_addoption``. To actually set the log level, you need to call
     :py:func:`set_logging_level_from_cli_args` as well.
     """
+    log_level_upcase = list(logging._levelToName.values())
     parser.addoption(
         "--pytest-container-log-level",
         type=str,
         nargs=1,
         default=["INFO"],
-        choices=list(logging._levelToName.values()),
+        choices=log_level_upcase
+        + [level.lower() for level in log_level_upcase],
         help="Set the internal logging level of the pytest_container library",
     )
 
@@ -73,7 +75,7 @@ def set_logging_level_from_cli_args(config: Config) -> None:
 
     """
     set_internal_logging_level(
-        config.getoption("pytest_container_log_level")[0]
+        config.getoption("pytest_container_log_level")[0].upper()
     )
 
 
