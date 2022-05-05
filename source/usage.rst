@@ -101,3 +101,86 @@ syntax for the Container's url, which is inspired by skopeo's syntax:
 
 A Container defined in this way can be used like any other Container
 instance.
+
+
+Copying files into containers
+-----------------------------
+
+Sometimes we need to have files available in the container image to e.g. execute
+some script in an integration test. This can be achieved in two ways:
+
+
+1. Copy the files at build time
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+You can include the desired files by creating a
+:py:class:`~pytest_container.container.DerivedContainer` and insert the file
+using the ``COPY`` or ``ADD`` instruction in the :file:`Dockerfile` (``COPY`` is
+the recommended default nowadays, for a comparison of both instructions please
+refer to e.g. `<https://phoenixnap.com/kb/docker-add-vs-copy>`_):
+
+.. code-block:: python
+
+   DIR = "path/to/testfile"
+   FILE = "test.py"
+   CDIR = "/dir/in/container"
+   DOCKERFILE = f"""
+   ...
+   COPY {DIR}/{FILE} {CDIR}
+   ...
+   """
+   CONTAINER1 = DerivedContainer(
+     base=some_base_image,
+     containerfile=DOCKERFILE,
+   )
+
+The path to :file:`test.py` is saved in the variable ``DIR`` and must be
+relative to the root directory from which you execute pytest.
+
+The object ``CONTAINER1`` can now be used as any other container:
+
+.. code-block:: python
+
+   @pytest.mark.parametrize(
+       "container_per_test",
+       [CONTAINER1],
+       indirect=True
+   )
+   def test_my_script(container_per_test, ...):
+       container_per_test.connection.run_expect(
+           [0], f"python3 {CDIR}/{FILE}"
+       )
+
+
+2. Copy the files at runtime into the running container
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+It is also possible to copy files into a container via :command:`podman cp` or
+:command:`docker cp`. In contrast to the first method, this has the disadvantage
+that the copy has to be executed for every test and it cannot be cached during
+the image build. However, it allows us to dynamically create files for each
+test, which is not that easily possible with the first approach.
+
+To successfully copy files, we need to undertake the following steps:
+
+1. Request the following fixtures: any of the ``(auto)_container_per_test``,
+   ``host``, ``container_runtime``.
+2. Obtain the running container's hash.
+3. Use :command:`podman|docker cp command`, via testinfra's host fixture.
+
+The above steps could be implemented as follows:
+
+.. code-block:: python
+
+   DIR = "path/to/testfile"
+   FILE = "test.py"
+   CDIR = "/dir/in/container"
+
+   def test_my_script(auto_container_per_test, host, container_runtime):
+       host.run_expect(
+         [0],
+         f"{container_runtime.runner_binary} cp {DIR}/{FILE} {auto_container_per_test.container_id}:{CDIR}"
+       )
+
+Note that the same file location restrictions apply as when including the files
+in the container image directly.
