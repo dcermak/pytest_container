@@ -144,7 +144,12 @@ class ContainerBase:
     @property
     def filelock_filename(self) -> str:
         all_elements = []
-        for _, v in self.__dict__.items():
+        for attr_name, v in self.__dict__.items():
+            # don't include the container_id in the hash calculation as the id
+            # might not yet be known but could be populated later on i.e. that
+            # would cause a different hash for the same container
+            if attr_name == "container_id":
+                continue
             if isinstance(v, list):
                 all_elements.append("".join(v))
             elif isinstance(v, dict):

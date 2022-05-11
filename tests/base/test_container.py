@@ -48,3 +48,12 @@ def test_local_image_url():
     assert cont.url == url
     # prepare must not call `$runtime pull` as that would fail
     cont.prepare_container(Path("."), [])
+
+
+def test_lockfile_path(pytestconfig):
+    cont = DerivedContainer(base="docker.io/library/busybox", containerfile="")
+    original_lock_fname = cont.filelock_filename
+
+    cont.prepare_container(pytestconfig.rootdir)
+    assert cont.container_id, "container_id must not be empty"
+    assert cont.filelock_filename == original_lock_fname
