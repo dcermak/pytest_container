@@ -163,9 +163,9 @@ class PodmanRuntime(OciRuntimeBase):
         stdout = res.stdout.strip()
         if stdout == "":
             return ContainerHealth.NO_HEALTH_CHECK
-        elif stdout == "healthy":
+        if stdout == "healthy":
             return ContainerHealth.HEALTHY
-        elif stdout == "starting":
+        if stdout == "starting":
             return ContainerHealth.STARTING
         return ContainerHealth.UNHEALTHY
 

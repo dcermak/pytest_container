@@ -125,7 +125,7 @@ def test_container_objects():
 
 
 def test_auto_container_fixture(auto_container):
-    auto_container.connection.file("/etc/os-release").exists
+    assert auto_container.connection.file("/etc/os-release").exists
 
 
 @pytest.mark.parametrize(

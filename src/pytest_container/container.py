@@ -165,11 +165,13 @@ class ContainerBaseABC(ABC):
         self, rootdir: Path, extra_build_args: Optional[List[str]]
     ) -> None:
         """Prepares the container so that it can be launched."""
-        pass
 
     @abstractmethod
     def get_base(self) -> "Container":
-        pass
+        """Returns the Base of this Container Image. If the container has no
+        base, then ``self`` is returned.
+
+        """
 
 
 @dataclass(unsafe_hash=True)
