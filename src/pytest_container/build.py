@@ -16,7 +16,6 @@ from typing import Union
 
 from _pytest.config import Config
 from _pytest.mark.structures import ParameterSet
-from py.path import local
 
 
 @dataclass(frozen=True)
