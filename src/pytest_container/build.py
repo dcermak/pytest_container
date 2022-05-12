@@ -196,8 +196,12 @@ class MultiStageBuild:
 
         Args:
             tmp_dir: the path in which the build was prepared.
-            runtime: the container runtime which will be used to perform the build
-            target: an optional target to which the build will be run, see `the upstream documentation <https://docs.docker.com/develop/develop-images/multistage-build/#stop-at-a-specific-build-stage>`_ for more information
+            runtime: the container runtime which will be used to perform the
+                build
+            target: an optional target to which the build will be run, see `the
+                upstream documentation
+                <https://docs.docker.com/develop/develop-images/multistage-build/#stop-at-a-specific-build-stage>`_
+                for more information
 
         Returns:
             Id of the final container that has been built
