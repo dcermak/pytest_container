@@ -25,6 +25,10 @@ def test_derived_container_default_entry_point_and_custom_one_set():
 
 
 def test_derived_container_fails_without_base():
+    """Ensure that a DerivedContainer cannot be instantiated without providing
+    the base parameter.
+
+    """
     with pytest.raises(ValueError) as ve:
         DerivedContainer()
 
@@ -32,11 +36,16 @@ def test_derived_container_fails_without_base():
 
 
 def test_get_base_of_derived_container():
+    """Ensure that :py:meth:`~pytest_container.DerivedContainer.get_base`
+    returns a :py:class:`Container` with the correct url.
+
+    """
     url = "registry.foobar.org/my_img:latest"
     assert DerivedContainer(base=url).get_base() == Container(url=url)
 
 
 def test_image_format():
+    """Check that the string representation of the ImageFormat enum is correct."""
     assert str(ImageFormat.DOCKER) == "docker"
     assert str(ImageFormat.OCIv1) == "oci"
 
@@ -51,6 +60,12 @@ def test_local_image_url():
 
 
 def test_lockfile_path(pytestconfig):
+    """Check that the attribute
+    :py:attr:`~pytest_container.ContainerBase.lockfile_filename` does change by
+    the container having the attribute
+    :py:attr:`~pytest_container.ContainerBase.container_id` set.
+
+    """
     cont = DerivedContainer(base="docker.io/library/busybox", containerfile="")
     original_lock_fname = cont.filelock_filename
 
