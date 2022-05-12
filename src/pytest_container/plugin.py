@@ -156,9 +156,9 @@ def _create_auto_container_fixture(
                     )
                     _logger.debug("Container has the health status %s", health)
 
-                    if (
-                        health == ContainerHealth.NO_HEALTH_CHECK
-                        or health == ContainerHealth.HEALTHY
+                    if health in (
+                        ContainerHealth.NO_HEALTH_CHECK,
+                        ContainerHealth.HEALTHY,
                     ):
                         break
                     delta = datetime.datetime.now() - start
