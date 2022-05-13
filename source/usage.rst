@@ -207,3 +207,39 @@ The above steps could be implemented as follows:
 
 Note that the same file location restrictions apply as when including the files
 in the container image directly.
+
+
+Exposing ports from containers
+------------------------------
+
+Exposing ports from containers is a tricky topic when tests are run in parallel,
+as one can no longer set the port on the host because it would be used by
+multiple containers. To remedy this, you can add the ports that shall be exposed
+to the :py:attr:`~pytest_container.container.ContainerBase.forwarded_ports`
+attribute as follows:
+
+.. code-block:: python
+
+   WEB_SERVER = DerivedContainer(
+       containerfile="""
+   # snip
+   EXPOSE 8000
+   """,
+       forwarded_ports=[PortForwarding(container_port=8000)],
+   )
+
+
+When such a container image is requested via any of the ``container_*``
+fixtures, then the resulting data passed into the test function will have the
+attribute ``forwarded_ports`` set as well. This is a list of
+:py:class:`~pytest_container.container.PortForwarding` instances that have the
+property :py:attr:`~pytest_container.container.PortForwarding.host_port` set to
+the port that ``pytest_container`` used to expose the container's port:
+
+.. code-block:: python
+
+   def test_port_forward_set_up(auto_container: ContainerData, host):
+       res = host.run_expect(
+           [0],
+           f"curl localhost:{auto_container.forwarded_ports[0].host_port}",
+       ).stdout.strip()
