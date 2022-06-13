@@ -86,7 +86,7 @@ class ContainerBase:
                 f"A custom entry point has been provided ({self.custom_entry_point}) with default_entry_point being set to True"
             )
 
-        if self.url.split(":")[0] == "containers-storage":
+        if self.url.split(":", maxsplit=1)[0] == "containers-storage":
             self._is_local = True
             self.url = self.url.replace("containers-storage:", "")
 
