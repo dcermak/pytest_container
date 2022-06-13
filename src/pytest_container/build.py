@@ -175,7 +175,7 @@ class MultiStageBuild:
                 )
 
         dockerfile_dest = tmp_dir / "Dockerfile"
-        with open(dockerfile_dest, "w") as containerfile:
+        with open(dockerfile_dest, "w", encoding="utf-8") as containerfile:
             _logger.debug(
                 "Writing the following dockerfile into %s: %s",
                 dockerfile_dest,
