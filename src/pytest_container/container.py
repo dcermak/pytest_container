@@ -95,6 +95,10 @@ class ContainerBase:
 
     @property
     def local_image(self) -> bool:
+        """Returns true if this image has been build locally and has not been
+        pulled from a registry.
+
+        """
         return self._is_local
 
     @property

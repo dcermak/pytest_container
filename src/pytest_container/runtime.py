@@ -28,7 +28,8 @@ class ToParamMixin:
     marks: Any = None
 
     def to_pytest_param(self) -> ParameterSet:
-        return pytest.param(self, id=self.__str__(), marks=self.marks or ())
+        """Convert this class into a ``pytest.param``"""
+        return pytest.param(self, id=str(self), marks=self.marks or ())
 
 
 @dataclass(frozen=True)
@@ -42,6 +43,12 @@ class _OciRuntimeBase:
 
 @enum.unique
 class ContainerHealth(enum.Enum):
+    """Possible states of a container's health using the `HEALTHCHECK
+    <https://docs.docker.com/engine/reference/builder/#healthcheck>`_ property
+    of a container image.
+
+    """
+
     #: the container has no health check defined
     NO_HEALTH_CHECK = enum.auto()
     #: the container is healthy
@@ -58,11 +65,14 @@ class OciRuntimeABC(ABC):
     @staticmethod
     @abstractmethod
     def _runtime_error_message() -> str:
-        pass
+        """Returns a human readable error message why the runtime does not
+        function.
+
+        """
 
     @abstractmethod
     def get_image_id_from_stdout(self, stdout: str) -> str:
-        pass
+        """Returns the image id/hash from the stdout of a build command."""
 
     @abstractmethod
     def get_container_health(self, container_id: str) -> ContainerHealth:
@@ -94,6 +104,11 @@ class OciRuntimeBase(_OciRuntimeBase, OciRuntimeABC, ToParamMixin):
             "pytest_container.container.DerivedContainer",
         ],
     ) -> float:
+        """Returns the container's size in bytes given an image id, a
+        :py:class:`~pytest_container.container.Container` or a
+        py:class:`~pytest_container.container.DerivedContainer`.
+
+        """
         id_to_inspect = (
             image_or_id_or_container
             if isinstance(image_or_id_or_container, str)
@@ -122,6 +137,10 @@ LOCALHOST = testinfra.host.get_host("local://")
 
 
 class PodmanRuntime(OciRuntimeBase):
+    """The container runtime using :command:`podman` for running containers and
+    :command:`buildah` for building containers.
+
+    """
 
     _runtime_functional = (
         LOCALHOST.run("podman ps").succeeded
@@ -171,6 +190,8 @@ class PodmanRuntime(OciRuntimeBase):
 
 
 class DockerRuntime(OciRuntimeBase):
+    """The container runtime using :command:`docker` for building and running
+    containers."""
 
     _runtime_functional = LOCALHOST.run("docker ps").succeeded
 
