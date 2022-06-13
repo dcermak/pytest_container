@@ -1,4 +1,5 @@
 import enum
+import re
 from abc import ABC
 from abc import abstractmethod
 from dataclasses import dataclass
@@ -6,7 +7,9 @@ from dataclasses import field
 from os import getenv
 from subprocess import check_output
 from typing import Any
+from typing import Callable
 from typing import List
+from typing import Optional
 from typing import TYPE_CHECKING
 from typing import Union
 
@@ -33,12 +36,90 @@ class ToParamMixin:
 
 
 @dataclass(frozen=True)
+class Version:
+    """Representation of a version of the form ``$major.$minor.$patch`` and an
+    optional build string.
+
+    This class supports basic comparison, e.g.:
+
+    >>> Version(1, 0) > Version(0, 1)
+    True
+    >>> Version(1, 0) == Version(1, 0, 0)
+    True
+    >>> Version(5, 2, 6, "foobar") == Version(5, 2, 6)
+    False
+
+    Additionally you can also pretty print it:
+
+    >>> Version(0, 6)
+    0.6
+    >>> Version(0, 6, 1)
+    0.6.1
+    >>> Version(0, 6, 1, "asdf")
+    0.6.1 build asdf
+    """
+
+    major: int = 0
+    minor: int = 0
+    patch: Optional[int] = None
+    build: str = ""
+
+    def __str__(self) -> str:
+        return (
+            f"{self.major}.{self.minor}{('.' + str(self.patch)) if self.patch else ''}"
+            + (f" build {self.build}" if self.build else "")
+        )
+
+    def __eq__(self, other: Any) -> bool:
+        if not isinstance(other, Version):
+            return False
+        return (
+            self.major == other.major
+            and self.minor == other.minor
+            and (self.patch or 0) == (other.patch or 0)
+            and self.build == other.build
+        )
+
+    @staticmethod
+    def __generate_cmp(
+        cmp_func: Callable[[int, int], bool]
+    ) -> Callable[["Version", Any], bool]:
+        def cmp(self: Version, other: Any) -> bool:
+            if not isinstance(other, Version):
+                return NotImplemented
+
+            if cmp_func(self.major, other.major):
+                return True
+            if cmp_func(self.minor, other.minor):
+                return True
+            if cmp_func(self.patch or 0, other.patch or 0):
+                return True
+
+            return False
+
+        return cmp
+
+    def __lt__(self, other: Any) -> bool:
+        return Version.__generate_cmp(lambda m, n: m < n)(self, other)
+
+    def __le__(self, other: Any) -> bool:
+        return Version.__generate_cmp(lambda m, n: m <= n)(self, other)
+
+    def __ge__(self, other: Any) -> bool:
+        return Version.__generate_cmp(lambda m, n: m >= n)(self, other)
+
+    def __gt__(self, other: Any) -> bool:
+        return Version.__generate_cmp(lambda m, n: m > n)(self, other)
+
+
+@dataclass(frozen=True)
 class _OciRuntimeBase:
     #: command that builds the Dockerfile in the current working directory
     build_command: List[str] = field(default_factory=list)
     #: the "main" binary of this runtime, e.g. podman or docker
     runner_binary: str = ""
     _runtime_functional: bool = False
+    _version: Version = field(default_factory=Version)
 
 
 @enum.unique
@@ -80,10 +161,16 @@ class OciRuntimeABC(ABC):
         health.
 
         """
-        pass
+
+    @property
+    @abstractmethod
+    def version(self) -> Version:
+        """The version of the container runtime."""
 
 
 class OciRuntimeBase(_OciRuntimeBase, OciRuntimeABC, ToParamMixin):
+    """Base class of the Container Runtimes."""
+
     def __post_init__(self) -> None:
         if not self.build_command or not self.runner_binary:
             raise ValueError(
@@ -132,8 +219,32 @@ class OciRuntimeBase(_OciRuntimeBase, OciRuntimeABC, ToParamMixin):
     def __str__(self) -> str:
         return self.__class__.__name__
 
+    @property
+    def version(self) -> Version:
+        """Returns the container runtime's version"""
+        return self._version
+
 
 LOCALHOST = testinfra.host.get_host("local://")
+
+
+def _get_podman_version(version_stdout: str) -> Version:
+    matches = re.match(
+        r"podman version (?P<major>\d+)\.(?P<minor>\d+)(\.(?P<patch>\d+))?",
+        version_stdout,
+        flags=re.IGNORECASE,
+    )
+    if not matches:
+        raise RuntimeError(
+            f"Could not decode the podman version from {version_stdout}"
+        )
+
+    patch = matches.group("patch")
+    return Version(
+        major=int(matches.group("major")),
+        minor=int(matches.group("minor")),
+        patch=int(patch) if patch else 0,
+    )
 
 
 class PodmanRuntime(OciRuntimeBase):
@@ -145,6 +256,10 @@ class PodmanRuntime(OciRuntimeBase):
     _runtime_functional = (
         LOCALHOST.run("podman ps").succeeded
         and LOCALHOST.run("buildah").succeeded
+    )
+
+    _version = _get_podman_version(
+        LOCALHOST.run_expect([0], "podman --version").stdout
     )
 
     @staticmethod
@@ -189,9 +304,33 @@ class PodmanRuntime(OciRuntimeBase):
         return ContainerHealth.UNHEALTHY
 
 
+def _get_docker_version(version_stdout: str) -> Version:
+    matches = re.match(
+        r"docker version (?P<major>\d+)\.(?P<minor>\d+)(\.(?P<patch>\d+)(\S+)?)?,"
+        r" build (?P<build>\S+)",
+        version_stdout,
+        flags=re.IGNORECASE,
+    )
+    if not matches:
+        raise RuntimeError(
+            f"Could not decode the docker version from {version_stdout}"
+        )
+    patch = matches.group("patch")
+    return Version(
+        major=int(matches.group("major")),
+        minor=int(matches.group("minor")),
+        patch=int(patch) if patch else 0,
+        build=matches.group("build"),
+    )
+
+
 class DockerRuntime(OciRuntimeBase):
     """The container runtime using :command:`docker` for building and running
     containers."""
+
+    _version = _get_docker_version(
+        LOCALHOST.run_expect([0], "docker --version").stdout
+    )
 
     _runtime_functional = LOCALHOST.run("docker ps").succeeded
 

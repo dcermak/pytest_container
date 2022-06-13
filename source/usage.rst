@@ -103,6 +103,29 @@ A Container defined in this way can be used like any other Container
 instance.
 
 
+Container Runtime version
+-------------------------
+
+Sometimes it is necessary to implement tests differently depending on the
+version of the container runtime. The subclasses of
+:py:class:`~pytest_container.runtime.OciRuntimeBase` have the property
+:py:attr:`~pytest_container.runtime.OciRuntimeBase.version` which returns the
+runtime version of the respective runtime, e.g. of :command:`podman`.
+
+The returned object is an instance of
+:py:class:`~pytest_container.runtime.Version` and supports comparison to for
+instance skip certain tests:
+
+.. code-block:: python
+
+   @pytest.mark.skipif(
+       get_selected_runtime().version < Version(4, 0),
+       reason="This check requires at least Podman 4.0",
+   )
+   def test_modern_podman_feature(auto_container):
+       # test $new_feature here
+
+
 Copying files into containers
 -----------------------------
 
