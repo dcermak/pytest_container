@@ -2,6 +2,7 @@
 from pytest_container import Version
 from pytest_container.runtime import _get_docker_version
 from pytest_container.runtime import _get_podman_version
+from pytest_container.runtime import OciRuntimeBase
 
 import pytest
 
@@ -25,6 +26,7 @@ def test_incompatible_types_eq():
 
 def test_incompatible_types_cmp():
     with pytest.raises(TypeError) as ctx:
+        # pragma pylint: disable=expression-not-assigned
         Version(1, 2) < 3
 
     assert "'<' not supported between instances of 'Version' and 'int'" in str(
@@ -122,3 +124,29 @@ def test_docker_version_extract(stdout: str, ver: Version):
 )
 def test_podman_version_extract(stdout: str, ver: Version):
     assert _get_podman_version(stdout) == ver
+
+
+def test_container_runtime_parsing(host, container_runtime: OciRuntimeBase):
+    """Test that we can recreate the output of
+    :command:`$container_runtime_binary --version` from the attribute
+    :py:attr:`~pytest_container.runtime.OciRuntimeBase.version`.
+
+    """
+    version_without_build = Version(
+        major=container_runtime.version.major,
+        minor=container_runtime.version.minor,
+        patch=container_runtime.version.patch,
+    )
+    version_string = (
+        host.run_expect([0], f"{container_runtime.runner_binary} --version")
+        .stdout.strip()
+        .lower()
+    )
+
+    assert (
+        f"{container_runtime.runner_binary} version {version_without_build}"
+        in version_string
+    )
+
+    if container_runtime.runner_binary == "docker":
+        assert f"build {container_runtime.version.build}" in version_string

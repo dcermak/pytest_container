@@ -92,7 +92,7 @@ uvloop = ["uvloop (>=0.15.2)"]
 name = "cached-property"
 version = "1.5.2"
 description = "A decorator for caching properties in classes."
-category = "dev"
+category = "main"
 optional = false
 python-versions = "*"
 

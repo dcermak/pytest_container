@@ -109,7 +109,7 @@ Container Runtime version
 Sometimes it is necessary to implement tests differently depending on the
 version of the container runtime. The subclasses of
 :py:class:`~pytest_container.runtime.OciRuntimeBase` have the property
-:py:attr:`~pytest_container.runtime.OciRuntimeBase.version` which returns the
+:py:attr:`~pytest_container.runtime.OciRuntimeABC.version` which returns the
 runtime version of the respective runtime, e.g. of :command:`podman`.
 
 The returned object is an instance of

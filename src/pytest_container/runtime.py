@@ -1,3 +1,8 @@
+"""This module contains the container runtime classes abstracting away the
+implementation details of container runtimes like :command:`docker` or
+:command:`podman`.
+
+"""
 import enum
 import re
 from abc import ABC
@@ -12,6 +17,17 @@ from typing import List
 from typing import Optional
 from typing import TYPE_CHECKING
 from typing import Union
+
+# mypy will try to import cached_property but fail to find its types
+# since we run mypy with the most recent python version, we can simply import
+# cached_property from stdlib and we'll be fine
+if TYPE_CHECKING:
+    from functools import cached_property
+else:
+    try:
+        from functools import cached_property
+    except ImportError:
+        from cached_property import cached_property
 
 import pytest
 import testinfra
@@ -119,7 +135,6 @@ class _OciRuntimeBase:
     #: the "main" binary of this runtime, e.g. podman or docker
     runner_binary: str = ""
     _runtime_functional: bool = False
-    _version: Version = field(default_factory=Version)
 
 
 @enum.unique
@@ -219,11 +234,6 @@ class OciRuntimeBase(_OciRuntimeBase, OciRuntimeABC, ToParamMixin):
     def __str__(self) -> str:
         return self.__class__.__name__
 
-    @property
-    def version(self) -> Version:
-        """Returns the container runtime's version"""
-        return self._version
-
 
 LOCALHOST = testinfra.host.get_host("local://")
 
@@ -256,10 +266,6 @@ class PodmanRuntime(OciRuntimeBase):
     _runtime_functional = (
         LOCALHOST.run("podman ps").succeeded
         and LOCALHOST.run("buildah").succeeded
-    )
-
-    _version = _get_podman_version(
-        LOCALHOST.run_expect([0], "podman --version").stdout
     )
 
     @staticmethod
@@ -303,6 +309,14 @@ class PodmanRuntime(OciRuntimeBase):
             return ContainerHealth.STARTING
         return ContainerHealth.UNHEALTHY
 
+    # pragma pylint: disable=used-before-assignment
+    @cached_property
+    def version(self) -> Version:
+        """Returns the version of podman installed on the system"""
+        return _get_podman_version(
+            LOCALHOST.run_expect([0], "podman --version").stdout
+        )
+
 
 def _get_docker_version(version_stdout: str) -> Version:
     matches = re.match(
@@ -327,10 +341,6 @@ def _get_docker_version(version_stdout: str) -> Version:
 class DockerRuntime(OciRuntimeBase):
     """The container runtime using :command:`docker` for building and running
     containers."""
-
-    _version = _get_docker_version(
-        LOCALHOST.run_expect([0], "docker --version").stdout
-    )
 
     _runtime_functional = LOCALHOST.run("docker ps").succeeded
 
@@ -376,6 +386,13 @@ class DockerRuntime(OciRuntimeBase):
         if stdout == "starting":
             return ContainerHealth.STARTING
         return ContainerHealth.UNHEALTHY
+
+    @cached_property
+    def version(self) -> Version:
+        """Returns the version of docker installed on this system"""
+        return _get_docker_version(
+            LOCALHOST.run_expect([0], "docker --version").stdout
+        )
 
 
 def get_selected_runtime() -> OciRuntimeBase:
