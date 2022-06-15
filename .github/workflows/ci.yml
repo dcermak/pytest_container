@@ -14,7 +14,9 @@ jobs:
 
     steps:
       - uses: actions/checkout@v3
-      - uses: actions/setup-python@v3
+      - uses: actions/setup-python@v4
+        with:
+          python-version: '3.x'
       - uses: Gr1N/setup-poetry@v7
       - uses: actions/cache@v3
         with:
@@ -36,7 +38,7 @@ jobs:
 
     steps:
       - uses: actions/checkout@v3
-      - uses: actions/setup-python@v3
+      - uses: actions/setup-python@v4
         with:
           python-version: ${{ matrix.python_version }}
       - uses: actions/cache@v3
@@ -71,7 +73,7 @@ jobs:
 
     steps:
       - uses: actions/checkout@v3
-      - uses: actions/setup-python@v3
+      - uses: actions/setup-python@v4
         with:
           python-version: ${{ matrix.python_version }}
       - uses: Gr1N/setup-poetry@v7
@@ -92,7 +94,9 @@ jobs:
 
     steps:
       - uses: actions/checkout@v3
-      - uses: actions/setup-python@v3
+      - uses: actions/setup-python@v4
+        with:
+          python-version: '3.x'
       - uses: actions/cache@v3
         with:
           path: ~/.tox
@@ -108,7 +112,9 @@ jobs:
 
     steps:
       - uses: actions/checkout@v3
-      - uses: actions/setup-python@v3
+      - uses: actions/setup-python@v4
+        with:
+          python-version: '3.x'
       - uses: actions/cache@v3
         with:
           path: ~/.tox
