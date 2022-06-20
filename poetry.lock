@@ -475,7 +475,7 @@ pytest = ">=5.3"
 
 [[package]]
 name = "pytest-testinfra"
-version = "6.7.0"
+version = "6.8.0"
 description = "Test infrastructures"
 category = "main"
 optional = false
@@ -1073,8 +1073,8 @@ pytest-rerunfailures = [
     {file = "pytest_rerunfailures-10.2-py3-none-any.whl", hash = "sha256:d31d8e828dfd39363ad99cd390187bf506c7a433a89f15c3126c7d16ab723fe2"},
 ]
 pytest-testinfra = [
-    {file = "pytest-testinfra-6.7.0.tar.gz", hash = "sha256:dfde1ce0f1f7cc0dd5c62a29d0f986f3a98a8c144bbcbaebdf7eeeaf16163ec1"},
-    {file = "pytest_testinfra-6.7.0-py3-none-any.whl", hash = "sha256:b324210d9ead6554302e5c0b6383b238617577619de2e074f5fed22962b3004c"},
+    {file = "pytest-testinfra-6.8.0.tar.gz", hash = "sha256:07c8c2c472aca7d83099ebc5f850d383721cd654b66c60ffbb145e45e584ff99"},
+    {file = "pytest_testinfra-6.8.0-py3-none-any.whl", hash = "sha256:56ac1dfc61342632a1189091473e253db1a3cdcecce0d49d6a769f33cd264814"},
 ]
 pytest-xdist = [
     {file = "pytest-xdist-2.5.0.tar.gz", hash = "sha256:4580deca3ff04ddb2ac53eba39d76cb5dd5edeac050cb6fbc768b0dd712b4edf"},
