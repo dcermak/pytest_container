@@ -72,3 +72,13 @@ def test_lockfile_path(pytestconfig):
     cont.prepare_container(pytestconfig.rootdir)
     assert cont.container_id, "container_id must not be empty"
     assert cont.filelock_filename == original_lock_fname
+
+
+def test_lockfile_unique():
+    cont1 = DerivedContainer(
+        base="docker.io/library/busybox", containerfile=""
+    )
+    cont2 = DerivedContainer(
+        base="docker.io/library/busybox", containerfile="ENV foobar=1"
+    )
+    assert cont1.filelock_filename != cont2.filelock_filename
