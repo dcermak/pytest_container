@@ -1,6 +1,8 @@
+from datetime import timedelta
 from pytest_container.container import DerivedContainer
 from pytest_container.container import ImageFormat
 from pytest_container.runtime import ContainerHealth
+from pytest_container.runtime import HealthCheck
 from pytest_container.runtime import OciRuntimeBase
 from time import sleep
 
@@ -21,12 +23,20 @@ HEALTHCHECK --interval=5s --timeout=1s CMD curl --fail http://0.0.0.0:8000
 """,
 )
 
-CONTAINER_WITH_FAILING_HEALTHCHECK = DerivedContainer(
-    base=LEAP,
-    image_format=ImageFormat.DOCKER,
-    containerfile="""CMD sleep 600
-HEALTHCHECK --retries=2 --interval=2s CMD false""",
-    healthcheck_timeout_ms=None,
+
+def _failing_healthcheck_container(healtcheck_args: str) -> DerivedContainer:
+    return DerivedContainer(
+        base=LEAP,
+        image_format=ImageFormat.DOCKER,
+        containerfile=f"""CMD sleep 600
+HEALTHCHECK {healtcheck_args} CMD false
+""",
+        healthcheck_timeout=timedelta(seconds=-1),
+    )
+
+
+CONTAINER_WITH_FAILING_HEALTHCHECK = _failing_healthcheck_container(
+    "--retries=2 --interval=2s"
 )
 
 
@@ -76,4 +86,46 @@ def test_container_with_failing_healthcheck(
     assert (
         container_runtime.get_container_health(container.container_id)
         == ContainerHealth.UNHEALTHY
+    )
+
+
+@pytest.mark.parametrize(
+    "container,healthcheck",
+    [
+        (
+            CONTAINER_WITH_FAILING_HEALTHCHECK,
+            HealthCheck(retries=2, interval=timedelta(seconds=2)),
+        ),
+        (
+            CONTAINER_WITH_HEALTHCHECK,
+            HealthCheck(
+                interval=timedelta(seconds=5), timeout=timedelta(seconds=1)
+            ),
+        ),
+        (LEAP, None),
+        (
+            _failing_healthcheck_container("--retries=16"),
+            HealthCheck(retries=16),
+        ),
+        (
+            _failing_healthcheck_container("--interval=21s"),
+            HealthCheck(interval=timedelta(seconds=21)),
+        ),
+        (
+            _failing_healthcheck_container("--timeout=15s"),
+            HealthCheck(timeout=timedelta(seconds=15)),
+        ),
+        (
+            _failing_healthcheck_container("--start-period=24s"),
+            HealthCheck(start_period=timedelta(seconds=24)),
+        ),
+    ],
+    indirect=["container"],
+)
+def test_healthcheck_timeout(
+    container, container_runtime: OciRuntimeBase, healthcheck: HealthCheck
+):
+    assert (
+        container_runtime.get_container_healthcheck(container.container)
+        == healthcheck
     )

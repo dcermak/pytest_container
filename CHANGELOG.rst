@@ -3,6 +3,13 @@ Next Release
 
 Breaking changes:
 
+- ``ContainerBase.healtcheck_timeout_ms`` got renamed to
+  py:attr:`~pytest_container.ContainerBase.healtcheck_timeout` and was changed
+  as follows: it is now a `timedelta` with the default value being ``None`` and
+  implies that ``pytest_container`` figures the maximum timeout out itself. If a
+  positive timedelta is provided, then that timeout is used instead of the
+  inferred default and if it is negative, then no timeout is applied.
+
 
 Improvements and new features:
 
