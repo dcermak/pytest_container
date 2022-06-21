@@ -1,6 +1,7 @@
 import datetime
 import os
 import time
+from pathlib import Path
 from pytest_container.container import container_from_pytest_param
 from pytest_container.container import ContainerData
 from pytest_container.helpers import get_extra_build_args
@@ -10,6 +11,7 @@ from pytest_container.runtime import ContainerHealth
 from pytest_container.runtime import get_selected_runtime
 from pytest_container.runtime import OciRuntimeBase
 from subprocess import check_output
+from tempfile import gettempdir
 from typing import Callable
 from typing import Generator
 from typing import Optional
@@ -65,7 +67,7 @@ def _create_auto_container_fixture(
 
         container_id: Optional[str] = None
 
-        lock = FileLock(pytestconfig.rootpath / launch_data.filelock_filename)
+        lock = FileLock(Path(gettempdir()) / launch_data.filelock_filename)
         _logger.debug(
             "Locking container preparation via file %s", lock.lock_file
         )
