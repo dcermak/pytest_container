@@ -8,6 +8,7 @@ from abc import ABC
 from abc import abstractmethod
 from dataclasses import dataclass
 from dataclasses import field
+from datetime import timedelta
 from hashlib import md5
 from pathlib import Path
 from pytest_container.logging import _logger
@@ -65,10 +66,12 @@ class ContainerBase:
     #: created by `shlex.split`
     extra_launch_args: List[str] = field(default_factory=list)
 
-    #: time in ms for the container to become healthy (the timeout is ignored
-    #: when the container image defined no ``HEALTHCHECK`` or when the timeout is
-    #: ``None``)
-    healthcheck_timeout_ms: Optional[int] = 10 * 1000
+    #: Time for the container to become healthy (the timeout is ignored
+    #: when the container image defines no ``HEALTHCHECK`` or when the timeout
+    #: is below zero).
+    #: When the value is ``None``, then the timeout will be inferred from the
+    #: container image's ``HEALTHCHECK`` directive.
+    healthcheck_timeout: Optional[timedelta] = None
 
     #: additional environment variables that should be injected into the
     #: container

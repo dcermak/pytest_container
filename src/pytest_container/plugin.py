@@ -1,6 +1,7 @@
 import datetime
 import os
 import time
+from pathlib import Path
 from pytest_container.container import container_from_pytest_param
 from pytest_container.container import ContainerData
 from pytest_container.helpers import get_extra_build_args
@@ -10,6 +11,7 @@ from pytest_container.runtime import ContainerHealth
 from pytest_container.runtime import get_selected_runtime
 from pytest_container.runtime import OciRuntimeBase
 from subprocess import check_output
+from tempfile import gettempdir
 from typing import Callable
 from typing import Generator
 from typing import Optional
@@ -65,7 +67,7 @@ def _create_auto_container_fixture(
 
         container_id: Optional[str] = None
 
-        lock = FileLock(pytestconfig.rootpath / launch_data.filelock_filename)
+        lock = FileLock(Path(gettempdir()) / launch_data.filelock_filename)
         _logger.debug(
             "Locking container preparation via file %s", lock.lock_file
         )
@@ -141,15 +143,24 @@ def _create_auto_container_fixture(
             container_id = check_output(launch_cmd).decode().strip()
 
             start = datetime.datetime.now()
-            timeout_ms = launch_data.healthcheck_timeout_ms
+            timeout: Optional[
+                datetime.timedelta
+            ] = launch_data.healthcheck_timeout
             _logger.debug(
                 "Started container with %s at %s", container_id, start
             )
 
-            if timeout_ms is not None:
+            if timeout is None:
+                healthcheck = container_runtime.get_container_healthcheck(
+                    launch_data
+                )
+                if healthcheck is not None:
+                    timeout = healthcheck.max_wait_time
+
+            if timeout is not None and timeout > datetime.timedelta(seconds=0):
                 _logger.debug(
                     "Container has a healthcheck defined, will wait at most %s ms",
-                    timeout_ms,
+                    timeout,
                 )
                 while True:
                     health = container_runtime.get_container_health(
@@ -163,16 +174,13 @@ def _create_auto_container_fixture(
                     ):
                         break
                     delta = datetime.datetime.now() - start
-                    delta_ms = (
-                        delta.days * 24 * 3600 * 1000
-                        + delta.seconds * 1000
-                        + delta.microseconds / 1000
-                    )
-                    if delta_ms > timeout_ms:
+                    if delta > timeout:
                         raise RuntimeError(
-                            f"Container {container_id} did not become healthy within {timeout_ms}ms, took {delta_ms} and state is {str(health)}"
+                            f"Container {container_id} did not become healthy within "
+                            f"{1000 * timeout.total_seconds()}ms, took {delta} and "
+                            f"state is {str(health)}"
                         )
-                    time.sleep(max(500, timeout_ms / 10) / 1000)
+                    time.sleep(max(0.5, timeout.total_seconds() / 10))
 
             yield ContainerData(
                 image_url_or_id=launch_data.url or launch_data.container_id,

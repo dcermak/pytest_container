@@ -1,1 +1,8 @@
-*.lock
+.tox/*
+.git*
+build/*
+dist/*
+.pytest_cache/*
+.mypy_cache/*
+*~
+*lock
