@@ -40,7 +40,9 @@ def test_incompatible_types_cmp():
         (Version(1, 0, 2), Version(1, 0, 1)),
         (Version(2, 0, 1), Version(1, 0, 1)),
         (Version(1, 5, 1), Version(1, 0, 1)),
-        (Version(1, 0, 1), Version(1, 0, 1, "foobar")),
+        (Version(1, 0, 1), Version(1, 0, 1, build="foobar")),
+        (Version(1, 0, 1), Version(1, 0, 1, release="foobar")),
+        (Version(1, 0, 1), Version(1, 0, 1, release="foobar", build="5")),
     ],
 )
 def test_version_ne(ver1: Version, ver2: Version):
@@ -52,7 +54,12 @@ def test_version_ne(ver1: Version, ver2: Version):
     [
         (Version(1, 2), "1.2"),
         (Version(1, 2, 5), "1.2.5"),
-        (Version(1, 2, 5, "sdf"), "1.2.5 build sdf"),
+        (Version(1, 2, 5, build="sdf"), "1.2.5 build sdf"),
+        (Version(1, 2, 5, release="1.fc16"), "1.2.5-1.fc16"),
+        (
+            Version(1, 2, 5, release="1.fc16", build="38"),
+            "1.2.5-1.fc16 build 38",
+        ),
     ],
 )
 def test_version_str(ver: Version, stringified):
@@ -150,3 +157,56 @@ def test_container_runtime_parsing(host, container_runtime: OciRuntimeBase):
 
     if container_runtime.runner_binary == "docker":
         assert f"build {container_runtime.version.build}" in version_string
+
+
+@pytest.mark.parametrize(
+    "ver_str,expected_version",
+    [
+        ("1.2.3", Version(1, 2, 3)),
+        ("65.8", Version(65, 8)),
+        ("6", Version(6, 0)),
+        ("2.7.8-55ubuntu~", Version(2, 7, 8, release="55ubuntu~")),
+        ("2.8-16.fc37", Version(2, 8, release="16.fc37")),
+        (
+            "2.7.8-55ubuntu~ build 42",
+            Version(2, 7, 8, release="55ubuntu~", build="42"),
+        ),
+        ("2.7.8 build 42", Version(2, 7, 8, build="42")),
+    ],
+)
+def test_parse_valid_version_strings(ver_str: str, expected_version: Version):
+    """Check that ``ver_str`` is parsed correctly into ``expected_version``."""
+    assert Version.parse(ver_str) == expected_version
+
+
+_invalid_1 = "2.5 not-build 46"
+_invalid_2 = "16.84 build but with too much text"
+_invalid_3 = "asdf"
+
+
+@pytest.mark.parametrize(
+    "ver_str,exception,exception_text",
+    [
+        (
+            _invalid_1,
+            ValueError,
+            f"Invalid version string: {_invalid_1}",
+        ),
+        (
+            _invalid_2,
+            ValueError,
+            f"Invalid version string: {_invalid_2}",
+        ),
+        (_invalid_3, ValueError, f"Invalid version string: {_invalid_3}"),
+    ],
+)
+def test_parse_invalid_version_strings(
+    ver_str: str, exception, exception_text: str
+):
+    """Check that parsing the version string `ver_str` raises the supplied
+    exception type and includes the provided ``exception_text``.
+
+    """
+    with pytest.raises(exception) as exc_ctx:
+        Version.parse(ver_str)
+    assert exception_text in str(exc_ctx.value)
