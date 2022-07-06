@@ -62,8 +62,8 @@ class ToParamMixin:
 
 @dataclass(frozen=True)
 class Version:
-    """Representation of a version of the form ``$major.$minor.$patch`` and an
-    optional build string.
+    """Representation of a version of the form
+    ``$major.$minor.$patch[-|+]$release build $build``.
 
     This class supports basic comparison, e.g.:
 
@@ -74,6 +74,16 @@ class Version:
     >>> Version(5, 2, 6, "foobar") == Version(5, 2, 6)
     False
 
+    Note that the patch and release fields are optional and that the release and
+    build are not taken into account for less or greater than comparisons only
+    for equality or inequality. I.e.:
+
+    >>> Version(1, 0, release="16") > Version(1, 0)
+    False
+    >>> Version(1, 0, release="16") == Version(1, 0)
+    False
+
+
     Additionally you can also pretty print it:
 
     >>> Version(0, 6)
@@ -82,16 +92,19 @@ class Version:
     0.6.1
     >>> Version(0, 6, 1, "asdf")
     0.6.1 build asdf
+
     """
 
     major: int = 0
     minor: int = 0
     patch: Optional[int] = None
     build: str = ""
+    release: Optional[str] = None
 
     def __str__(self) -> str:
         return (
             f"{self.major}.{self.minor}{('.' + str(self.patch)) if self.patch else ''}"
+            + (f"-{self.release}" if self.release else "")
             + (f" build {self.build}" if self.build else "")
         )
 
@@ -102,7 +115,29 @@ class Version:
             self.major == other.major
             and self.minor == other.minor
             and (self.patch or 0) == (other.patch or 0)
+            and (self.release or "") == (other.release or "")
             and self.build == other.build
+        )
+
+    @staticmethod
+    def parse(version_string: str) -> "Version":
+        """Parses a version string and returns a constructed Version from that."""
+        matches = re.match(
+            r"(?P<major>\d+)(\.(?P<minor>\d+))?(\.(?P<patch>\d+))?([+|-](?P<release>\S+))?( build (?P<build>\S+))?$",
+            # let's first remove any leading & trailing whitespace to make our life easier
+            version_string.strip(),
+        )
+        if not matches:
+            raise ValueError(f"Invalid version string: {version_string}")
+
+        return Version(
+            major=int(matches.group("major")),
+            minor=int(matches.group("minor")) if matches.group("minor") else 0,
+            patch=int(matches.group("patch"))
+            if matches.group("patch")
+            else None,
+            build=matches.group("build") or "",
+            release=matches.group("release") or None,
         )
 
     @staticmethod
@@ -346,22 +381,12 @@ LOCALHOST = testinfra.host.get_host("local://")
 
 
 def _get_podman_version(version_stdout: str) -> Version:
-    matches = re.match(
-        r"podman version (?P<major>\d+)\.(?P<minor>\d+)(\.(?P<patch>\d+))?",
-        version_stdout,
-        flags=re.IGNORECASE,
-    )
-    if not matches:
+    if version_stdout[:15] != "podman version ":
         raise RuntimeError(
             f"Could not decode the podman version from {version_stdout}"
         )
 
-    patch = matches.group("patch")
-    return Version(
-        major=int(matches.group("major")),
-        minor=int(matches.group("minor")),
-        patch=int(patch) if patch else 0,
-    )
+    return Version.parse(version_stdout[15:])
 
 
 class PodmanRuntime(OciRuntimeBase):
@@ -443,23 +468,12 @@ class PodmanRuntime(OciRuntimeBase):
 
 
 def _get_docker_version(version_stdout: str) -> Version:
-    matches = re.match(
-        r"docker version (?P<major>\d+)\.(?P<minor>\d+)(\.(?P<patch>\d+)(\S+)?)?,"
-        r" build (?P<build>\S+)",
-        version_stdout,
-        flags=re.IGNORECASE,
-    )
-    if not matches:
+    if version_stdout[:15].lower() != "docker version ":
         raise RuntimeError(
             f"Could not decode the docker version from {version_stdout}"
         )
-    patch = matches.group("patch")
-    return Version(
-        major=int(matches.group("major")),
-        minor=int(matches.group("minor")),
-        patch=int(patch) if patch else 0,
-        build=matches.group("build"),
-    )
+
+    return Version.parse(version_stdout[15:].replace(",", ""))
 
 
 class DockerRuntime(OciRuntimeBase):
