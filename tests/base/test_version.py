@@ -76,7 +76,11 @@ def test_version_str(ver: Version, stringified):
 )
 def test_version_ge_gt(larger: Version, smaller: Version):
     assert larger > smaller
+    assert not smaller > larger
+
     assert larger >= smaller
+    assert not smaller >= larger
+
     # pragma pylint: disable=comparison-with-itself
     assert larger >= larger
     assert smaller >= smaller
@@ -92,7 +96,11 @@ def test_version_ge_gt(larger: Version, smaller: Version):
 )
 def test_version_le_lt(larger: Version, smaller: Version):
     assert smaller < larger
+    assert not larger < smaller
+
     assert smaller <= larger
+    assert not larger <= smaller
+
     # pragma pylint: disable=comparison-with-itself
     assert larger <= larger
     assert smaller <= smaller
