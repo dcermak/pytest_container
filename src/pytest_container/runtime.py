@@ -381,22 +381,12 @@ LOCALHOST = testinfra.host.get_host("local://")
 
 
 def _get_podman_version(version_stdout: str) -> Version:
-    matches = re.match(
-        r"podman version (?P<major>\d+)\.(?P<minor>\d+)(\.(?P<patch>\d+))?",
-        version_stdout,
-        flags=re.IGNORECASE,
-    )
-    if not matches:
+    if version_stdout[:15] != "podman version ":
         raise RuntimeError(
             f"Could not decode the podman version from {version_stdout}"
         )
 
-    patch = matches.group("patch")
-    return Version(
-        major=int(matches.group("major")),
-        minor=int(matches.group("minor")),
-        patch=int(patch) if patch else 0,
-    )
+    return Version.parse(version_stdout[15:])
 
 
 class PodmanRuntime(OciRuntimeBase):
@@ -478,23 +468,12 @@ class PodmanRuntime(OciRuntimeBase):
 
 
 def _get_docker_version(version_stdout: str) -> Version:
-    matches = re.match(
-        r"docker version (?P<major>\d+)\.(?P<minor>\d+)(\.(?P<patch>\d+)(\S+)?)?,"
-        r" build (?P<build>\S+)",
-        version_stdout,
-        flags=re.IGNORECASE,
-    )
-    if not matches:
+    if version_stdout[:15].lower() != "docker version ":
         raise RuntimeError(
             f"Could not decode the docker version from {version_stdout}"
         )
-    patch = matches.group("patch")
-    return Version(
-        major=int(matches.group("major")),
-        minor=int(matches.group("minor")),
-        patch=int(patch) if patch else 0,
-        build=matches.group("build"),
-    )
+
+    return Version.parse(version_stdout[15:].replace(",", ""))
 
 
 class DockerRuntime(OciRuntimeBase):

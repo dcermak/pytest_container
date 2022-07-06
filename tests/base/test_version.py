@@ -101,18 +101,31 @@ def test_version_le_lt(larger: Version, smaller: Version):
 @pytest.mark.parametrize(
     "stdout,ver",
     [
-        ("Docker version 1.12.6, build 78d1802", Version(1, 12, 6, "78d1802")),
+        (
+            "Docker version 1.12.6, build 78d1802",
+            Version(1, 12, 6, build="78d1802"),
+        ),
         (
             "Docker version 20.10.12-ce, build 459d0dfbbb51",
-            Version(20, 10, 12, "459d0dfbbb51"),
+            Version(20, 10, 12, build="459d0dfbbb51", release="ce"),
         ),
         (
             "Docker version 20.10.16, build aa7e414",
-            Version(20, 10, 16, "aa7e414"),
+            Version(20, 10, 16, build="aa7e414"),
         ),
         (
             "Docker version 1.13.1, build 7d71120/1.13.1",
-            Version(1, 13, 1, "7d71120/1.13.1"),
+            Version(1, 13, 1, build="7d71120/1.13.1"),
+        ),
+        (
+            "Docker version 20.10.17+azure-1, build 100c70180fde3601def79a59cc3e996aa553c9b9",
+            Version(
+                20,
+                10,
+                17,
+                release="azure-1",
+                build="100c70180fde3601def79a59cc3e996aa553c9b9",
+            ),
         ),
     ],
 )
