@@ -13,12 +13,12 @@ from hashlib import md5
 from pathlib import Path
 from pytest_container.logging import _logger
 from pytest_container.runtime import get_selected_runtime
+from pytest_container.runtime import LOCALHOST
 from subprocess import check_output
 from typing import Any
 from typing import Collection
 from typing import Dict
 from typing import List
-from typing import NamedTuple
 from typing import Optional
 from typing import Union
 
@@ -40,6 +40,123 @@ class ImageFormat(enum.Enum):
 
     def __str__(self) -> str:
         return "oci" if self == ImageFormat.OCIv1 else "docker"
+
+
+@enum.unique
+class NetworkProtocol(enum.Enum):
+    """Network protocols supporting port forwarding."""
+
+    #: Transmission Control Protocol
+    TCP = "tcp"
+    #: User Datagram Protocol
+    UDP = "udp"
+
+    def __str__(self) -> str:
+        return self.value
+
+
+@dataclass(frozen=True)
+class PortForwarding:
+    """Representation of a port forward from a container to the host.
+
+    To expose a port of a container automatically, create an instance of this
+    class, set the attribute :py:attr:`container_port` and optionally
+    :py:attr:`protocol` as well and pass it via the parameter
+    :py:attr:`ContainerBase.forwarded_ports` to either the :py:class:`Container`
+    or :py:class:`DerivedContainer`:
+
+    >>> Container(url="my-webserver", forwarded_ports=[PortForwarding(container_port=8000)])
+
+    """
+
+    #: The port which shall be exposed by the container.
+    container_port: int
+
+    #: The protocol which the exposed port is using. Defaults to TCP.
+    protocol: NetworkProtocol = NetworkProtocol.TCP
+
+    #: The port as which the port from :py:attr:`container_port` is exposed on
+    #: the host. This value is automatically set by the `*container_*` fixtures,
+    #: so there's no need for the user to modify it
+    host_port: int = -1
+
+    @property
+    def forward_cli_args(self) -> List[str]:
+        """Returns a list of command line arguments for the container launch
+        command to automatically expose this port forwarding.
+
+        """
+        return [
+            "-p",
+            f"{self.host_port}:{self.container_port}/{self.protocol}",
+        ]
+
+    def __str__(self) -> str:
+        return str(self.forward_cli_args)
+
+
+def is_socket_listening_on_localhost(
+    port: int, protocol: NetworkProtocol
+) -> bool:
+    """Checks if a socket is listening on localhost for the given port and
+    protocol."""
+
+    # We unfortunately cannot just use
+    # `LOCALHOST.socket(f"{protocol}://{port}").is_listening` check here,
+    # because that will check whether a service is listening on **all**
+    # interfaces. If it only listens on one, then the port is still occupied,
+    # but the above check will be `False` giving us false results.
+    # The remedy would be to iterate over all IPs, but that would be just
+
+    for socket in LOCALHOST.socket.get_listening_sockets():
+        # socket looks like this:
+        # udp://:::1716
+        # tcp://127.0.0.1:36061
+        # unix:///tmp/.X11-unix/X0
+        tmp = socket.split(":")
+        prot = tmp[0]
+        if prot != str(protocol):
+            continue
+        if port == int(tmp[-1]):
+            return True
+
+    return False
+
+
+def create_host_port_port_forward(
+    port_forwards: List[PortForwarding],
+) -> List[PortForwarding]:
+    """Given a list of port_forwards, this function finds the first free ports
+    on the host system to which the container ports can be bound and returns a
+    new list of appropriately configured :py:class:`PortForwarding` instances.
+
+    """
+    _START_PORT = 1025
+    _MAX_PORT = 2**16
+    finished_forwards: List[PortForwarding] = []
+    start_port = _START_PORT
+
+    for port in port_forwards:
+        for i in range(start_port, _MAX_PORT):
+            if not is_socket_listening_on_localhost(i, port.protocol):
+                finished_forwards.append(
+                    PortForwarding(
+                        container_port=port.container_port,
+                        protocol=port.protocol,
+                        host_port=i,
+                    )
+                )
+                start_port = i + 1
+                assert (
+                    finished_forwards[-1].host_port
+                    and finished_forwards[-1].host_port >= _START_PORT
+                )
+                break
+        if i == _MAX_PORT:
+            raise ValueError("No free ports left!")
+
+    assert len(port_forwards) == len(finished_forwards)
+    return finished_forwards
 
 
 @dataclass
@@ -81,12 +198,17 @@ class ContainerBase:
     #: this type at all times (e.g. because it opens a shared port).
     singleton: bool = False
 
+    #: forwarded ports of this container
+    forwarded_ports: List[PortForwarding] = field(default_factory=list)
+
     _is_local: bool = False
 
     def __post_init__(self) -> None:
         if self.default_entry_point and self.custom_entry_point:
             raise ValueError(
-                f"A custom entry point has been provided ({self.custom_entry_point}) with default_entry_point being set to True"
+                "A custom entry point has been provided "
+                + self.custom_entry_point
+                + "with default_entry_point being set to True"
             )
 
         if self.url.split(":", maxsplit=1)[0] == "containers-storage":
@@ -151,18 +273,18 @@ class ContainerBase:
     @property
     def filelock_filename(self) -> str:
         all_elements = []
-        for attr_name, v in self.__dict__.items():
+        for attr_name, value in self.__dict__.items():
             # don't include the container_id in the hash calculation as the id
             # might not yet be known but could be populated later on i.e. that
             # would cause a different hash for the same container
             if attr_name == "container_id":
                 continue
-            if isinstance(v, list):
-                all_elements.append("".join(v))
-            elif isinstance(v, dict):
-                all_elements.append("".join(v.values()))
+            if isinstance(value, list):
+                all_elements.append("".join([str(elem) for elem in value]))
+            elif isinstance(value, dict):
+                all_elements.append("".join(value.values()))
             else:
-                all_elements.append(str(v))
+                all_elements.append(str(value))
         return f"{md5((''.join(all_elements)).encode()).hexdigest()}.lock"
 
 
@@ -300,7 +422,8 @@ class DerivedContainer(ContainerBase, ContainerBaseABC):
             )
 
 
-class ContainerData(NamedTuple):
+@dataclass(frozen=True)
+class ContainerData:
     #: url to the container image on the registry or the id of the local image
     #: if the container has been build locally
     image_url_or_id: str
@@ -310,6 +433,8 @@ class ContainerData(NamedTuple):
     connection: Any
     #: the container data class that has been used in this test
     container: ContainerBase
+    #: any ports that are exposed by this container
+    forwarded_ports: List[PortForwarding]
 
 
 def container_to_pytest_param(

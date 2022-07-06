@@ -148,14 +148,11 @@ class Version:
             if not isinstance(other, Version):
                 return NotImplemented
 
-            if cmp_func(self.major, other.major):
-                return True
-            if cmp_func(self.minor, other.minor):
-                return True
-            if cmp_func(self.patch or 0, other.patch or 0):
-                return True
-
-            return False
+            if self.major == other.major:
+                if self.minor == other.minor:
+                    return cmp_func((self.patch or 0), (other.patch or 0))
+                return cmp_func(self.minor, other.minor)
+            return cmp_func(self.major, other.major)
 
         return cmp
 

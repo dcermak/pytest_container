@@ -13,6 +13,12 @@ Breaking changes:
 
 Improvements and new features:
 
+- Add support for automatically exposing ports in containers via the
+  :py:attr:`ContainerBase.forwarded_ports` attribute: Container Images can now
+  define which ports they want to publish automatically and let the
+  `container_*` fixtures automatically find the next free port for them. This
+  allows the user to launch multiple containers from Container Images exposing
+  the same ports in parallel without marking them as ``singleton=True``.
 
 Documentation:
 

@@ -4,6 +4,7 @@ import time
 from pathlib import Path
 from pytest_container.container import container_from_pytest_param
 from pytest_container.container import ContainerData
+from pytest_container.container import create_host_port_port_forward
 from pytest_container.helpers import get_extra_build_args
 from pytest_container.helpers import get_extra_run_args
 from pytest_container.logging import _logger
@@ -134,13 +135,36 @@ def _create_auto_container_fixture(
             if not launch_data.singleton:
                 release_lock()
 
-            launch_cmd = [
-                container_runtime.runner_binary
-            ] + launch_data.get_launch_cmd(
-                extra_run_args=get_extra_run_args(pytestconfig)
-            )
-            _logger.debug("Launching container via: %s", launch_cmd)
-            container_id = check_output(launch_cmd).decode().strip()
+            forwarded_ports = launch_data.forwarded_ports
+            port_forward_args = []
+            new_port_forwards = []
+
+            if forwarded_ports:
+                with FileLock(pytestconfig.rootpath / "port_check.lock"):
+                    new_port_forwards = create_host_port_port_forward(
+                        forwarded_ports
+                    )
+                    for new_forward in new_port_forwards:
+                        port_forward_args += new_forward.forward_cli_args
+
+                    launch_cmd = [
+                        container_runtime.runner_binary
+                    ] + launch_data.get_launch_cmd(
+                        extra_run_args=get_extra_run_args(pytestconfig)
+                        + port_forward_args
+                    )
+
+                    _logger.debug("Launching container via: %s", launch_cmd)
+                    container_id = check_output(launch_cmd).decode().strip()
+            else:
+                launch_cmd = [
+                    container_runtime.runner_binary
+                ] + launch_data.get_launch_cmd(
+                    extra_run_args=get_extra_run_args(pytestconfig)
+                )
+
+                _logger.debug("Launching container via: %s", launch_cmd)
+                container_id = check_output(launch_cmd).decode().strip()
 
             start = datetime.datetime.now()
             timeout: Optional[
@@ -189,6 +213,7 @@ def _create_auto_container_fixture(
                     f"{container_runtime.runner_binary}://{container_id}"
                 ),
                 container=launch_data,
+                forwarded_ports=new_port_forwards,
             )
         except Exception as exc:
             _logger.error(
