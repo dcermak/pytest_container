@@ -17,13 +17,13 @@ jobs:
       - uses: actions/setup-python@v4
         with:
           python-version: '3.x'
-      - uses: Gr1N/setup-poetry@v7
       - uses: actions/cache@v3
         with:
           path: ~/.cache/pypoetry/virtualenvs
           key: poetry-${{ hashFiles('poetry.lock') }}
 
       - run: |
+          pip install --user --upgrade poetry
           poetry install
           poetry run ./format.sh --check
 
@@ -46,7 +46,7 @@ jobs:
           path: ~/.tox
           key: tox-${{ matrix.python_version }}-${{ hashFiles('poetry.lock') }}
 
-      - run: pip install --user --upgrade tox tox-poetry
+      - run: pip install --user --upgrade tox tox-poetry poetry
       - run: |
           export CUR_USER="$(whoami)"
           sudo loginctl enable-linger ${CUR_USER}
@@ -76,13 +76,13 @@ jobs:
       - uses: actions/setup-python@v4
         with:
           python-version: ${{ matrix.python_version }}
-      - uses: Gr1N/setup-poetry@v7
       - uses: actions/cache@v3
         with:
           path: ~/.cache/pypoetry/virtualenvs
           key: poetry-${{ matrix.python_version }}-${{ hashFiles('poetry.lock') }}
 
       - run: |
+          pip install --user --upgrade poetry
           poetry install
           poetry build
           pip install --user dist/pytest_container*whl
@@ -102,7 +102,7 @@ jobs:
           path: ~/.tox
           key: tox-${{ hashFiles('poetry.lock') }}
 
-      - run: pip install --user --upgrade tox
+      - run: pip install --user --upgrade tox tox-poetry poetry
 
       - run: 'tox -e doc'
 
@@ -120,6 +120,6 @@ jobs:
           path: ~/.tox
           key: tox-${{ hashFiles('poetry.lock') }}
 
-      - run: pip install --user --upgrade tox
+      - run: pip install --user --upgrade tox tox-poetry poetry
 
       - run: 'tox -e lint'
