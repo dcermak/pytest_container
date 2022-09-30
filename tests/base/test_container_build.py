@@ -3,11 +3,12 @@ from pytest_container import Container
 from pytest_container import DerivedContainer
 from pytest_container import get_extra_build_args
 from pytest_container.build import MultiStageBuild
+from pytest_container.container import ContainerData
 from pytest_container.runtime import LOCALHOST
 from pytest_container.runtime import OciRuntimeBase
 
 import pytest
-from _pytest.config import Config
+from pytest import Config
 
 LEAP = Container(url="registry.opensuse.org/opensuse/leap:latest")
 
@@ -144,9 +145,11 @@ def test_default_entry_point(container):
     assert "/usr/bin/sleep 3600" == sleep[0].args
 
 
-def test_container_size(container_runtime: OciRuntimeBase, pytestconfig):
+def test_container_size(
+    container_runtime: OciRuntimeBase, pytestconfig: Config
+):
     for container in [BUSYBOX_WITH_ENTRYPOINT, BUSYBOX_WITH_GARBAGE]:
-        container.prepare_container(pytestconfig.rootdir)
+        container.prepare_container(pytestconfig.rootpath)
 
     assert container_runtime.get_image_size(
         BUSYBOX_WITH_ENTRYPOINT
@@ -162,21 +165,23 @@ def test_multistage_containerfile():
     assert "FROM docker.io/alpine" in MULTI_STAGE_BUILD.containerfile
 
 
-def test_multistage_build(tmp_path, pytestconfig, container_runtime):
+def test_multistage_build(
+    tmp_path, pytestconfig: Config, container_runtime: OciRuntimeBase
+):
     MULTI_STAGE_BUILD.build(
         tmp_path,
-        pytestconfig.rootdir,
+        pytestconfig.rootpath,
         container_runtime,
         extra_build_args=get_extra_build_args(pytestconfig),
     )
 
 
 def test_multistage_build_target(
-    tmp_path, pytestconfig: Config, container_runtime
+    tmp_path, pytestconfig: Config, container_runtime: OciRuntimeBase
 ):
     first_target = MULTI_STAGE_BUILD.build(
         tmp_path,
-        pytestconfig.rootdir,
+        pytestconfig.rootpath,
         container_runtime,
         "runner1",
         extra_build_args=get_extra_build_args(pytestconfig),

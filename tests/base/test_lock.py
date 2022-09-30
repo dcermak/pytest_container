@@ -25,7 +25,7 @@ def actual_test(container_data, pytestconf: Config):
 
     """
     container_data.connection.run_expect([0], "true")
-    lockfile = pytestconf.rootdir / (
+    lockfile = pytestconf.rootpath / (
         "leap.lock"
         if "leap" in container_data.image_url_or_id
         else "busybox.lock"
@@ -36,7 +36,7 @@ def actual_test(container_data, pytestconf: Config):
         sleep(5)
 
     if lockfile.exists():
-        lockfile.remove()
+        remove(lockfile)
 
 
 def test_create_conflict_1(auto_container_per_test, pytestconfig: Config):
