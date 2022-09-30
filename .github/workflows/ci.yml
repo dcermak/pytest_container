@@ -46,7 +46,7 @@ jobs:
           path: ~/.tox
           key: tox-${{ matrix.python_version }}-${{ hashFiles('poetry.lock') }}
 
-      - run: pip install --user --upgrade tox
+      - run: pip install --user --upgrade tox tox-poetry
       - run: |
           export CUR_USER="$(whoami)"
           sudo loginctl enable-linger ${CUR_USER}
