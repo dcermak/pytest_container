@@ -1,3 +1,4 @@
+# pylint: disable=missing-function-docstring
 from pytest_container import container_from_pytest_param
 from pytest_container import container_to_pytest_param
 from pytest_container import DerivedContainer
@@ -29,31 +30,31 @@ CONTAINER_IMAGES = [LEAP_PARAM]
 
 
 def test_multistage_with_param(
-    tmp_path, pytestconfig, container_runtime: OciRuntimeBase
+    tmp_path, pytestconfig: pytest.Config, container_runtime: OciRuntimeBase
 ):
     MultiStageBuild(
         containers={"builder": LEAP_PARAM, "runner": LEAP_PARAM_2},
         containerfile_template=TEMPLATE,
     ).build(
         tmp_path,
-        pytestconfig.rootdir,
+        pytestconfig.rootpath,
         container_runtime,
         extra_build_args=get_extra_build_args(pytestconfig),
     )
 
 
-def test_multistage_build_invalid_param(tmp_path, pytestconfig):
+def test_multistage_build_invalid_param(tmp_path, pytestconfig: pytest.Config):
     with pytest.raises(ValueError):
         MultiStageBuild(
             containers={"runner": pytest.param()},
             containerfile_template=TEMPLATE,
-        ).prepare_build(tmp_path, pytestconfig.rootdir)
+        ).prepare_build(tmp_path, pytestconfig.rootpath)
 
     with pytest.raises(ValueError):
         MultiStageBuild(
             containers={"runner": pytest.param(1.0)},
             containerfile_template=TEMPLATE,
-        ).prepare_build(tmp_path, pytestconfig.rootdir)
+        ).prepare_build(tmp_path, pytestconfig.rootpath)
 
 
 @pytest.mark.parametrize(

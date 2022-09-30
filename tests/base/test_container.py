@@ -1,3 +1,4 @@
+# pylint: disable=missing-function-docstring
 from pathlib import Path
 from pytest_container import Container
 from pytest_container import DerivedContainer
@@ -59,7 +60,7 @@ def test_local_image_url():
     cont.prepare_container(Path("."), [])
 
 
-def test_lockfile_path(pytestconfig):
+def test_lockfile_path(pytestconfig: pytest.Config):
     """Check that the attribute
     :py:attr:`~pytest_container.ContainerBase.lockfile_filename` does change by
     the container having the attribute
@@ -69,7 +70,7 @@ def test_lockfile_path(pytestconfig):
     cont = DerivedContainer(base="docker.io/library/busybox", containerfile="")
     original_lock_fname = cont.filelock_filename
 
-    cont.prepare_container(pytestconfig.rootdir)
+    cont.prepare_container(pytestconfig.rootpath)
     assert cont.container_id, "container_id must not be empty"
     assert cont.filelock_filename == original_lock_fname
 

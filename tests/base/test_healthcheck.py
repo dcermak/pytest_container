@@ -1,3 +1,4 @@
+# pylint: disable=missing-function-docstring
 from datetime import timedelta
 from pytest_container.container import DerivedContainer
 from pytest_container.container import ImageFormat
