@@ -1,3 +1,5 @@
+# pylint: disable=missing-function-docstring
+from os import remove
 from pytest_container import Container
 from pytest_container import DerivedContainer
 from time import sleep

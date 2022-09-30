@@ -1,3 +1,4 @@
+# pylint: disable=missing-function-docstring
 from pathlib import Path
 from pytest_container import Container
 from pytest_container import DerivedContainer

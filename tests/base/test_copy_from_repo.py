@@ -1,3 +1,4 @@
+# pylint: disable=missing-function-docstring
 from pytest_container import DerivedContainer
 
 from pytest import Config

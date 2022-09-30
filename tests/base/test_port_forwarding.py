@@ -1,5 +1,6 @@
 """Module containing tests of the automated port exposure via
 :py:attr:`~pytest_container.container.ContainerBase.forwarded_ports`."""
+# pylint: disable=missing-function-docstring
 import socket
 from contextlib import closing
 from pytest_container.container import ContainerData

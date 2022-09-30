@@ -1,3 +1,4 @@
+# pylint: disable=missing-function-docstring
 import os
 from pytest_container.runtime import DockerRuntime
 from pytest_container.runtime import get_selected_runtime
