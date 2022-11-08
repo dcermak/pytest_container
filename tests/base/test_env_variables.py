@@ -1,4 +1,4 @@
-# pylint: disable=missing-function-docstring
+# pylint: disable=missing-function-docstring,missing-module-docstring
 from pytest_container.container import Container
 
 from tests.base.test_container_build import LEAP
