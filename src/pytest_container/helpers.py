@@ -14,7 +14,9 @@ def auto_container_parametrize(metafunc: Metafunc) -> None:
         if fixture_name in metafunc.fixturenames:
             if container_images is None:
                 raise ValueError(
-                    f"The test function {metafunc.function.__name__} is using the {fixture_name} fixture but the parent module is not setting the 'CONTAINER_IMAGES' variable"
+                    f"The test function {metafunc.function.__name__} is using "
+                    f"the {fixture_name} fixture but the parent module is not "
+                    "setting the 'CONTAINER_IMAGES' variable"
                 )
             metafunc.parametrize(fixture_name, container_images, indirect=True)
 
@@ -32,14 +34,16 @@ def add_extra_run_and_build_args_options(parser: Parser) -> None:
         type=str,
         nargs="*",
         default=[],
-        help="Specify additional CLI arguments to be passed to 'podman run' or 'docker run'. Each argument must be passed as an individual argument itself.",
+        help="""Specify additional CLI arguments to be passed to 'podman run' or
+ 'docker run'. Each argument must be passed as an individual argument itself.""",
     )
     parser.addoption(
         "--extra-build-args",
         type=str,
         nargs="*",
         default=[],
-        help="Specify additional CLI arguments to be passed to 'buildah bud' or 'docker build'. Each argument must be passed as an individual argument itself",
+        help="""Specify additional CLI arguments to be passed to 'buildah bud'
+ or 'docker build'. Each argument must be passed as an individual argument itself""",
     )
 
 

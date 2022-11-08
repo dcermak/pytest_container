@@ -123,7 +123,8 @@ class Version:
     def parse(version_string: str) -> "Version":
         """Parses a version string and returns a constructed Version from that."""
         matches = re.match(
-            r"(?P<major>\d+)(\.(?P<minor>\d+))?(\.(?P<patch>\d+))?([+|-](?P<release>\S+))?( build (?P<build>\S+))?$",
+            r"(?P<major>\d+)(\.(?P<minor>\d+))?(\.(?P<patch>\d+))?"
+            r"([+|-](?P<release>\S+))?( build (?P<build>\S+))?$",
             # let's first remove any leading & trailing whitespace to make our life easier
             version_string.strip(),
         )
