@@ -14,10 +14,10 @@ CONTAINER_IMAGES = [LEAP_WITH_ENV]
 
 
 def test_environment_variables_present(auto_container):
-    for k, v in ENV.items():
+    for env_var_name, env_var_val in ENV.items():
         assert (
             auto_container.connection.run_expect(
-                [0], f"echo ${k}"
+                [0], f"echo ${env_var_name}"
             ).stdout.strip()
-            == v
+            == env_var_val
         )

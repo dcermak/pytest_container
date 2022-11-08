@@ -100,7 +100,7 @@ def test_container_from_pytest_param():
     )
     assert container_from_pytest_param(derived) == derived
 
-    with pytest.raises(ValueError) as ve:
+    with pytest.raises(ValueError) as val_err_ctx:
         container_from_pytest_param(pytest.param(16, 45))
-    assert "Invalid pytest.param values" in str(ve.value)
-    assert "(16, 45)" in str(ve.value)
+    assert "Invalid pytest.param values" in str(val_err_ctx.value)
+    assert "(16, 45)" in str(val_err_ctx.value)
