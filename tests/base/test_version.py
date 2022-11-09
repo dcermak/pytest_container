@@ -1,5 +1,5 @@
 """Unit tests of the Version class"""
-# pylint: disable=missing-function-docstring
+# pylint: disable=missing-function-docstring,missing-module-docstring
 from pytest_container import Version
 from pytest_container.runtime import _get_docker_version
 from pytest_container.runtime import _get_podman_version
@@ -201,25 +201,25 @@ def test_parse_valid_version_strings(ver_str: str, expected_version: Version):
     assert Version.parse(ver_str) == expected_version
 
 
-_invalid_1 = "2.5 not-build 46"
-_invalid_2 = "16.84 build but with too much text"
-_invalid_3 = "asdf"
+_INVALID_1 = "2.5 not-build 46"
+_INVALID_2 = "16.84 build but with too much text"
+_INVALID_3 = "asdf"
 
 
 @pytest.mark.parametrize(
     "ver_str,exception,exception_text",
     [
         (
-            _invalid_1,
+            _INVALID_1,
             ValueError,
-            f"Invalid version string: {_invalid_1}",
+            f"Invalid version string: {_INVALID_1}",
         ),
         (
-            _invalid_2,
+            _INVALID_2,
             ValueError,
-            f"Invalid version string: {_invalid_2}",
+            f"Invalid version string: {_INVALID_2}",
         ),
-        (_invalid_3, ValueError, f"Invalid version string: {_invalid_3}"),
+        (_INVALID_3, ValueError, f"Invalid version string: {_INVALID_3}"),
     ],
 )
 def test_parse_invalid_version_strings(

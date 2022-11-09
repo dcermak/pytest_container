@@ -1,4 +1,4 @@
-# pylint: disable=missing-function-docstring
+# pylint: disable=missing-function-docstring,missing-module-docstring
 from pathlib import Path
 from pytest_container import Container
 from pytest_container import DerivedContainer
@@ -8,21 +8,21 @@ import pytest
 
 
 def test_container_default_entry_point_and_custom_one_set():
-    with pytest.raises(ValueError) as ve:
+    with pytest.raises(ValueError) as val_err_ctx:
         Container(
             url="ignore", default_entry_point=True, custom_entry_point="foobar"
         )
-    assert "A custom entry point has been provided" in str(ve.value)
+    assert "A custom entry point has been provided" in str(val_err_ctx.value)
 
 
 def test_derived_container_default_entry_point_and_custom_one_set():
-    with pytest.raises(ValueError) as ve:
+    with pytest.raises(ValueError) as val_err_ctx:
         DerivedContainer(
             base="foobar",
             default_entry_point=True,
             custom_entry_point="foobar",
         )
-    assert "A custom entry point has been provided" in str(ve.value)
+    assert "A custom entry point has been provided" in str(val_err_ctx.value)
 
 
 def test_derived_container_fails_without_base():
@@ -30,10 +30,10 @@ def test_derived_container_fails_without_base():
     the base parameter.
 
     """
-    with pytest.raises(ValueError) as ve:
+    with pytest.raises(ValueError) as val_err_ctx:
         DerivedContainer()
 
-    assert str(ve.value) == "A base container must be provided"
+    assert str(val_err_ctx.value) == "A base container must be provided"
 
 
 def test_get_base_of_derived_container():

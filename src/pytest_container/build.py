@@ -157,12 +157,12 @@ class MultiStageBuild:
 
     def prepare_build(
         self,
-        tmp_dir: Path,
+        tmp_path: Path,
         rootdir: Path,
         extra_build_args: Optional[List[str]] = None,
     ) -> None:
         """Prepares the multistage build: it writes the rendered :file:`Containerfile`
-        into ``tmp_dir`` and prepares all containers in :py:attr:`containers` in
+        into ``tmp_path`` and prepares all containers in :py:attr:`containers` in
         the given ``rootdir``. Optional additional build arguments can be passed
         to the preparation of the containers
 
@@ -174,7 +174,7 @@ class MultiStageBuild:
                     rootdir, extra_build_args
                 )
 
-        dockerfile_dest = tmp_dir / "Dockerfile"
+        dockerfile_dest = tmp_path / "Dockerfile"
         with open(dockerfile_dest, "w", encoding="utf-8") as containerfile:
             _logger.debug(
                 "Writing the following dockerfile into %s: %s",
@@ -185,17 +185,17 @@ class MultiStageBuild:
 
     def run_build_step(
         self,
-        tmp_dir: Path,
+        tmp_path: Path,
         runtime: OciRuntimeBase,
         target: Optional[str] = None,
         extra_build_args: Optional[List[str]] = None,
     ) -> bytes:
-        """Run the multistage build in the given ``tmp_dir`` using the supplied
+        """Run the multistage build in the given ``tmp_path`` using the supplied
         ``runtime``. This function requires :py:meth:`prepare_build` to be run
         beforehands.
 
         Args:
-            tmp_dir: the path in which the build was prepared.
+            tmp_path: the path in which the build was prepared.
             runtime: the container runtime which will be used to perform the
                 build
             target: an optional target to which the build will be run, see `the
@@ -210,14 +210,14 @@ class MultiStageBuild:
             runtime.build_command
             + (extra_build_args or [])
             + (["--target", target] if target else [])
-            + [str(tmp_dir)]
+            + [str(tmp_path)]
         )
         _logger.debug("Running multistage container build: %s", cmd)
         return check_output(cmd)
 
     def build(
         self,
-        tmp_dir: Path,
+        tmp_path: Path,
         rootdir_or_pytestconfig: Union[Path, Config],
         runtime: OciRuntimeBase,
         target: Optional[str] = None,
@@ -226,9 +226,9 @@ class MultiStageBuild:
         """Perform the complete multistage build to an optional target.
 
         Args:
-            tmp_dir: temporary directory into which the :file:`Containerfile` is
+            tmp_path: temporary directory into which the :file:`Containerfile` is
                 written and where the build is performed. This value can be
-                provided via the `tmp_dir pytest fixture
+                provided via the `tmp_path pytest fixture
                 <https://docs.pytest.org/en/latest/how-to/tmp_path.html>`_
             rootdir_or_pytestconfig: root directory of the current test suite or
                 a `pytestconfig fixture
@@ -255,12 +255,12 @@ class MultiStageBuild:
             else rootdir_or_pytestconfig
         )
         self.prepare_build(
-            tmp_dir,
+            tmp_path,
             root,
             extra_build_args,
         )
         return runtime.get_image_id_from_stdout(
             self.run_build_step(
-                tmp_dir, runtime, target, extra_build_args
+                tmp_path, runtime, target, extra_build_args
             ).decode()
         )

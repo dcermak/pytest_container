@@ -1,4 +1,4 @@
-# pylint: disable=missing-function-docstring
+# pylint: disable=missing-function-docstring,missing-module-docstring
 from pathlib import Path
 from pytest_container import Container
 from pytest_container import DerivedContainer
@@ -220,6 +220,7 @@ def test_multistage_build_target(
             distro
             in LOCALHOST.run_expect(
                 [0],
-                f"{container_runtime.runner_binary} run --rm --entrypoint= {target} cat /etc/os-release",
+                f"{container_runtime.runner_binary} run --rm --entrypoint= {target} "
+                "cat /etc/os-release",
             ).stdout.strip()
         )

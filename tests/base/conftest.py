@@ -1,3 +1,4 @@
+# pylint: disable=missing-function-docstring,missing-module-docstring
 from pytest_container import add_extra_run_and_build_args_options
 from pytest_container import add_logging_level_options
 from pytest_container import auto_container_parametrize
