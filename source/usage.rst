@@ -243,3 +243,41 @@ the port that ``pytest_container`` used to expose the container's port:
            [0],
            f"curl localhost:{auto_container.forwarded_ports[0].host_port}",
        ).stdout.strip()
+
+
+Setting up bind mounts
+----------------------
+
+Some tests require that containers are launched with a bind-mounted
+volume. While this can be easily achieved by adding the bind mount command line
+arguments to
+:py:attr:`~pytest_container.container.ContainerBase.extra_launch_args`, this
+approach can quickly cause problems for concurrent tests (multiple containers
+could be accessing the a volume at the same time).
+
+``pytest_container`` offers a convenience class for abstracting away the
+creation of bind mounts via the
+:py:attr:`~pytest_container.container.ContainerBase.volume_mounts` attribute
+using the :py:class:`~pytest_container.container.ContainerVolume` class. It
+allows you to automatically create temporary directories on the host, mounts
+them in the container and cleans everything up after the test run.
+
+The following snippet illustrates how to mount
+
+.. code-block:: python
+
+   NGINX = DerivedContainer(
+       base="docker.io/library/nginx",
+       containerfile=""" # snip
+       EXPOSE 80
+       """,
+       volume_mounts=[
+           ContainerVolume("/etc/nginx/templates", "/path/to/templates"),
+           ContainerVolume("/etc/nginx/nginx.conf", "/path/to/nginx.conf", flags=[VolumeFlag.READ_ONLY]),
+           ContainerVolume("/var/cache/nginx")
+       ]
+   )
+
+   def check_nginx_cache(container_per_test: ContainerData):
+       cache_on_host = container_per_test.container.volume_mounts.host_path
+       # cache_on_host is a temporary directory that was just created
