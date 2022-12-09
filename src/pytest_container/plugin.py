@@ -113,12 +113,16 @@ def _create_auto_container_fixture(
                         container_id,
                     ],
                 )
+            for vol in launch_data.volume_mounts:
+                vol.cleanup()
 
             if release_lock_cond:
                 release_lock()
 
         try:
             try:
+                for vol in launch_data.volume_mounts:
+                    vol.setup()
                 launch_data.prepare_container(
                     rootdir=pytestconfig.rootpath,
                     extra_build_args=get_extra_build_args(pytestconfig),

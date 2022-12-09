@@ -23,36 +23,59 @@ jobs:
           key: poetry-${{ hashFiles('poetry.lock') }}
 
       - run: |
-          pip install --user --upgrade poetry
+          pip install --upgrade poetry
           poetry install
           poetry run ./format.sh --check
 
   ci:
     name: Run the integration tests
-    runs-on: ubuntu-latest
+    runs-on: ${{ matrix.os_version }}
     strategy:
       fail-fast: false
       matrix:
-        python_version: ["3.6", "3.7", "3.8", "3.9", "3.10"]
+        os_version: ["ubuntu-latest"]
+        python_version: ["3.7", "3.8", "3.9", "3.10"]
         container_runtime: ["podman", "docker"]
+        include:
+          - os_version: "ubuntu-20.04"
+            python_version: "3.6"
+            container_runtime: "podman"
+          - os_version: "ubuntu-20.04"
+            python_version: "3.6"
+            container_runtime: "docker"
 
     steps:
       - uses: actions/checkout@v3
       - uses: actions/setup-python@v4
         with:
           python-version: ${{ matrix.python_version }}
+
       - uses: actions/cache@v3
         with:
           path: ~/.tox
           key: tox-${{ matrix.python_version }}-${{ hashFiles('poetry.lock') }}
 
-      - run: pip install --user --upgrade tox tox-poetry poetry
+      - run: pip install --upgrade 'tox<4' poetry
+        if: (matrix.python_version == '3.6') || (matrix.python_version == '3.7')
+
+      - run: pip install --upgrade tox poetry
+        if: (matrix.python_version == '3.8') || (matrix.python_version == '3.9') || (matrix.python_version == '3.10')
+
       - run: |
           export CUR_USER="$(whoami)"
           sudo loginctl enable-linger ${CUR_USER}
 
+      - name: patch tox.ini for old poetry versions shipped with python 3.6 & 3.7 and remove the lockfile
+        if: (matrix.python_version == '3.6') || (matrix.python_version == '3.7')
+        run: |
+          sed -i 's| --no-root --sync|\nskip_install = true|' tox.ini
+          rm poetry.lock
+
       - run: |
-          tox -e py${PY_VER//\./} -- -n auto  --reruns 3 --pytest-container-log-level DEBUG
+          mkdir ./tmp/
+          chmod 1777 ./tmp
+          export TMPDIR="$(pwd)/tmp"
+          tox -e py${PY_VER//\./} -- -n auto --reruns 3 --pytest-container-log-level DEBUG
           tox -e py${PY_VER//\./} -- --reruns 3 --pytest-container-log-level DEBUG
         env:
           CONTAINER_RUNTIME: ${{ matrix.container_runtime }}
@@ -65,11 +88,15 @@ jobs:
 
   install:
     name: Build and install the package
-    runs-on: ubuntu-latest
+    runs-on: ${{ matrix.os_version }}
     strategy:
       fail-fast: false
       matrix:
-        python_version: ["3.6", "3.7", "3.8", "3.9", "3.10"]
+        os_version: ["ubuntu-latest"]
+        python_version: ["3.7", "3.8", "3.9", "3.10"]
+        include:
+          - os_version: "ubuntu-20.04"
+            python_version: "3.6"
 
     steps:
       - uses: actions/checkout@v3
@@ -82,7 +109,7 @@ jobs:
           key: poetry-${{ matrix.python_version }}-${{ hashFiles('poetry.lock') }}
 
       - run: |
-          pip install --user --upgrade poetry
+          pip install --upgrade poetry
           poetry install
           poetry build
           pip install --user dist/pytest_container*whl
@@ -102,7 +129,7 @@ jobs:
           path: ~/.tox
           key: tox-${{ hashFiles('poetry.lock') }}
 
-      - run: pip install --user --upgrade tox tox-poetry poetry
+      - run: pip install --upgrade tox poetry
 
       - run: 'tox -e doc'
 
@@ -120,6 +147,6 @@ jobs:
           path: ~/.tox
           key: tox-${{ hashFiles('poetry.lock') }}
 
-      - run: pip install --user --upgrade tox tox-poetry poetry
+      - run: pip install --upgrade tox poetry
 
       - run: 'tox -e lint'

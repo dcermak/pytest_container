@@ -3,6 +3,7 @@ import functools
 import itertools
 import operator
 import os
+import sys
 import tempfile
 from abc import ABC
 from abc import abstractmethod
@@ -159,6 +160,154 @@ def create_host_port_port_forward(
     return finished_forwards
 
 
+@enum.unique
+class VolumeFlag(enum.Enum):
+    """Supported flags for mounting container volumes."""
+
+    #: The volume is mounted read-only
+    READ_ONLY = "ro"
+    #: The volume is mounted read-write (default)
+    READ_WRITE = "rw"
+
+    #: The volume is relabeled so that it can be shared by two containers
+    SELINUX_SHARED = "z"
+    #: The volume is relabeled so that only a single container can access it
+    SELINUX_PRIVATE = "Z"
+
+    #: The volume is mounted as a temporary storage using overlay-fs (only
+    #: supported by :command:`podman`)
+    OVERLAY = "O"
+
+    def __str__(self) -> str:
+        assert isinstance(self.value, str)
+        return self.value
+
+
+if sys.version_info >= (3, 9):
+    TEMPDIR_T = tempfile.TemporaryDirectory[str]
+else:
+    TEMPDIR_T = tempfile.TemporaryDirectory
+
+
+@dataclass
+class ContainerVolume:
+    """A volume mounted into a container from the host using bind mounts.
+
+    This class describes a bind mount of a host directory into a container. In
+    the most minimal configuration, all you need to specify is the path in the
+    container via :py:attr:`~ContainerVolume.container_path`. The ``container*``
+    fixtures will then create a temporary directory on the host for you that
+    will be used as the mount point. Alternatively, you can also specify the
+    path on the host yourself via :py:attr:`host_path`.
+
+    """
+
+    #: Path inside the container where this volume will be mounted
+    container_path: str
+
+    #: Path on the host that will be mounted. When omitted, a temporary
+    #: directory will be created and the path will be saved in this attribute.
+    host_path: Optional[str] = None
+
+    #: Flags for mounting this volume.
+    #:
+    #: Note that some flags are mutually exclusive and potentially not supported
+    #: by all container runtimes.
+    #: The :py:attr:`VolumeFlag.SELINUX_PRIVATE` flag will be added by default
+    #: to the flags unless :py:attr:`ContainerVolume.shared` is ``True``.
+    flags: List[VolumeFlag] = field(default_factory=list)
+
+    #: Define whether this volume should can be shared between
+    #: containers. Defaults to ``False``.
+    #:
+    #: This affects only the addition of SELinux flags to
+    #: :py:attr:`~ContainerVolume.flags`.
+    shared: bool = False
+
+    _tmpdir: Optional[TEMPDIR_T] = None
+
+    # This is a stupid hack that we require for this plugin to work with
+    # pytest-rerunfailures:
+    # rerunfailures will reset this class only partially, it sets `_tmpdir` to
+    # `None` but it does **not** reset `host_path`...
+    # That makes it more or less impossible to correctly implement setup()
+    # without an auxiliary variable that stores whether a tmpdir should be
+    # created. Well and that's the story behind this one...
+    _create_tmp: bool = True
+
+    def __post_init__(self) -> None:
+        self._create_tmp = not self.host_path
+
+        if (
+            VolumeFlag.SELINUX_PRIVATE not in self.flags
+            and VolumeFlag.SELINUX_SHARED not in self.flags
+        ):
+            self.flags.append(
+                VolumeFlag.SELINUX_SHARED
+                if self.shared
+                else VolumeFlag.SELINUX_PRIVATE
+            )
+
+        for mutually_exclusive_flags in (
+            (VolumeFlag.READ_ONLY, VolumeFlag.READ_WRITE),
+            (VolumeFlag.SELINUX_SHARED, VolumeFlag.SELINUX_PRIVATE),
+        ):
+            if (
+                mutually_exclusive_flags[0] in self.flags
+                and mutually_exclusive_flags[1] in self.flags
+            ):
+                raise ValueError(
+                    f"Invalid container volume flags: {', '.join(str(f) for f in self.flags)}; "
+                    f"flags {mutually_exclusive_flags[0]} and {mutually_exclusive_flags[1]} "
+                    "are mutually exclusive"
+                )
+
+    def setup(self) -> None:
+        """Creates the temporary host path if necessary. This function is called
+        automatically by the ``*container*`` fixtures.
+
+        """
+        if self._create_tmp:
+            self._tmpdir = tempfile.TemporaryDirectory()
+            self.host_path = self._tmpdir.name
+
+            _logger.debug(
+                "created temporary directory %s for the container volume %s",
+                self._tmpdir.name,
+                self.container_path,
+            )
+
+        assert self.host_path
+        if not os.path.exists(self.host_path):
+            raise RuntimeError(
+                f"Volume with the host path '{self.host_path}' "
+                "was requested but the directory does not exist"
+            )
+
+    def cleanup(self) -> None:
+        """Cleans up the temporary host directory if necessary. This function is
+        called automatically by the ``*container*`` fixtures.
+
+        """
+        if self._tmpdir:
+            _logger.debug(
+                "cleaning up directory %s for the container volume %s",
+                self.host_path,
+                self.container_path,
+            )
+            assert self.host_path
+            self._tmpdir.cleanup()
+
+    @property
+    def cli_arg(self) -> str:
+        """Command line argument to mount this volume."""
+        assert self.host_path
+        res = f"-v={self.host_path}:{self.container_path}"
+        if self.flags:
+            res += ":" + ",".join(str(f) for f in self.flags)
+        return res
+
+
 @dataclass
 class ContainerBase:
     #: Full url to this container via which it can be pulled
@@ -200,6 +349,9 @@ class ContainerBase:
 
     #: forwarded ports of this container
     forwarded_ports: List[PortForwarding] = field(default_factory=list)
+
+    #: optional list of volumes that should be mounted in this container
+    volume_mounts: List[ContainerVolume] = field(default_factory=list)
 
     _is_local: bool = False
 
@@ -261,6 +413,7 @@ class ContainerBase:
                 if self.extra_environment_variables
                 else []
             )
+            + [vol.cli_arg for vol in self.volume_mounts]
         )
 
         if self.entry_point is None:
