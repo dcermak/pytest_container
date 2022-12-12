@@ -86,9 +86,36 @@ jobs:
         with:
           fail_ci_if_error: true
 
+  build:
+    name: Build the package
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v3
+      - uses: actions/setup-python@v4
+        with:
+          python-version: "3.x"
+      - uses: actions/cache@v3
+        with:
+          path: ~/.cache/pypoetry/virtualenvs
+          key: poetry-${{ hashFiles('poetry.lock') }}
+
+      - name: Run the build
+        run: |
+          pip install --upgrade poetry
+          poetry install
+          poetry build
+
+      - uses: actions/upload-artifact@v3
+        with:
+          name: wheel
+          path: dist/pytest_container*whl
+          if-no-files-found: error
+
   install:
-    name: Build and install the package
+    name: Install the package
     runs-on: ${{ matrix.os_version }}
+    needs: build
     strategy:
       fail-fast: false
       matrix:
@@ -99,21 +126,20 @@ jobs:
             python_version: "3.6"
 
     steps:
-      - uses: actions/checkout@v3
       - uses: actions/setup-python@v4
         with:
           python-version: ${{ matrix.python_version }}
-      - uses: actions/cache@v3
-        with:
-          path: ~/.cache/pypoetry/virtualenvs
-          key: poetry-${{ matrix.python_version }}-${{ hashFiles('poetry.lock') }}
 
-      - run: |
-          pip install --upgrade poetry
-          poetry install
-          poetry build
-          pip install --user dist/pytest_container*whl
-          python -c "import pytest_container; print (pytest_container.__name__)"
+      - uses: actions/download-artifact@v3
+        with:
+          name: wheel
+          path: dist
+
+      - name: install the wheel
+        run: pip install --user dist/pytest_container*whl
+
+      - name: run a smoke test that the package has been installed
+        run: python -c "import pytest_container; print (pytest_container.__name__)"
 
   documentation:
     name: Build the documentation
