@@ -468,15 +468,16 @@ pytest = ">=3.10"
 
 [[package]]
 name = "pytest-rerunfailures"
-version = "10.2"
+version = "10.3"
 description = "pytest plugin to re-run tests to eliminate flaky failures"
 category = "dev"
 optional = false
-python-versions = ">= 3.6"
+python-versions = ">=3.6"
 
 [package.dependencies]
+importlib-metadata = {version = ">=1", markers = "python_version < \"3.8\""}
+packaging = ">=17.1"
 pytest = ">=5.3"
-setuptools = ">=40.0"
 
 [[package]]
 name = "pytest-testinfra"
@@ -733,7 +734,7 @@ testing = ["func-timeout", "jaraco.itertools", "pytest (>=4.6)", "pytest-black (
 [metadata]
 lock-version = "1.1"
 python-versions = ">=3.6.2,<4.0"
-content-hash = "60f13c662af38dcdfc2dcdd3b6a1eddd355597ccb956edaa0d6be72d4e851ec4"
+content-hash = "f1fc1d92e12e7e199101470827433235e0ca97aa2aa7333c6882b53ef74ab2a2"
 
 [metadata.files]
 alabaster = [
@@ -1085,8 +1086,8 @@ pytest-forked = [
     {file = "pytest_forked-1.4.0-py3-none-any.whl", hash = "sha256:bbbb6717efc886b9d64537b41fb1497cfaf3c9601276be8da2cccfea5a3c8ad8"},
 ]
 pytest-rerunfailures = [
-    {file = "pytest-rerunfailures-10.2.tar.gz", hash = "sha256:9e1e1bad51e07642c5bbab809fc1d4ec8eebcb7de86f90f1a26e6ef9de446697"},
-    {file = "pytest_rerunfailures-10.2-py3-none-any.whl", hash = "sha256:d31d8e828dfd39363ad99cd390187bf506c7a433a89f15c3126c7d16ab723fe2"},
+    {file = "pytest-rerunfailures-10.3.tar.gz", hash = "sha256:d8244d799f89a6edb5e57301ddaeb3b6f10d6691638d51e80b371311592e28c6"},
+    {file = "pytest_rerunfailures-10.3-py3-none-any.whl", hash = "sha256:6be6f96510bf94b54198bf15bc5568fe2cdff88e83875912e22d29810acf65ff"},
 ]
 pytest-testinfra = [
     {file = "pytest-testinfra-6.8.0.tar.gz", hash = "sha256:07c8c2c472aca7d83099ebc5f850d383721cd654b66c60ffbb145e45e584ff99"},
