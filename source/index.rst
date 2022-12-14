@@ -11,6 +11,8 @@
 
    prerequisites
 
+   tutorials
+
    fixtures
 
    usage

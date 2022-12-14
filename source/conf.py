@@ -1,3 +1,5 @@
+import datetime
+
 # Configuration file for the Sphinx documentation builder.
 #
 # This file only contains a selection of the most common options. For a full
@@ -18,7 +20,7 @@
 # -- Project information -----------------------------------------------------
 
 project = "pytest_container"
-copyright = "2021, Dan Čermák"
+copyright = f"2021-{datetime.datetime.now().year}, Dan Čermák"
 author = "Dan Čermák"
 
 

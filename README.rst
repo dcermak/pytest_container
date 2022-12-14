@@ -17,46 +17,49 @@ Pytest container
            :alt: PyPI
            :target: https://pypi.org/project/pytest-container/
 
-A simple `pytest <https://pytest.org>`_ plugin to test Container Images
-via pytest fixtures and `testinfra <https://testinfra.readthedocs.io/en/latest/>`_.
+``pytest_container`` is a `pytest <https://pytest.org>`_ plugin
+to test container images via pytest fixtures and `testinfra
+<https://testinfra.readthedocs.io/en/latest/>`_. It takes care of all the boring
+tasks, like spinning up containers, finding free ports and cleaning up after
+tests, and allows you to focus on implementing the actual tests.
 
-This module provides a set of fixtures and helper functions to ease testing of
-container images leveraging `testinfra
-<https://testinfra.readthedocs.io/en/latest/>`_. Assuming you want to
-automatically spin up a container for a test, then the `container` fixture will
-do exactly that (plus it will cleanup after itself):
+The plugin automates the following tasks:
+- pull, launch, and stop containers
+- build containers using a :file:`Dockerfile`
+- wait for containers to become healthy before executing tests
+- bind exposed container ports to free ports on the host
+- mount volumes via temporary directories
+- parallel test execution through pytest-xdist
+- build dependent container images in the correct order
+- run the same test on as many container images as necessary
+
+``pytest_container`` provides four fixtures that give you everything you need
+for testing containers. Spinning up a container image can be as simple as
+instantiating a :py:class:`~pytest_container.container.Container` and
+parametrizing a test function with the ``container`` fixture:
 
 .. code-block:: python
 
-   LEAP = Container(url="registry.opensuse.org/opensuse/leap:latest")
+   TW = Container(url="registry.opensuse.org/opensuse/tumbleweed:latest")
 
-   @pytest.mark.parametrize("container", [LEAP], indirect=["container"])
-   def test_leap(container):
+   @pytest.mark.parametrize("container", [TW], indirect=["container"])
+   def test_etc_os_release_present(container: ContainerData):
        assert container.connection.file("/etc/os-release").exists
 
 
-In the above example we created a
-:py:class:`pytest_container.container.Container` object which is just a
-container that is directly pulled from `registry.opensuse.org
-<https://registry.opensuse.org/>`_. The `container` fixture then receives this
-container via pytest's parametrization and returns a
-:py:class:`pytest_container.container.ContainerData` to the test function. In
-the test function itself, we can leverage testinfra to run some basic tests
-inside the container itself, e.g. check whether files are there, packages are
-installed, etc.pp.
+The fixture automatically pulls and spins up the container, stops it and removes
+it after the test is completed. Your test function receives an instance of
+:py:class:`~pytest_container.container.ContainerData` with the
+:py:attr:`~pytest_container.container.ContainerData.connection` attribute. The
+:py:attr:`~pytest_container.container.ContainerData.connection` attribute is a
+`testinfra <https://testinfra.readthedocs.io/en/latest/>`_ connection object. It
+can be used to run basic tests inside the container itself. For example, you can
+check whether files are present, packages are installed, etc.
 
-You can also customize the container to be used, e.g. build it from a
-``Containerfile`` or specify an entry point:
 
-.. code-block:: python
+Use cases
+---------
 
-   BUSYBOX_WITH_ENTRYPOINT = Container(
-       url="registry.opensuse.org/opensuse/busybox:latest",
-       custom_entry_point="/bin/sh",
-   )
+1. Run functional tests on operating system container images
 
-   @pytest.mark.parametrize(
-       "container", [BUSYBOX_WITH_ENTRYPOINT], indirect=["container"]
-   )
-   def test_custom_entry_point(container):
-       container.connection.run_expect([0], "true")
+2. Verify your software on multiple operating systems

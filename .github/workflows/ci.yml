@@ -159,6 +159,32 @@ jobs:
 
       - run: 'tox -e doc'
 
+      - name: upload the build directory
+        uses: actions/upload-artifact@v3
+        with:
+          name: build
+          path: ./build/html
+
+  deploy:
+    name: deploy to the gh-pages branch
+    runs-on: ubuntu-latest
+    needs: documentation
+    if: github.ref == 'refs/heads/main'
+    steps:
+      - uses: actions/checkout@v3
+      - uses: actions/download-artifact@v3
+        with:
+          name: build
+          path: ./build
+
+      - run: touch ./build/.nojekyll
+
+      - name: deploy to github pages
+        uses: JamesIves/github-pages-deploy-action@v4
+        with:
+          branch: gh-pages
+          folder: build
+
   lint:
     name: Lint the source code
     runs-on: ubuntu-latest

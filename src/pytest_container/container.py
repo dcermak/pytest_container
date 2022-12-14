@@ -107,7 +107,8 @@ def is_socket_listening_on_localhost(
     # because that will check whether a service is listening on **all**
     # interfaces. If it only listens on one, then the port is still occupied,
     # but the above check will be `False` giving us false results.
-    # The remedy would be to iterate over all IPs, but that would be just
+    # The remedy would be to iterate over all IPs, but that would be a bit too
+    # tedious.
 
     for socket in LOCALHOST.socket.get_listening_sockets():
         # socket looks like this:
