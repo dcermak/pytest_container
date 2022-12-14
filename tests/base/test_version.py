@@ -55,6 +55,7 @@ def test_version_ne(ver1: Version, ver2: Version):
     [
         (Version(1, 2), "1.2"),
         (Version(1, 2, 5), "1.2.5"),
+        (Version(0, 3, 0), "0.3.0"),
         (Version(1, 2, 5, build="sdf"), "1.2.5 build sdf"),
         (Version(1, 2, 5, release="1.fc16"), "1.2.5-1.fc16"),
         (

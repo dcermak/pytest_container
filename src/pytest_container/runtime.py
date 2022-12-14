@@ -103,7 +103,7 @@ class Version:
 
     def __str__(self) -> str:
         return (
-            f"{self.major}.{self.minor}{('.' + str(self.patch)) if self.patch else ''}"
+            f"{self.major}.{self.minor}{('.' + str(self.patch)) if self.patch is not None else ''}"
             + (f"-{self.release}" if self.release else "")
             + (f" build {self.build}" if self.build else "")
         )
