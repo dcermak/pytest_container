@@ -1,0 +1,198 @@
+
+<!DOCTYPE html>
+
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="generator" content="Docutils 0.18.1: http://docutils.sourceforge.net/" />
+
+    <title>Pytest container &#8212; pytest_container  documentation</title>
+    <link rel="stylesheet" type="text/css" href="_static/pygments.css" />
+    <link rel="stylesheet" type="text/css" href="_static/alabaster.css" />
+    <script data-url_root="./" id="documentation_options" src="_static/documentation_options.js"></script>
+    <script src="_static/jquery.js"></script>
+    <script src="_static/underscore.js"></script>
+    <script src="_static/_sphinx_javascript_frameworks_compat.js"></script>
+    <script src="_static/doctools.js"></script>
+    <script src="_static/sphinx_highlight.js"></script>
+    <link rel="index" title="Index" href="genindex.html" />
+    <link rel="search" title="Search" href="search.html" />
+    <link rel="next" title="Prerequisites" href="prerequisites.html" />
+   
+  <link rel="stylesheet" href="_static/custom.css" type="text/css" />
+  
+  
+  <meta name="viewport" content="width=device-width, initial-scale=0.9, maximum-scale=0.9" />
+
+  </head><body>
+  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          
+
+          <div class="body" role="main">
+            
+  <section id="pytest-container">
+<h1>Pytest container<a class="headerlink" href="#pytest-container" title="Permalink to this heading">¶</a></h1>
+<a class="reference external image-reference" href="https://github.com/dcermak/pytest_container/actions/workflows/ci.yml"><img alt="https://github.com/dcermak/pytest_container/actions/workflows/ci.yml/badge.svg" src="https://github.com/dcermak/pytest_container/actions/workflows/ci.yml/badge.svg" /></a>
+<a class="reference external image-reference" href="https://github.com/dcermak/pytest_container/actions/workflows/codeql-analysis.yml"><img alt="https://github.com/dcermak/pytest_container/actions/workflows/codeql-analysis.yml/badge.svg" src="https://github.com/dcermak/pytest_container/actions/workflows/codeql-analysis.yml/badge.svg" /></a>
+<a class="reference external image-reference" href="https://codecov.io/gh/dcermak/pytest_container"><img alt="https://codecov.io/gh/dcermak/pytest_container/branch/main/graph/badge.svg?token=D16Q2PGL67" src="https://codecov.io/gh/dcermak/pytest_container/branch/main/graph/badge.svg?token=D16Q2PGL67" /></a>
+<a class="reference external image-reference" href="https://app.fossa.com/projects/git%2Bgithub.com%2Fdcermak%2Fpytest_container?ref=badge_shield"><img alt="https://app.fossa.com/api/projects/git%2Bgithub.com%2Fdcermak%2Fpytest_container.svg?type=shield" src="https://app.fossa.com/api/projects/git%2Bgithub.com%2Fdcermak%2Fpytest_container.svg?type=shield" /></a>
+<a class="reference external image-reference" href="https://pypi.org/project/pytest-container/"><img alt="PyPI" src="https://img.shields.io/pypi/v/pytest-container" /></a>
+<p><code class="docutils literal notranslate"><span class="pre">pytest_container</span></code> is a <a class="reference external" href="https://pytest.org">pytest</a> plugin
+to test container images via pytest fixtures and <a class="reference external" href="https://testinfra.readthedocs.io/en/latest/">testinfra</a>. It takes care of all the boring
+tasks, like spinning up containers, finding free ports and cleaning up after
+tests, and allows you to focus on implementing the actual tests.</p>
+<p>The plugin automates the following tasks:
+- pull, launch, and stop containers
+- build containers using a <code class="file docutils literal notranslate"><span class="pre">Dockerfile</span></code>
+- wait for containers to become healthy before executing tests
+- bind exposed container ports to free ports on the host
+- mount volumes via temporary directories
+- parallel test execution through pytest-xdist
+- build dependent container images in the correct order
+- run the same test on as many container images as necessary</p>
+<p><code class="docutils literal notranslate"><span class="pre">pytest_container</span></code> provides four fixtures that give you everything you need
+for testing containers. Spinning up a container image can be as simple as
+instantiating a <a class="reference internal" href="api.html#pytest_container.container.Container" title="pytest_container.container.Container"><code class="xref py py-class docutils literal notranslate"><span class="pre">Container</span></code></a> and
+parametrizing a test function with the <code class="docutils literal notranslate"><span class="pre">container</span></code> fixture:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">TW</span> <span class="o">=</span> <span class="n">Container</span><span class="p">(</span><span class="n">url</span><span class="o">=</span><span class="s2">&quot;registry.opensuse.org/opensuse/tumbleweed:latest&quot;</span><span class="p">)</span>
+
+<span class="nd">@pytest</span><span class="o">.</span><span class="n">mark</span><span class="o">.</span><span class="n">parametrize</span><span class="p">(</span><span class="s2">&quot;container&quot;</span><span class="p">,</span> <span class="p">[</span><span class="n">TW</span><span class="p">],</span> <span class="n">indirect</span><span class="o">=</span><span class="p">[</span><span class="s2">&quot;container&quot;</span><span class="p">])</span>
+<span class="k">def</span> <span class="nf">test_etc_os_release_present</span><span class="p">(</span><span class="n">container</span><span class="p">:</span> <span class="n">ContainerData</span><span class="p">):</span>
+    <span class="k">assert</span> <span class="n">container</span><span class="o">.</span><span class="n">connection</span><span class="o">.</span><span class="n">file</span><span class="p">(</span><span class="s2">&quot;/etc/os-release&quot;</span><span class="p">)</span><span class="o">.</span><span class="n">exists</span>
+</pre></div>
+</div>
+<p>The fixture automatically pulls and spins up the container, stops it and removes
+it after the test is completed. Your test function receives an instance of
+<a class="reference internal" href="api.html#pytest_container.container.ContainerData" title="pytest_container.container.ContainerData"><code class="xref py py-class docutils literal notranslate"><span class="pre">ContainerData</span></code></a> with the
+<a class="reference internal" href="api.html#pytest_container.container.ContainerData.connection" title="pytest_container.container.ContainerData.connection"><code class="xref py py-attr docutils literal notranslate"><span class="pre">connection</span></code></a> attribute. The
+<a class="reference internal" href="api.html#pytest_container.container.ContainerData.connection" title="pytest_container.container.ContainerData.connection"><code class="xref py py-attr docutils literal notranslate"><span class="pre">connection</span></code></a> attribute is a
+<a class="reference external" href="https://testinfra.readthedocs.io/en/latest/">testinfra</a> connection object. It
+can be used to run basic tests inside the container itself. For example, you can
+check whether files are present, packages are installed, etc.</p>
+<section id="use-cases">
+<h2>Use cases<a class="headerlink" href="#use-cases" title="Permalink to this heading">¶</a></h2>
+<ol class="arabic simple">
+<li><p>Run functional tests on operating system container images</p></li>
+<li><p>Verify your software on multiple operating systems</p></li>
+</ol>
+<div class="toctree-wrapper compound">
+<p class="caption" role="heading"><span class="caption-text">Contents:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="prerequisites.html">Prerequisites</a></li>
+<li class="toctree-l1"><a class="reference internal" href="tutorials.html">Tutorials</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="tutorials.html#getting-started-with-pytest-container">Getting started with <code class="docutils literal notranslate"><span class="pre">pytest_container</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="fixtures.html">Fixtures</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="fixtures.html#handling-healthcheck">Handling Healthcheck</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="usage.html">Usage Tips</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="usage.html#adding-global-build-and-run-arguments">Adding global build and run arguments</a></li>
+<li class="toctree-l2"><a class="reference internal" href="usage.html#configuring-logging">Configuring logging</a></li>
+<li class="toctree-l2"><a class="reference internal" href="usage.html#testing-local-images">Testing local images</a></li>
+<li class="toctree-l2"><a class="reference internal" href="usage.html#container-runtime-version">Container Runtime version</a></li>
+<li class="toctree-l2"><a class="reference internal" href="usage.html#copying-files-into-containers">Copying files into containers</a></li>
+<li class="toctree-l2"><a class="reference internal" href="usage.html#exposing-ports-from-containers">Exposing ports from containers</a></li>
+<li class="toctree-l2"><a class="reference internal" href="usage.html#setting-up-bind-mounts">Setting up bind mounts</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="api.html">API documentation</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="api.html#module-pytest_container.container">The container module</a></li>
+<li class="toctree-l2"><a class="reference internal" href="api.html#module-pytest_container.build">The build module</a></li>
+<li class="toctree-l2"><a class="reference internal" href="api.html#module-pytest_container.runtime">The runtime module</a></li>
+<li class="toctree-l2"><a class="reference internal" href="api.html#module-pytest_container.helpers">The helpers module</a></li>
+<li class="toctree-l2"><a class="reference internal" href="api.html#module-pytest_container.plugin">The plugin module</a></li>
+<li class="toctree-l2"><a class="reference internal" href="api.html#module-pytest_container.logging">The logging module</a></li>
+</ul>
+</li>
+</ul>
+</div>
+</section>
+</section>
+<section id="indices-and-tables">
+<h1>Indices and tables<a class="headerlink" href="#indices-and-tables" title="Permalink to this heading">¶</a></h1>
+<ul class="simple">
+<li><p><a class="reference internal" href="genindex.html"><span class="std std-ref">Index</span></a></p></li>
+<li><p><a class="reference internal" href="py-modindex.html"><span class="std std-ref">Module Index</span></a></p></li>
+<li><p><a class="reference internal" href="search.html"><span class="std std-ref">Search Page</span></a></p></li>
+</ul>
+</section>
+
+
+          </div>
+          
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper">
+<h1 class="logo"><a href="#">pytest_container</a></h1>
+
+
+
+
+
+
+
+
+<h3>Navigation</h3>
+<p class="caption" role="heading"><span class="caption-text">Contents:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="prerequisites.html">Prerequisites</a></li>
+<li class="toctree-l1"><a class="reference internal" href="tutorials.html">Tutorials</a></li>
+<li class="toctree-l1"><a class="reference internal" href="fixtures.html">Fixtures</a></li>
+<li class="toctree-l1"><a class="reference internal" href="usage.html">Usage Tips</a></li>
+<li class="toctree-l1"><a class="reference internal" href="api.html">API documentation</a></li>
+</ul>
+
+<div class="relations">
+<h3>Related Topics</h3>
+<ul>
+  <li><a href="#">Documentation overview</a><ul>
+      <li>Next: <a href="prerequisites.html" title="next chapter">Prerequisites</a></li>
+  </ul></li>
+</ul>
+</div>
+<div id="searchbox" style="display: none" role="search">
+  <h3 id="searchlabel">Quick search</h3>
+    <div class="searchformwrapper">
+    <form class="search" action="search.html" method="get">
+      <input type="text" name="q" aria-labelledby="searchlabel" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false"/>
+      <input type="submit" value="Go" />
+    </form>
+    </div>
+</div>
+<script>document.getElementById('searchbox').style.display = "block"</script>
+
+
+
+
+
+
+
+
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="footer">
+      &copy;2021-2022, Dan Čermák.
+      
+      |
+      Powered by <a href="http://sphinx-doc.org/">Sphinx 5.3.0</a>
+      &amp; <a href="https://github.com/bitprophet/alabaster">Alabaster 0.7.12</a>
+      
+      |
+      <a href="_sources/index.rst.txt"
+          rel="nofollow">Page source</a>
+    </div>
+
+    
+
+    
+  </body>
+</html>

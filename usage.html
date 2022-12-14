@@ -1,0 +1,365 @@
+
+<!DOCTYPE html>
+
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="generator" content="Docutils 0.18.1: http://docutils.sourceforge.net/" />
+
+    <title>Usage Tips &#8212; pytest_container  documentation</title>
+    <link rel="stylesheet" type="text/css" href="_static/pygments.css" />
+    <link rel="stylesheet" type="text/css" href="_static/alabaster.css" />
+    <script data-url_root="./" id="documentation_options" src="_static/documentation_options.js"></script>
+    <script src="_static/jquery.js"></script>
+    <script src="_static/underscore.js"></script>
+    <script src="_static/_sphinx_javascript_frameworks_compat.js"></script>
+    <script src="_static/doctools.js"></script>
+    <script src="_static/sphinx_highlight.js"></script>
+    <link rel="index" title="Index" href="genindex.html" />
+    <link rel="search" title="Search" href="search.html" />
+    <link rel="next" title="API documentation" href="api.html" />
+    <link rel="prev" title="Fixtures" href="fixtures.html" />
+   
+  <link rel="stylesheet" href="_static/custom.css" type="text/css" />
+  
+  
+  <meta name="viewport" content="width=device-width, initial-scale=0.9, maximum-scale=0.9" />
+
+  </head><body>
+  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          
+
+          <div class="body" role="main">
+            
+  <section id="usage-tips">
+<h1>Usage Tips<a class="headerlink" href="#usage-tips" title="Permalink to this heading">¶</a></h1>
+<section id="adding-global-build-and-run-arguments">
+<h2>Adding global build and run arguments<a class="headerlink" href="#adding-global-build-and-run-arguments" title="Permalink to this heading">¶</a></h2>
+<p>Sometimes it is necessary to customize the build and run parameters of the
+container runtime globally, e.g. to use the host’s network with docker via
+<code class="docutils literal notranslate"><span class="pre">--network=host</span></code>.</p>
+<p>The <a class="reference internal" href="api.html#pytest_container.container.ContainerBaseABC.prepare_container" title="pytest_container.container.ContainerBaseABC.prepare_container"><code class="xref py py-meth docutils literal notranslate"><span class="pre">prepare_container()</span></code></a>
+and <a class="reference internal" href="api.html#pytest_container.container.ContainerBase.get_launch_cmd" title="pytest_container.container.ContainerBase.get_launch_cmd"><code class="xref py py-meth docutils literal notranslate"><span class="pre">get_launch_cmd()</span></code></a> methods
+support passing such additional arguments/flags, but this is rather cumbersome
+to use in practice. The <code class="docutils literal notranslate"><span class="pre">*_container</span></code> fixtures will therefore automatically
+collect such additional arguments from the CLI that were passed alongside the
+invocation of <strong class="command">pytest</strong> via the flags <code class="docutils literal notranslate"><span class="pre">--extra-run-args</span></code> and
+<code class="docutils literal notranslate"><span class="pre">--extra-build-args</span></code>, respectively. This requires that you call the function
+<a class="reference internal" href="api.html#pytest_container.helpers.add_extra_run_and_build_args_options" title="pytest_container.helpers.add_extra_run_and_build_args_options"><code class="xref py py-func docutils literal notranslate"><span class="pre">add_extra_run_and_build_args_options()</span></code></a> in the
+<code class="docutils literal notranslate"><span class="pre">pytest_addoption</span></code> function in your <code class="file docutils literal notranslate"><span class="pre">conftest.py</span></code> as follows:</p>
+<div class="literal-block-wrapper docutils container" id="id1">
+<div class="code-block-caption"><span class="caption-text">conftest.py</span><a class="headerlink" href="#id1" title="Permalink to this code">¶</a></div>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span> <span class="nn">pytest_container</span> <span class="kn">import</span> <span class="n">add_extra_run_and_build_args_options</span>
+
+
+<span class="k">def</span> <span class="nf">pytest_addoption</span><span class="p">(</span><span class="n">parser</span><span class="p">):</span>
+    <span class="n">add_extra_run_and_build_args_options</span><span class="p">(</span><span class="n">parser</span><span class="p">)</span>
+</pre></div>
+</div>
+</div>
+<p>Then pass any extra arguments to your pytest invocation as follows:</p>
+<div class="highlight-shell-session notranslate"><div class="highlight"><pre><span></span><span class="gp">$ </span>pytest --extra-build-args<span class="o">=</span><span class="s2">&quot;--network=host&quot;</span> --extra-build-args<span class="o">=</span><span class="s2">&quot;--no-cache&quot;</span>
+</pre></div>
+</div>
+<p>Note that multiple arguments have to be passed individually as shown in the
+example above.</p>
+<p><strong>Caution:</strong> The <a class="reference internal" href="api.html#pytest_container.build.MultiStageBuild" title="pytest_container.build.MultiStageBuild"><code class="xref py py-class docutils literal notranslate"><span class="pre">MultiStageBuild</span></code></a> class also
+supports additional build flags, but these are <strong>not</strong> collected
+automatically. If you wish to use these, you have to inject them manually as
+follows:</p>
+<div class="literal-block-wrapper docutils container" id="id2">
+<div class="code-block-caption"><span class="caption-text">test_multistage.py</span><a class="headerlink" href="#id2" title="Permalink to this code">¶</a></div>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span> <span class="nn">pytest_container</span> <span class="kn">import</span> <span class="n">get_extra_build_args</span>
+
+<span class="kn">from</span> <span class="nn">test_data</span> <span class="kn">import</span> <span class="n">MULTI_STAGE_BUILD</span>
+
+
+<span class="k">def</span> <span class="nf">test_multistage_build</span><span class="p">(</span><span class="n">tmp_path</span><span class="p">,</span> <span class="n">pytestconfig</span><span class="p">,</span> <span class="n">container_runtime</span><span class="p">):</span>
+    <span class="n">MULTI_STAGE_BUILD</span><span class="o">.</span><span class="n">build</span><span class="p">(</span>
+        <span class="n">tmp_path</span><span class="p">,</span>
+        <span class="n">pytestconfig</span><span class="p">,</span>
+        <span class="n">container_runtime</span><span class="p">,</span>
+        <span class="c1"># the flags are added here:</span>
+        <span class="n">extra_build_args</span><span class="o">=</span><span class="n">get_extra_build_args</span><span class="p">(</span><span class="n">pytestconfig</span><span class="p">),</span>
+    <span class="p">)</span>
+</pre></div>
+</div>
+</div>
+</section>
+<section id="configuring-logging">
+<h2>Configuring logging<a class="headerlink" href="#configuring-logging" title="Permalink to this heading">¶</a></h2>
+<p>The plugin uses python’s internal logging module to log debugging messages. You
+can set the logging level in your own module by calling the function
+<a class="reference internal" href="api.html#pytest_container.logging.set_internal_logging_level" title="pytest_container.logging.set_internal_logging_level"><code class="xref py py-func docutils literal notranslate"><span class="pre">set_internal_logging_level()</span></code></a>. This needs to
+happen before any tests are run, preferably in a pytest hook,
+e.g. <a class="reference external" href="https://docs.pytest.org/en/latest/reference/reference.html#_pytest.hookspec.pytest_configure">pytest_configure</a>.</p>
+<p>Sometimes it makes sense to allow the end users to configure the logging
+level. You can accomplish this via the
+<a class="reference internal" href="api.html#pytest_container.helpers.add_logging_level_options" title="pytest_container.helpers.add_logging_level_options"><code class="xref py py-func docutils literal notranslate"><span class="pre">add_logging_level_options()</span></code></a> function, which
+adds an option to the pytest CLI flags. To actually implement this setting, call
+<a class="reference internal" href="api.html#pytest_container.helpers.set_logging_level_from_cli_args" title="pytest_container.helpers.set_logging_level_from_cli_args"><code class="xref py py-func docutils literal notranslate"><span class="pre">set_logging_level_from_cli_args()</span></code></a> in a hook
+function of your choice in <code class="file docutils literal notranslate"><span class="pre">conftest.py</span></code>, e.g. as follows:</p>
+<div class="literal-block-wrapper docutils container" id="id3">
+<div class="code-block-caption"><span class="caption-text">conftest.py</span><a class="headerlink" href="#id3" title="Permalink to this code">¶</a></div>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="k">def</span> <span class="nf">pytest_addoption</span><span class="p">(</span><span class="n">parser</span><span class="p">):</span>
+    <span class="n">add_logging_level_options</span><span class="p">(</span><span class="n">parser</span><span class="p">)</span>
+
+
+<span class="k">def</span> <span class="nf">pytest_configure</span><span class="p">(</span><span class="n">config</span><span class="p">):</span>
+    <span class="n">set_logging_level_from_cli_args</span><span class="p">(</span><span class="n">config</span><span class="p">)</span>
+</pre></div>
+</div>
+</div>
+</section>
+<section id="testing-local-images">
+<h2>Testing local images<a class="headerlink" href="#testing-local-images" title="Permalink to this heading">¶</a></h2>
+<p>Sometimes it is necessary to run your tests against a locally build image
+instead of a remote one. For such a case, you can use the following
+syntax for the Container’s url, which is inspired by skopeo’s syntax:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">local</span> <span class="o">=</span> <span class="n">Container</span><span class="p">(</span><span class="n">url</span><span class="o">=</span><span class="s2">&quot;containers-storage:my/local/image/name&quot;</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>A Container defined in this way can be used like any other Container
+instance.</p>
+</section>
+<section id="container-runtime-version">
+<h2>Container Runtime version<a class="headerlink" href="#container-runtime-version" title="Permalink to this heading">¶</a></h2>
+<p>Sometimes it is necessary to implement tests differently depending on the
+version of the container runtime. The subclasses of
+<a class="reference internal" href="api.html#pytest_container.runtime.OciRuntimeBase" title="pytest_container.runtime.OciRuntimeBase"><code class="xref py py-class docutils literal notranslate"><span class="pre">OciRuntimeBase</span></code></a> have the property
+<a class="reference internal" href="api.html#pytest_container.runtime.OciRuntimeABC.version" title="pytest_container.runtime.OciRuntimeABC.version"><code class="xref py py-attr docutils literal notranslate"><span class="pre">version</span></code></a> which returns the
+runtime version of the respective runtime, e.g. of <strong class="command">podman</strong>.</p>
+<p>The returned object is an instance of
+<a class="reference internal" href="api.html#pytest_container.runtime.Version" title="pytest_container.runtime.Version"><code class="xref py py-class docutils literal notranslate"><span class="pre">Version</span></code></a> and supports comparison to for
+instance skip certain tests:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="nd">@pytest</span><span class="o">.</span><span class="n">mark</span><span class="o">.</span><span class="n">skipif</span><span class="p">(</span>
+    <span class="n">get_selected_runtime</span><span class="p">()</span><span class="o">.</span><span class="n">version</span> <span class="o">&lt;</span> <span class="n">Version</span><span class="p">(</span><span class="mi">4</span><span class="p">,</span> <span class="mi">0</span><span class="p">),</span>
+    <span class="n">reason</span><span class="o">=</span><span class="s2">&quot;This check requires at least Podman 4.0&quot;</span><span class="p">,</span>
+<span class="p">)</span>
+<span class="k">def</span> <span class="nf">test_modern_podman_feature</span><span class="p">(</span><span class="n">auto_container</span><span class="p">):</span>
+    <span class="c1"># test $new_feature here</span>
+</pre></div>
+</div>
+</section>
+<section id="copying-files-into-containers">
+<h2>Copying files into containers<a class="headerlink" href="#copying-files-into-containers" title="Permalink to this heading">¶</a></h2>
+<p>Sometimes we need to have files available in the container image to e.g. execute
+some script in an integration test. This can be achieved in two ways:</p>
+<section id="copy-the-files-at-build-time">
+<h3>1. Copy the files at build time<a class="headerlink" href="#copy-the-files-at-build-time" title="Permalink to this heading">¶</a></h3>
+<p>You can include the desired files by creating a
+<a class="reference internal" href="api.html#pytest_container.container.DerivedContainer" title="pytest_container.container.DerivedContainer"><code class="xref py py-class docutils literal notranslate"><span class="pre">DerivedContainer</span></code></a> and insert the file
+using the <code class="docutils literal notranslate"><span class="pre">COPY</span></code> or <code class="docutils literal notranslate"><span class="pre">ADD</span></code> instruction in the <code class="file docutils literal notranslate"><span class="pre">Dockerfile</span></code> (<code class="docutils literal notranslate"><span class="pre">COPY</span></code> is
+the recommended default nowadays, for a comparison of both instructions please
+refer to e.g. <a class="reference external" href="https://phoenixnap.com/kb/docker-add-vs-copy">https://phoenixnap.com/kb/docker-add-vs-copy</a>):</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">DIR</span> <span class="o">=</span> <span class="s2">&quot;path/to/testfile&quot;</span>
+<span class="n">FILE</span> <span class="o">=</span> <span class="s2">&quot;test.py&quot;</span>
+<span class="n">CDIR</span> <span class="o">=</span> <span class="s2">&quot;/dir/in/container&quot;</span>
+<span class="n">DOCKERFILE</span> <span class="o">=</span> <span class="sa">f</span><span class="s2">&quot;&quot;&quot;</span>
+<span class="s2">...</span>
+<span class="s2">COPY </span><span class="si">{</span><span class="n">DIR</span><span class="si">}</span><span class="s2">/</span><span class="si">{</span><span class="n">FILE</span><span class="si">}</span><span class="s2"> </span><span class="si">{</span><span class="n">CDIR</span><span class="si">}</span><span class="s2"></span>
+<span class="s2">...</span>
+<span class="s2">&quot;&quot;&quot;</span>
+<span class="n">CONTAINER1</span> <span class="o">=</span> <span class="n">DerivedContainer</span><span class="p">(</span>
+  <span class="n">base</span><span class="o">=</span><span class="n">some_base_image</span><span class="p">,</span>
+  <span class="n">containerfile</span><span class="o">=</span><span class="n">DOCKERFILE</span><span class="p">,</span>
+<span class="p">)</span>
+</pre></div>
+</div>
+<p>The path to <code class="file docutils literal notranslate"><span class="pre">test.py</span></code> is saved in the variable <code class="docutils literal notranslate"><span class="pre">DIR</span></code> and must be
+relative to the root directory from which you execute pytest.</p>
+<p>The object <code class="docutils literal notranslate"><span class="pre">CONTAINER1</span></code> can now be used as any other container:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="nd">@pytest</span><span class="o">.</span><span class="n">mark</span><span class="o">.</span><span class="n">parametrize</span><span class="p">(</span>
+    <span class="s2">&quot;container_per_test&quot;</span><span class="p">,</span>
+    <span class="p">[</span><span class="n">CONTAINER1</span><span class="p">],</span>
+    <span class="n">indirect</span><span class="o">=</span><span class="kc">True</span>
+<span class="p">)</span>
+<span class="k">def</span> <span class="nf">test_my_script</span><span class="p">(</span><span class="n">container_per_test</span><span class="p">,</span> <span class="o">...</span><span class="p">):</span>
+    <span class="n">container_per_test</span><span class="o">.</span><span class="n">connection</span><span class="o">.</span><span class="n">run_expect</span><span class="p">(</span>
+        <span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="sa">f</span><span class="s2">&quot;python3 </span><span class="si">{</span><span class="n">CDIR</span><span class="si">}</span><span class="s2">/</span><span class="si">{</span><span class="n">FILE</span><span class="si">}</span><span class="s2">&quot;</span>
+    <span class="p">)</span>
+</pre></div>
+</div>
+</section>
+<section id="copy-the-files-at-runtime-into-the-running-container">
+<h3>2. Copy the files at runtime into the running container<a class="headerlink" href="#copy-the-files-at-runtime-into-the-running-container" title="Permalink to this heading">¶</a></h3>
+<p>It is also possible to copy files into a container via <strong class="command">podman cp</strong> or
+<strong class="command">docker cp</strong>. In contrast to the first method, this has the disadvantage
+that the copy has to be executed for every test and it cannot be cached during
+the image build. However, it allows us to dynamically create files for each
+test, which is not that easily possible with the first approach.</p>
+<p>To successfully copy files, we need to undertake the following steps:</p>
+<ol class="arabic simple">
+<li><p>Request the following fixtures: any of the <code class="docutils literal notranslate"><span class="pre">(auto)_container_per_test</span></code>,
+<code class="docutils literal notranslate"><span class="pre">host</span></code>, <code class="docutils literal notranslate"><span class="pre">container_runtime</span></code>.</p></li>
+<li><p>Obtain the running container’s hash.</p></li>
+<li><p>Use <strong class="command">podman|docker cp command</strong>, via testinfra’s host fixture.</p></li>
+</ol>
+<p>The above steps could be implemented as follows:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">DIR</span> <span class="o">=</span> <span class="s2">&quot;path/to/testfile&quot;</span>
+<span class="n">FILE</span> <span class="o">=</span> <span class="s2">&quot;test.py&quot;</span>
+<span class="n">CDIR</span> <span class="o">=</span> <span class="s2">&quot;/dir/in/container&quot;</span>
+
+<span class="k">def</span> <span class="nf">test_my_script</span><span class="p">(</span><span class="n">auto_container_per_test</span><span class="p">,</span> <span class="n">host</span><span class="p">,</span> <span class="n">container_runtime</span><span class="p">):</span>
+    <span class="n">host</span><span class="o">.</span><span class="n">run_expect</span><span class="p">(</span>
+      <span class="p">[</span><span class="mi">0</span><span class="p">],</span>
+      <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">container_runtime</span><span class="o">.</span><span class="n">runner_binary</span><span class="si">}</span><span class="s2"> cp </span><span class="si">{</span><span class="n">DIR</span><span class="si">}</span><span class="s2">/</span><span class="si">{</span><span class="n">FILE</span><span class="si">}</span><span class="s2"> </span><span class="si">{</span><span class="n">auto_container_per_test</span><span class="o">.</span><span class="n">container_id</span><span class="si">}</span><span class="s2">:</span><span class="si">{</span><span class="n">CDIR</span><span class="si">}</span><span class="s2">&quot;</span>
+    <span class="p">)</span>
+</pre></div>
+</div>
+<p>Note that the same file location restrictions apply as when including the files
+in the container image directly.</p>
+</section>
+</section>
+<section id="exposing-ports-from-containers">
+<h2>Exposing ports from containers<a class="headerlink" href="#exposing-ports-from-containers" title="Permalink to this heading">¶</a></h2>
+<p>Exposing ports from containers is a tricky topic when tests are run in parallel,
+as one can no longer set the port on the host because it would be used by
+multiple containers. To remedy this, you can add the ports that shall be exposed
+to the <a class="reference internal" href="api.html#pytest_container.container.ContainerBase.forwarded_ports" title="pytest_container.container.ContainerBase.forwarded_ports"><code class="xref py py-attr docutils literal notranslate"><span class="pre">forwarded_ports</span></code></a>
+attribute as follows:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">WEB_SERVER</span> <span class="o">=</span> <span class="n">DerivedContainer</span><span class="p">(</span>
+    <span class="n">containerfile</span><span class="o">=</span><span class="s2">&quot;&quot;&quot;</span>
+<span class="s2"># snip</span>
+<span class="s2">EXPOSE 8000</span>
+<span class="s2">&quot;&quot;&quot;</span><span class="p">,</span>
+    <span class="n">forwarded_ports</span><span class="o">=</span><span class="p">[</span><span class="n">PortForwarding</span><span class="p">(</span><span class="n">container_port</span><span class="o">=</span><span class="mi">8000</span><span class="p">)],</span>
+<span class="p">)</span>
+</pre></div>
+</div>
+<p>When such a container image is requested via any of the <code class="docutils literal notranslate"><span class="pre">container_*</span></code>
+fixtures, then the resulting data passed into the test function will have the
+attribute <code class="docutils literal notranslate"><span class="pre">forwarded_ports</span></code> set as well. This is a list of
+<a class="reference internal" href="api.html#pytest_container.container.PortForwarding" title="pytest_container.container.PortForwarding"><code class="xref py py-class docutils literal notranslate"><span class="pre">PortForwarding</span></code></a> instances that have the
+property <a class="reference internal" href="api.html#pytest_container.container.PortForwarding.host_port" title="pytest_container.container.PortForwarding.host_port"><code class="xref py py-attr docutils literal notranslate"><span class="pre">host_port</span></code></a> set to
+the port that <code class="docutils literal notranslate"><span class="pre">pytest_container</span></code> used to expose the container’s port:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="k">def</span> <span class="nf">test_port_forward_set_up</span><span class="p">(</span><span class="n">auto_container</span><span class="p">:</span> <span class="n">ContainerData</span><span class="p">,</span> <span class="n">host</span><span class="p">):</span>
+    <span class="n">res</span> <span class="o">=</span> <span class="n">host</span><span class="o">.</span><span class="n">run_expect</span><span class="p">(</span>
+        <span class="p">[</span><span class="mi">0</span><span class="p">],</span>
+        <span class="sa">f</span><span class="s2">&quot;curl localhost:</span><span class="si">{</span><span class="n">auto_container</span><span class="o">.</span><span class="n">forwarded_ports</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">host_port</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">,</span>
+    <span class="p">)</span><span class="o">.</span><span class="n">stdout</span><span class="o">.</span><span class="n">strip</span><span class="p">()</span>
+</pre></div>
+</div>
+</section>
+<section id="setting-up-bind-mounts">
+<h2>Setting up bind mounts<a class="headerlink" href="#setting-up-bind-mounts" title="Permalink to this heading">¶</a></h2>
+<p>Some tests require that containers are launched with a bind-mounted
+volume. While this can be easily achieved by adding the bind mount command line
+arguments to
+<a class="reference internal" href="api.html#pytest_container.container.ContainerBase.extra_launch_args" title="pytest_container.container.ContainerBase.extra_launch_args"><code class="xref py py-attr docutils literal notranslate"><span class="pre">extra_launch_args</span></code></a>, this
+approach can quickly cause problems for concurrent tests (multiple containers
+could be accessing the a volume at the same time).</p>
+<p><code class="docutils literal notranslate"><span class="pre">pytest_container</span></code> offers a convenience class for abstracting away the
+creation of bind mounts via the
+<a class="reference internal" href="api.html#pytest_container.container.ContainerBase.volume_mounts" title="pytest_container.container.ContainerBase.volume_mounts"><code class="xref py py-attr docutils literal notranslate"><span class="pre">volume_mounts</span></code></a> attribute
+using the <a class="reference internal" href="api.html#pytest_container.container.ContainerVolume" title="pytest_container.container.ContainerVolume"><code class="xref py py-class docutils literal notranslate"><span class="pre">ContainerVolume</span></code></a> class. It
+allows you to automatically create temporary directories on the host, mounts
+them in the container and cleans everything up after the test run.</p>
+<p>The following snippet illustrates how to mount</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">NGINX</span> <span class="o">=</span> <span class="n">DerivedContainer</span><span class="p">(</span>
+    <span class="n">base</span><span class="o">=</span><span class="s2">&quot;docker.io/library/nginx&quot;</span><span class="p">,</span>
+    <span class="n">containerfile</span><span class="o">=</span><span class="s2">&quot;&quot;&quot; # snip</span>
+<span class="s2">    EXPOSE 80</span>
+<span class="s2">    &quot;&quot;&quot;</span><span class="p">,</span>
+    <span class="n">volume_mounts</span><span class="o">=</span><span class="p">[</span>
+        <span class="n">ContainerVolume</span><span class="p">(</span><span class="s2">&quot;/etc/nginx/templates&quot;</span><span class="p">,</span> <span class="s2">&quot;/path/to/templates&quot;</span><span class="p">),</span>
+        <span class="n">ContainerVolume</span><span class="p">(</span><span class="s2">&quot;/etc/nginx/nginx.conf&quot;</span><span class="p">,</span> <span class="s2">&quot;/path/to/nginx.conf&quot;</span><span class="p">,</span> <span class="n">flags</span><span class="o">=</span><span class="p">[</span><span class="n">VolumeFlag</span><span class="o">.</span><span class="n">READ_ONLY</span><span class="p">]),</span>
+        <span class="n">ContainerVolume</span><span class="p">(</span><span class="s2">&quot;/var/cache/nginx&quot;</span><span class="p">)</span>
+    <span class="p">]</span>
+<span class="p">)</span>
+
+<span class="k">def</span> <span class="nf">check_nginx_cache</span><span class="p">(</span><span class="n">container_per_test</span><span class="p">:</span> <span class="n">ContainerData</span><span class="p">):</span>
+    <span class="n">cache_on_host</span> <span class="o">=</span> <span class="n">container_per_test</span><span class="o">.</span><span class="n">container</span><span class="o">.</span><span class="n">volume_mounts</span><span class="o">.</span><span class="n">host_path</span>
+    <span class="c1"># cache_on_host is a temporary directory that was just created</span>
+</pre></div>
+</div>
+</section>
+</section>
+
+
+          </div>
+          
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper">
+<h1 class="logo"><a href="index.html">pytest_container</a></h1>
+
+
+
+
+
+
+
+
+<h3>Navigation</h3>
+<p class="caption" role="heading"><span class="caption-text">Contents:</span></p>
+<ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="prerequisites.html">Prerequisites</a></li>
+<li class="toctree-l1"><a class="reference internal" href="tutorials.html">Tutorials</a></li>
+<li class="toctree-l1"><a class="reference internal" href="fixtures.html">Fixtures</a></li>
+<li class="toctree-l1 current"><a class="current reference internal" href="#">Usage Tips</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="#adding-global-build-and-run-arguments">Adding global build and run arguments</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#configuring-logging">Configuring logging</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#testing-local-images">Testing local images</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#container-runtime-version">Container Runtime version</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#copying-files-into-containers">Copying files into containers</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#exposing-ports-from-containers">Exposing ports from containers</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#setting-up-bind-mounts">Setting up bind mounts</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="api.html">API documentation</a></li>
+</ul>
+
+<div class="relations">
+<h3>Related Topics</h3>
+<ul>
+  <li><a href="index.html">Documentation overview</a><ul>
+      <li>Previous: <a href="fixtures.html" title="previous chapter">Fixtures</a></li>
+      <li>Next: <a href="api.html" title="next chapter">API documentation</a></li>
+  </ul></li>
+</ul>
+</div>
+<div id="searchbox" style="display: none" role="search">
+  <h3 id="searchlabel">Quick search</h3>
+    <div class="searchformwrapper">
+    <form class="search" action="search.html" method="get">
+      <input type="text" name="q" aria-labelledby="searchlabel" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false"/>
+      <input type="submit" value="Go" />
+    </form>
+    </div>
+</div>
+<script>document.getElementById('searchbox').style.display = "block"</script>
+
+
+
+
+
+
+
+
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="footer">
+      &copy;2021-2022, Dan Čermák.
+      
+      |
+      Powered by <a href="http://sphinx-doc.org/">Sphinx 5.3.0</a>
+      &amp; <a href="https://github.com/bitprophet/alabaster">Alabaster 0.7.12</a>
+      
+      |
+      <a href="_sources/usage.rst.txt"
+          rel="nofollow">Page source</a>
+    </div>
+
+    
+
+    
+  </body>
+</html>

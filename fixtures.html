@@ -1,0 +1,158 @@
+
+<!DOCTYPE html>
+
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="generator" content="Docutils 0.18.1: http://docutils.sourceforge.net/" />
+
+    <title>Fixtures &#8212; pytest_container  documentation</title>
+    <link rel="stylesheet" type="text/css" href="_static/pygments.css" />
+    <link rel="stylesheet" type="text/css" href="_static/alabaster.css" />
+    <script data-url_root="./" id="documentation_options" src="_static/documentation_options.js"></script>
+    <script src="_static/jquery.js"></script>
+    <script src="_static/underscore.js"></script>
+    <script src="_static/_sphinx_javascript_frameworks_compat.js"></script>
+    <script src="_static/doctools.js"></script>
+    <script src="_static/sphinx_highlight.js"></script>
+    <link rel="index" title="Index" href="genindex.html" />
+    <link rel="search" title="Search" href="search.html" />
+    <link rel="next" title="Usage Tips" href="usage.html" />
+    <link rel="prev" title="Tutorials" href="tutorials.html" />
+   
+  <link rel="stylesheet" href="_static/custom.css" type="text/css" />
+  
+  
+  <meta name="viewport" content="width=device-width, initial-scale=0.9, maximum-scale=0.9" />
+
+  </head><body>
+  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          
+
+          <div class="body" role="main">
+            
+  <section id="fixtures">
+<h1>Fixtures<a class="headerlink" href="#fixtures" title="Permalink to this heading">¶</a></h1>
+<section id="handling-healthcheck">
+<h2>Handling Healthcheck<a class="headerlink" href="#handling-healthcheck" title="Permalink to this heading">¶</a></h2>
+<p>Container images can define a <code class="docutils literal notranslate"><span class="pre">HEALTHCHECK</span></code> option which the container runtime
+will use to determine whether the container can be considered “healthy”. The
+container fixtures will by default infer the maximum time a healthcheck can be
+run before the container would be considered unhealthy and use that as the
+startup timeout. The user can provide their own timeout or disable it
+completely.</p>
+<p>In principle there is nothing else to do when it comes to managing containers
+with a <code class="docutils literal notranslate"><span class="pre">HEALTHCHECK</span></code>, the container will become available once it is healthy.</p>
+<p>In certain cases it makes sense to not wait for the healthcheck or to
+explicitly ignore it. In that case set the attribute
+<a class="reference internal" href="api.html#pytest_container.container.ContainerBase.healthcheck_timeout" title="pytest_container.container.ContainerBase.healthcheck_timeout"><code class="xref py py-attr docutils literal notranslate"><span class="pre">pytest_container.container.ContainerBase.healthcheck_timeout</span></code></a> to a
+negative timedelta. The container launch fixtures will then treat this container
+as if it had no <code class="docutils literal notranslate"><span class="pre">HEALTHCHECK</span></code> attribute at all.</p>
+<p>It is also possible to check the container health via the container runtime
+using the function
+<a class="reference internal" href="api.html#pytest_container.runtime.OciRuntimeABC.get_container_health" title="pytest_container.runtime.OciRuntimeABC.get_container_health"><code class="xref py py-meth docutils literal notranslate"><span class="pre">pytest_container.runtime.OciRuntimeABC.get_container_health()</span></code></a>:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">CONTAINER_WITH_HEALTHCHECK</span> <span class="o">=</span> <span class="n">DerivedContainer</span><span class="p">(</span>
+    <span class="n">base</span><span class="o">=</span><span class="s2">&quot;registry.opensuse.org/opensuse/leap:latest&quot;</span><span class="p">,</span>
+    <span class="n">containerfile</span><span class="o">=</span><span class="s2">&quot;HEALTHCHECK CMD true&quot;</span><span class="p">,</span>
+    <span class="n">healthcheck_timeout</span><span class="o">=</span><span class="n">timedelta</span><span class="p">(</span><span class="n">seconds</span><span class="o">=-</span><span class="mi">1</span><span class="p">),</span>  <span class="c1"># don&#39;t check the container&#39;s health</span>
+<span class="p">)</span>
+
+<span class="nd">@pytest</span><span class="o">.</span><span class="n">mark</span><span class="o">.</span><span class="n">parametrize</span><span class="p">(</span><span class="s2">&quot;container&quot;</span><span class="p">,</span> <span class="p">[</span><span class="n">CONTAINER_WITH_HEALTHCHECK</span><span class="p">],</span> <span class="n">indirect</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+<span class="k">def</span> <span class="nf">test_leap</span><span class="p">(</span><span class="n">container</span><span class="p">,</span> <span class="n">container_runtime</span><span class="p">):</span>
+    <span class="k">assert</span> <span class="p">(</span>
+        <span class="n">container_runtime</span><span class="o">.</span><span class="n">get_container_health</span><span class="p">(</span><span class="n">container</span><span class="o">.</span><span class="n">container_id</span><span class="p">)</span>
+        <span class="o">==</span> <span class="n">ContainerHealth</span><span class="o">.</span><span class="n">STARTING</span>
+    <span class="p">)</span>
+</pre></div>
+</div>
+<p>There is also a small catch when building containers with <code class="docutils literal notranslate"><span class="pre">HEALTHCHECK</span></code>: this
+directive is only supported for docker images. While this is the default with
+<strong class="command">docker</strong>, <strong class="command">buildah</strong> will by default build images in the
+<code class="docutils literal notranslate"><span class="pre">OCIv1</span></code> format which does <strong>not</strong> support <code class="docutils literal notranslate"><span class="pre">HEALTHCHECK</span></code>. To ensure that your
+created container includes the <code class="docutils literal notranslate"><span class="pre">HEALTHCHECK</span></code>, set the attribute
+<a class="reference internal" href="api.html#pytest_container.container.DerivedContainer.image_format" title="pytest_container.container.DerivedContainer.image_format"><code class="xref py py-attr docutils literal notranslate"><span class="pre">pytest_container.container.DerivedContainer.image_format</span></code></a> to
+<a class="reference internal" href="api.html#pytest_container.container.ImageFormat.DOCKER" title="pytest_container.container.ImageFormat.DOCKER"><code class="xref py py-attr docutils literal notranslate"><span class="pre">pytest_container.container.ImageFormat.DOCKER</span></code></a>.</p>
+</section>
+</section>
+
+
+          </div>
+          
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper">
+<h1 class="logo"><a href="index.html">pytest_container</a></h1>
+
+
+
+
+
+
+
+
+<h3>Navigation</h3>
+<p class="caption" role="heading"><span class="caption-text">Contents:</span></p>
+<ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="prerequisites.html">Prerequisites</a></li>
+<li class="toctree-l1"><a class="reference internal" href="tutorials.html">Tutorials</a></li>
+<li class="toctree-l1 current"><a class="current reference internal" href="#">Fixtures</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="#handling-healthcheck">Handling Healthcheck</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="usage.html">Usage Tips</a></li>
+<li class="toctree-l1"><a class="reference internal" href="api.html">API documentation</a></li>
+</ul>
+
+<div class="relations">
+<h3>Related Topics</h3>
+<ul>
+  <li><a href="index.html">Documentation overview</a><ul>
+      <li>Previous: <a href="tutorials.html" title="previous chapter">Tutorials</a></li>
+      <li>Next: <a href="usage.html" title="next chapter">Usage Tips</a></li>
+  </ul></li>
+</ul>
+</div>
+<div id="searchbox" style="display: none" role="search">
+  <h3 id="searchlabel">Quick search</h3>
+    <div class="searchformwrapper">
+    <form class="search" action="search.html" method="get">
+      <input type="text" name="q" aria-labelledby="searchlabel" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false"/>
+      <input type="submit" value="Go" />
+    </form>
+    </div>
+</div>
+<script>document.getElementById('searchbox').style.display = "block"</script>
+
+
+
+
+
+
+
+
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="footer">
+      &copy;2021-2022, Dan Čermák.
+      
+      |
+      Powered by <a href="http://sphinx-doc.org/">Sphinx 5.3.0</a>
+      &amp; <a href="https://github.com/bitprophet/alabaster">Alabaster 0.7.12</a>
+      
+      |
+      <a href="_sources/fixtures.rst.txt"
+          rel="nofollow">Page source</a>
+    </div>
+
+    
+
+    
+  </body>
+</html>
