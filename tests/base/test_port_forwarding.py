@@ -1,11 +1,8 @@
 """Module containing tests of the automated port exposure via
 :py:attr:`~pytest_container.container.ContainerBase.forwarded_ports`."""
 # pylint: disable=missing-function-docstring
-import socket
-from contextlib import closing
 from pytest_container.container import ContainerData
 from pytest_container.container import DerivedContainer
-from pytest_container.container import is_socket_listening_on_localhost
 from pytest_container.container import NetworkProtocol
 from pytest_container.container import PortForwarding
 from pytest_container.runtime import LOCALHOST
@@ -21,6 +18,7 @@ WEB_SERVER = DerivedContainer(
     containerfile="""
 RUN zypper -n in python3 && echo "Hello Green World!" > index.html
 ENTRYPOINT ["/usr/bin/python3", "-m", "http.server"]
+HEALTHCHECK --interval=5s --timeout=1s CMD curl --fail http://0.0.0.0:8000
 EXPOSE 8000
 """,
     forwarded_ports=[PortForwarding(container_port=8000)],
@@ -39,6 +37,9 @@ def _create_nginx_container(number: int) -> DerivedContainer:
     directly inside it so that https works. This is achieved via the script
     :file:`tests/base/files/mk_certs.sh`.
 
+    The Container includes additional 500 TCP and 500 UDP port forwards to
+    stress test the random port finder.
+
     """
     return DerivedContainer(
         base="docker.io/library/nginx:latest",
@@ -52,6 +53,14 @@ RUN sed -i 's|PLACEHOLDER|Test page {number}|' /usr/share/nginx/html/index.html
         forwarded_ports=[
             PortForwarding(container_port=80),
             PortForwarding(container_port=443),
+        ]
+        # create an insane number of additional port forwards, that makes it
+        # much more likely for any bugs in the host port assignment logic to
+        # surface
+        + [PortForwarding(container_port=n) for n in range(500, 1000)]
+        + [
+            PortForwarding(container_port=n, protocol=NetworkProtocol.UDP)
+            for n in range(200, 700)
         ],
         default_entry_point=True,
     )
@@ -109,33 +118,6 @@ def test_port_forward_set_up(auto_container: ContainerData, host):
     )
 
 
-def test_is_tcp_port_open():
-    """Test for
-    :py:func:`~pytest_container.container.is_socket_listening_on_localhost`:
-    opens a TCP socket on port 5555 on localhost and verify that the socket is
-    reported as occupied. Afterwards the socket is closed and we check that it
-    is reported as closed.
-
-    """
-    port_to_check = 5555
-
-    assert not is_socket_listening_on_localhost(
-        port_to_check, NetworkProtocol.TCP
-    ), f"{port_to_check} must be closed for this test"
-
-    with closing(socket.socket(socket.AF_INET, socket.SOCK_STREAM)) as sock:
-        sock.bind(("127.0.0.1", port_to_check))
-        sock.listen()
-
-        assert is_socket_listening_on_localhost(
-            port_to_check, NetworkProtocol.TCP
-        ), f"{port_to_check} must be open"
-
-    assert not is_socket_listening_on_localhost(
-        port_to_check, NetworkProtocol.TCP
-    ), f"{port_to_check} must be closed"
-
-
 @pytest.mark.parametrize(
     "container,number",
     [(_create_nginx_container(i), i) for i in range(10)],
@@ -154,8 +136,8 @@ def test_multiple_open_ports(container: ContainerData, number: int, host):
 
     """
     assert (
-        len(container.forwarded_ports) == 2
-    ), "exactly two forwarded ports must be present"
+        len(container.forwarded_ports) == 1002
+    ), "exactly 1002 forwarded ports must be present"
 
     assert (
         container.forwarded_ports[0].protocol == NetworkProtocol.TCP

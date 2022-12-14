@@ -3,6 +3,7 @@ import functools
 import itertools
 import operator
 import os
+import socket
 import sys
 import tempfile
 from abc import ABC
@@ -14,7 +15,6 @@ from hashlib import md5
 from pathlib import Path
 from pytest_container.logging import _logger
 from pytest_container.runtime import get_selected_runtime
-from pytest_container.runtime import LOCALHOST
 from subprocess import check_output
 from typing import Any
 from typing import Collection
@@ -54,6 +54,17 @@ class NetworkProtocol(enum.Enum):
 
     def __str__(self) -> str:
         return self.value
+
+    @property
+    def SOCK_CONST(self) -> int:
+        """Returns the appropriate socket type constant (``SOCK_STREAM`` or
+        ``SOCK_DGRAM``) for the current protocol.
+
+        """
+        return {
+            NetworkProtocol.TCP.value: socket.SOCK_STREAM,
+            NetworkProtocol.UDP.value: socket.SOCK_DGRAM,
+        }[self.value]
 
 
 @dataclass(frozen=True)
@@ -96,66 +107,37 @@ class PortForwarding:
         return str(self.forward_cli_args)
 
 
-def is_socket_listening_on_localhost(
-    port: int, protocol: NetworkProtocol
-) -> bool:
-    """Checks if a socket is listening on localhost for the given port and
-    protocol."""
-
-    # We unfortunately cannot just use
-    # `LOCALHOST.socket(f"{protocol}://{port}").is_listening` check here,
-    # because that will check whether a service is listening on **all**
-    # interfaces. If it only listens on one, then the port is still occupied,
-    # but the above check will be `False` giving us false results.
-    # The remedy would be to iterate over all IPs, but that would be a bit too
-    # tedious.
-
-    for socket in LOCALHOST.socket.get_listening_sockets():
-        # socket looks like this:
-        # udp://:::1716
-        # tcp://127.0.0.1:36061
-        # unix:///tmp/.X11-unix/X0
-        tmp = socket.split(":")
-        prot = tmp[0]
-        if prot != str(protocol):
-            continue
-        if port == int(tmp[-1]):
-            return True
-
-    return False
-
-
 def create_host_port_port_forward(
     port_forwards: List[PortForwarding],
 ) -> List[PortForwarding]:
-    """Given a list of port_forwards, this function finds the first free ports
-    on the host system to which the container ports can be bound and returns a
-    new list of appropriately configured :py:class:`PortForwarding` instances.
+    """Given a list of port_forwards, this function finds random free ports on
+    the host system to which the container ports can be bound and returns a new
+    list of appropriately configured :py:class:`PortForwarding` instances.
 
     """
-    _START_PORT = 1025
-    _MAX_PORT = 2**16
     finished_forwards: List[PortForwarding] = []
-    start_port = _START_PORT
+
+    # list of sockets that will be created and cleaned up afterwards
+    # We have to defer the cleanup, as otherwise the OS might give us a
+    # previously freed socket again. But it will not do that, if we are still
+    # listening on it.
+    sockets: List[socket.socket] = []
 
     for port in port_forwards:
-        for i in range(start_port, _MAX_PORT):
-            if not is_socket_listening_on_localhost(i, port.protocol):
-                finished_forwards.append(
-                    PortForwarding(
-                        container_port=port.container_port,
-                        protocol=port.protocol,
-                        host_port=i,
-                    )
-                )
-                start_port = i + 1
-                assert (
-                    finished_forwards[-1].host_port
-                    and finished_forwards[-1].host_port >= _START_PORT
-                )
-                break
-        if i == _MAX_PORT:
-            raise ValueError("No free ports left!")
+        sock = socket.socket(type=port.protocol.SOCK_CONST)
+        sock.bind(("", 0))
+
+        finished_forwards.append(
+            PortForwarding(
+                container_port=port.container_port,
+                protocol=port.protocol,
+                host_port=sock.getsockname()[1],
+            )
+        )
+        sockets.append(sock)
+
+    for sock in sockets:
+        sock.close()
 
     assert len(port_forwards) == len(finished_forwards)
     return finished_forwards
