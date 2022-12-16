@@ -13,8 +13,6 @@ from dataclasses import field
 from datetime import timedelta
 from hashlib import md5
 from pathlib import Path
-from pytest_container.logging import _logger
-from pytest_container.runtime import get_selected_runtime
 from subprocess import check_output
 from typing import Any
 from typing import Collection
@@ -26,6 +24,8 @@ from typing import Union
 import pytest
 from _pytest.mark.structures import MarkDecorator
 from _pytest.mark.structures import ParameterSet
+from pytest_container.logging import _logger
+from pytest_container.runtime import get_selected_runtime
 
 
 @enum.unique

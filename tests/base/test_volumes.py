@@ -1,13 +1,13 @@
 # pylint: disable=missing-function-docstring,missing-module-docstring
-import os.path
+import os
+from typing import List
+
+import pytest
 from pytest_container.container import ContainerData
 from pytest_container.container import ContainerVolume
 from pytest_container.container import DerivedContainer
 from pytest_container.container import VolumeFlag
 from pytest_container.runtime import LOCALHOST
-from typing import List
-
-import pytest
 
 from tests.base.test_container_build import LEAP
 

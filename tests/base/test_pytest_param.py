@@ -1,12 +1,11 @@
 # pylint: disable=missing-function-docstring,missing-module-docstring
+import pytest
 from pytest_container import container_from_pytest_param
 from pytest_container import container_to_pytest_param
 from pytest_container import DerivedContainer
 from pytest_container import get_extra_build_args
 from pytest_container import MultiStageBuild
 from pytest_container import OciRuntimeBase
-
-import pytest
 
 from tests.base.test_container_build import LEAP
 

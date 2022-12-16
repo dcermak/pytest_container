@@ -2,6 +2,13 @@ import datetime
 import os
 import time
 from pathlib import Path
+from subprocess import check_output
+from tempfile import gettempdir
+from typing import Callable
+from typing import Generator
+from typing import Optional
+from typing import TYPE_CHECKING
+
 from pytest_container.container import container_from_pytest_param
 from pytest_container.container import ContainerData
 from pytest_container.container import create_host_port_port_forward
@@ -11,12 +18,6 @@ from pytest_container.logging import _logger
 from pytest_container.runtime import ContainerHealth
 from pytest_container.runtime import get_selected_runtime
 from pytest_container.runtime import OciRuntimeBase
-from subprocess import check_output
-from tempfile import gettempdir
-from typing import Callable
-from typing import Generator
-from typing import Optional
-from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
     from typing import Literal

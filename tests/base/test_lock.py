@@ -1,11 +1,12 @@
 # pylint: disable=missing-function-docstring,missing-module-docstring
 from os import remove
-from pytest_container import Container
-from pytest_container import DerivedContainer
 from time import sleep
 
 from _pytest.config import Config
 from filelock import FileLock
+from pytest_container import Container
+from pytest_container import DerivedContainer
+from pytest_container.container import ContainerData
 
 from tests.base.test_container_build import BUSYBOX_WITH_ENTRYPOINT
 from tests.base.test_container_build import LEAP
@@ -20,7 +21,7 @@ LEAP2_WITH_LOCK = Container(url=LEAP.url, singleton=True)
 CONTAINER_IMAGES = [LEAP_WITH_LOCK, LEAP2_WITH_LOCK]
 
 
-def actual_test(container_data, pytestconf: Config):
+def actual_test(container_data: ContainerData, pytestconf: Config):
     """This is the actual test function which creates a lockfile for the two
     automatic containers and keeps them around for 5 seconds. If any other test
     runs in parallel during that time, it would error out.

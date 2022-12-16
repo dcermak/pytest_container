@@ -1,5 +1,8 @@
 # pylint: disable=missing-function-docstring,missing-module-docstring
 from pathlib import Path
+
+import pytest
+from pytest import Config
 from pytest_container import Container
 from pytest_container import DerivedContainer
 from pytest_container import get_extra_build_args
@@ -7,9 +10,6 @@ from pytest_container.build import MultiStageBuild
 from pytest_container.container import ContainerData
 from pytest_container.runtime import LOCALHOST
 from pytest_container.runtime import OciRuntimeBase
-
-import pytest
-from pytest import Config
 
 LEAP = Container(url="registry.opensuse.org/opensuse/leap:latest")
 

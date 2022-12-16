@@ -1,7 +1,6 @@
 # pylint: disable=missing-function-docstring,missing-module-docstring
-from pytest_container import DerivedContainer
-
 from pytest import Config
+from pytest_container import DerivedContainer
 
 
 LEAP_WITH_CONFIG_FILE = DerivedContainer(
