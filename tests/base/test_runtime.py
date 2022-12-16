@@ -1,12 +1,12 @@
 # pylint: disable=missing-function-docstring,missing-module-docstring
 import os
+from unittest.mock import patch
+
+import pytest
 from pytest_container.runtime import DockerRuntime
 from pytest_container.runtime import get_selected_runtime
 from pytest_container.runtime import OciRuntimeBase
 from pytest_container.runtime import PodmanRuntime
-from unittest.mock import patch
-
-import pytest
 
 
 @pytest.fixture

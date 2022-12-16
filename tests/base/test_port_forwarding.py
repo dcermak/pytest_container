@@ -1,14 +1,13 @@
 """Module containing tests of the automated port exposure via
 :py:attr:`~pytest_container.container.ContainerBase.forwarded_ports`."""
 # pylint: disable=missing-function-docstring
+import pytest
 from pytest_container.container import ContainerData
 from pytest_container.container import DerivedContainer
 from pytest_container.container import NetworkProtocol
 from pytest_container.container import PortForwarding
 from pytest_container.runtime import LOCALHOST
 from pytest_container.runtime import Version
-
-import pytest
 
 from tests.base.test_container_build import LEAP
 

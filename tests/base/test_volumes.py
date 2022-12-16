@@ -1,13 +1,13 @@
 # pylint: disable=missing-function-docstring,missing-module-docstring
-import os.path
+import os
+from typing import List
+
+import pytest
 from pytest_container.container import ContainerData
 from pytest_container.container import ContainerVolume
 from pytest_container.container import DerivedContainer
 from pytest_container.container import VolumeFlag
 from pytest_container.runtime import LOCALHOST
-from typing import List
-
-import pytest
 
 from tests.base.test_container_build import LEAP
 
@@ -105,12 +105,12 @@ def test_container_volume_writing(container_per_test: ContainerData):
     container_dir = container_per_test.connection.file(vol.container_path)
     assert not container_dir.listdir()
 
-    _CONTENTS = """This is just a testfile
+    contents = """This is just a testfile
 
 - there is nothing to see, please carry on"""
 
     with open(os.path.join(vol.host_path, "test"), "w") as testfile:
-        testfile.write(_CONTENTS)
+        testfile.write(contents)
 
     testfile_in_container = container_per_test.connection.file(
         os.path.join(vol.container_path, "test")
@@ -118,7 +118,7 @@ def test_container_volume_writing(container_per_test: ContainerData):
     assert (
         testfile_in_container.exists
         and testfile_in_container.is_file
-        and testfile_in_container.content_string == _CONTENTS
+        and testfile_in_container.content_string == contents
     )
 
     # check that the file does not appear in the second mount

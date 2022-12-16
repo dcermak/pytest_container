@@ -1,11 +1,10 @@
 """Unit tests of the Version class"""
 # pylint: disable=missing-function-docstring,missing-module-docstring
+import pytest
 from pytest_container import Version
 from pytest_container.runtime import _get_docker_version
 from pytest_container.runtime import _get_podman_version
 from pytest_container.runtime import OciRuntimeBase
-
-import pytest
 
 # pragma pylint: disable=missing-function-docstring
 

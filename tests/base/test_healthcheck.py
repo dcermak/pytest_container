@@ -1,13 +1,14 @@
 # pylint: disable=missing-function-docstring,missing-module-docstring
 from datetime import timedelta
+from time import sleep
+from typing import Optional
+
+import pytest
 from pytest_container.container import DerivedContainer
 from pytest_container.container import ImageFormat
 from pytest_container.runtime import ContainerHealth
 from pytest_container.runtime import HealthCheck
 from pytest_container.runtime import OciRuntimeBase
-from time import sleep
-
-import pytest
 
 from tests.base.test_container_build import LEAP
 
@@ -124,7 +125,9 @@ def test_container_with_failing_healthcheck(
     indirect=["container"],
 )
 def test_healthcheck_timeout(
-    container, container_runtime: OciRuntimeBase, healthcheck: HealthCheck
+    container,
+    container_runtime: OciRuntimeBase,
+    healthcheck: Optional[HealthCheck],
 ):
     assert (
         container_runtime.get_container_healthcheck(container.container)

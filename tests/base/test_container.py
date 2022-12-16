@@ -1,10 +1,10 @@
 # pylint: disable=missing-function-docstring,missing-module-docstring
 from pathlib import Path
+
+import pytest
 from pytest_container import Container
 from pytest_container import DerivedContainer
 from pytest_container.container import ImageFormat
-
-import pytest
 
 
 def test_container_default_entry_point_and_custom_one_set():

@@ -1,10 +1,10 @@
 import logging
-from pytest_container.logging import set_internal_logging_level
 from typing import List
 
 from _pytest.config import Config
 from _pytest.config.argparsing import Parser
 from _pytest.python import Metafunc
+from pytest_container.logging import set_internal_logging_level
 
 
 def auto_container_parametrize(metafunc: Metafunc) -> None:

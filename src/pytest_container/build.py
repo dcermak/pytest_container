@@ -1,12 +1,6 @@
 from dataclasses import dataclass
 from os import path
 from pathlib import Path
-from pytest_container.container import Container
-from pytest_container.container import container_from_pytest_param
-from pytest_container.container import DerivedContainer
-from pytest_container.logging import _logger
-from pytest_container.runtime import OciRuntimeBase
-from pytest_container.runtime import ToParamMixin
 from string import Template
 from subprocess import check_output
 from typing import Dict
@@ -16,6 +10,12 @@ from typing import Union
 
 from _pytest.config import Config
 from _pytest.mark.structures import ParameterSet
+from pytest_container.container import Container
+from pytest_container.container import container_from_pytest_param
+from pytest_container.container import DerivedContainer
+from pytest_container.logging import _logger
+from pytest_container.runtime import OciRuntimeBase
+from pytest_container.runtime import ToParamMixin
 
 
 @dataclass(frozen=True)
