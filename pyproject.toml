@@ -53,12 +53,6 @@ line-length = 79
 [tool.poetry.plugins."pytest11"]
 "pytest11.container" = "pytest_container.plugin"
 
-[tool.coverage.run]
-branch = true
-
-[tool.coverage.report]
-show_missing = true
-
 [tool.mypy]
 strict = true
 
