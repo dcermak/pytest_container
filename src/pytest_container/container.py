@@ -157,6 +157,12 @@ class VolumeFlag(enum.Enum):
     #: The volume is relabeled so that only a single container can access it
     SELINUX_PRIVATE = "Z"
 
+    #: chown the content of the volume for rootless runs
+    CHOWN_USER = "U"
+
+    #: ensure the volume is mounted as noexec (data only)
+    NOEXEC = "noexec"
+
     #: The volume is mounted as a temporary storage using overlay-fs (only
     #: supported by :command:`podman`)
     OVERLAY = "O"
@@ -188,7 +194,8 @@ class ContainerVolume:
     #: Path inside the container where this volume will be mounted
     container_path: str
 
-    #: Path on the host that will be mounted. When omitted, a temporary
+    #: Path on the host that will be mounted if absolute. if relative,
+    #: it refers to a volume to be auto-created. When omitted, a temporary
     #: directory will be created and the path will be saved in this attribute.
     host_path: Optional[str] = None
 
@@ -261,25 +268,40 @@ class ContainerVolume:
             )
 
         assert self.host_path
-        if not os.path.exists(self.host_path):
+        if os.path.isabs(self.host_path) and not os.path.exists(
+            self.host_path
+        ):
             raise RuntimeError(
                 f"Volume with the host path '{self.host_path}' "
                 "was requested but the directory does not exist"
             )
 
-    def cleanup(self) -> None:
+    def cleanup(self, container_runtime: str) -> None:
         """Cleans up the temporary host directory if necessary. This function is
         called automatically by the ``*container*`` fixtures.
 
         """
+        assert self.host_path
+
         if self._tmpdir:
             _logger.debug(
                 "cleaning up directory %s for the container volume %s",
                 self.host_path,
                 self.container_path,
             )
-            assert self.host_path
             self._tmpdir.cleanup()
+            return
+        # Clean up container volume
+        if not os.path.isabs(self.host_path):
+            check_output(
+                [
+                    container_runtime,
+                    "volume",
+                    "rm",
+                    "-f",
+                    self.host_path,
+                ],
+            )
 
     @property
     def cli_arg(self) -> str:

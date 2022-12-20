@@ -7,6 +7,7 @@ from pytest_container.container import ContainerData
 from pytest_container.container import ContainerVolume
 from pytest_container.container import DerivedContainer
 from pytest_container.container import VolumeFlag
+from pytest_container.runtime import get_selected_runtime
 from pytest_container.runtime import LOCALHOST
 
 from tests.base.test_container_build import LEAP
@@ -59,9 +60,10 @@ def test_cli_arg(vol: ContainerVolume, expected_cli: str):
 def test_volume_re_create():
     vol = ContainerVolume("/foo")
 
+    runtime = get_selected_runtime()
     for _ in range(10):
         vol.setup()
-        vol.cleanup()
+        vol.cleanup(runtime.runner_binary)
 
 
 LEAP_WITH_VOLUMES = DerivedContainer(
@@ -72,7 +74,7 @@ LEAP_WITH_VOLUMES = DerivedContainer(
 @pytest.mark.parametrize(
     "container_per_test", [LEAP_WITH_VOLUMES], indirect=True
 )
-def test_container_volumes(container_per_test: ContainerData):
+def test_container_host_volumes(container_per_test: ContainerData):
     assert len(container_per_test.container.volume_mounts) == 2
     for vol in container_per_test.container.volume_mounts:
         assert vol.host_path
@@ -95,7 +97,7 @@ def test_does_not_add_selinux_flags_if_present(flags: List[VolumeFlag]):
 @pytest.mark.parametrize(
     "container_per_test", [LEAP_WITH_VOLUMES], indirect=True
 )
-def test_container_volume_writing(container_per_test: ContainerData):
+def test_container_volume_host_writing(container_per_test: ContainerData):
     vol = container_per_test.container.volume_mounts[0]
     assert vol.host_path
 
@@ -111,6 +113,58 @@ def test_container_volume_writing(container_per_test: ContainerData):
 
     with open(os.path.join(vol.host_path, "test"), "w") as testfile:
         testfile.write(contents)
+
+    testfile_in_container = container_per_test.connection.file(
+        os.path.join(vol.container_path, "test")
+    )
+    assert (
+        testfile_in_container.exists
+        and testfile_in_container.is_file
+        and testfile_in_container.content_string == contents
+    )
+
+    # check that the file does not appear in the second mount
+    vol2 = container_per_test.container.volume_mounts[1]
+    assert not container_per_test.connection.file(
+        vol2.container_path
+    ).listdir()
+
+
+LEAP_WITH_CONTAINER_VOLUMES = DerivedContainer(
+    base=LEAP,
+    volume_mounts=[
+        ContainerVolume("/foo", "foo"),
+        ContainerVolume("/bar", "bar"),
+    ],
+)
+
+
+@pytest.mark.parametrize(
+    "container_per_test", [LEAP_WITH_CONTAINER_VOLUMES], indirect=True
+)
+def test_container_volumes(container_per_test: ContainerData):
+    assert len(container_per_test.container.volume_mounts) == 2
+    for vol in container_per_test.container.volume_mounts:
+        dir_in_container = container_per_test.connection.file(
+            os.path.join("/", vol.container_path)
+        )
+        assert dir_in_container.exists and dir_in_container.is_directory
+
+
+@pytest.mark.parametrize(
+    "container_per_test", [LEAP_WITH_CONTAINER_VOLUMES], indirect=True
+)
+def test_container_volume_writeable(container_per_test: ContainerData):
+    vol = container_per_test.container.volume_mounts[0]
+    assert vol.host_path
+
+    container_dir = container_per_test.connection.file(vol.container_path)
+    assert not container_dir.listdir()
+
+    contents = "OK"
+    container_per_test.connection.run_expect(
+        [0], f"bash -c 'echo -n {contents} > {vol.container_path}/test'"
+    )
 
     testfile_in_container = container_per_test.connection.file(
         os.path.join(vol.container_path, "test")

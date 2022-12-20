@@ -115,7 +115,7 @@ def _create_auto_container_fixture(
                     ],
                 )
             for vol in launch_data.volume_mounts:
-                vol.cleanup()
+                vol.cleanup(container_runtime.runner_binary)
 
             if release_lock_cond:
                 release_lock()
