@@ -51,7 +51,9 @@ def _create_auto_container_fixture(
 ]:
     def fixture(
         request: SubRequest,
-        # pylint: disable=W0621
+        # we must call this parameter container runtime, so that pytest will
+        # treat it as a fixture, but that causes pylint to complain…
+        # pylint: disable=redefined-outer-name
         container_runtime: OciRuntimeBase,
         pytestconfig: Config,
     ) -> Generator[ContainerData, None, None]:
