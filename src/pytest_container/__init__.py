@@ -1,3 +1,7 @@
+"""``pytest_container`` is a small pytest plugin to aid you in testing container
+images or software in container images with pytest.
+
+"""
 from .build import GitRepositoryBuild
 from .build import MultiStageBuild
 from .container import Container

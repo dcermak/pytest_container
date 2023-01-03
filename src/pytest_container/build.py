@@ -1,3 +1,8 @@
+"""The build module contains helper classes for building from git repositories
+via :py:class:`GitRepositoryBuild` and to perform multistage containerfile
+builds via :py:class:`MultiStageBuild`.
+
+"""
 from dataclasses import dataclass
 from os import path
 from pathlib import Path
@@ -183,8 +188,8 @@ class MultiStageBuild:
             )
             containerfile.write(self.containerfile)
 
+    @staticmethod
     def run_build_step(
-        self,
         tmp_path: Path,
         runtime: OciRuntimeBase,
         target: Optional[str] = None,
@@ -260,7 +265,7 @@ class MultiStageBuild:
             extra_build_args,
         )
         return runtime.get_image_id_from_stdout(
-            self.run_build_step(
+            MultiStageBuild.run_build_step(
                 tmp_path, runtime, target, extra_build_args
             ).decode()
         )

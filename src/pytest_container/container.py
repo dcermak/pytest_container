@@ -1,3 +1,8 @@
+"""The container module contains all classes for abstracting the details of
+launching containers away. These classes are used to parametrize test cases
+using the fixtures provided by this plugin.
+
+"""
 import enum
 import functools
 import itertools
@@ -251,6 +256,9 @@ class ContainerVolume:
 
         """
         if self._create_tmp:
+            # we don't want to use a with statement, as the temporary directory
+            # must survive this function
+            # pylint: disable=consider-using-with
             self._tmpdir = tempfile.TemporaryDirectory()
             self.host_path = self._tmpdir.name
 
@@ -293,6 +301,11 @@ class ContainerVolume:
 
 @dataclass
 class ContainerBase:
+    """Base class for defining containers to be tested. Not to be used directly,
+    instead use :py:class:`Container` or :py:class:`DerivedContainer`.
+
+    """
+
     #: Full url to this container via which it can be pulled
     #:
     #: If your container image is not available via a registry and only locally,
@@ -365,8 +378,9 @@ class ContainerBase:
     def entry_point(self) -> Optional[str]:
         """The entry point of this container, either its default, bash or a
         custom one depending on the set values. A custom entry point is
-        preferred, otherwise bash is used unless `self.default_entry_point` is
-        `True`.
+        preferred, otherwise bash is used unless :py:attr:`default_entry_point`
+        is ``True``.
+
         """
         if self.custom_entry_point:
             return self.custom_entry_point
@@ -379,6 +393,15 @@ class ContainerBase:
     ) -> List[str]:
         """Returns the command to launch this container image (excluding the
         leading podman or docker binary name).
+
+        Args:
+            extra_run_args: optional list of arguments that are added to the
+                launch command directly after the ``run -d``.
+
+        Returns:
+            The command to launch the container image described by this class
+            instance as a list of strings that can be fed directly to
+            :py:class:`subprocess.Popen` as the ``args`` parameter.
         """
         cmd = (
             ["run", "-d"]
@@ -408,6 +431,14 @@ class ContainerBase:
 
     @property
     def filelock_filename(self) -> str:
+        """Filename of a lockfile unique to the container image under test.
+
+        It is a hash of the properties of this class excluding all values that
+        are set after the container is launched. Thereby, this filename can be
+        used to acquire a lock blocking any action using this specific container
+        image across threads/processes.
+
+        """
         all_elements = []
         for attr_name, value in self.__dict__.items():
             # don't include the container_id in the hash calculation as the id
@@ -425,6 +456,11 @@ class ContainerBase:
 
 
 class ContainerBaseABC(ABC):
+    """Abstract base class defining the methods that must be implemented by the
+    classes fed to the ``*container*`` fixtures.
+
+    """
+
     @abstractmethod
     def prepare_container(
         self, rootdir: Path, extra_build_args: Optional[List[str]]
@@ -441,11 +477,7 @@ class ContainerBaseABC(ABC):
 
 @dataclass(unsafe_hash=True)
 class Container(ContainerBase, ContainerBaseABC):
-    """This class stores information about the BCI images under test.
-
-    Instances of this class are constructed from the contents of
-    data/containers.json
-    """
+    """This class stores information about the Container Image under test."""
 
     def pull_container(self) -> None:
         """Pulls the container with the given url using the currently selected
@@ -467,6 +499,13 @@ class Container(ContainerBase, ContainerBaseABC):
 
 @dataclass(unsafe_hash=True)
 class DerivedContainer(ContainerBase, ContainerBaseABC):
+    """Class for storing information about the Container Image under test, that
+    is build from a :file:`Containerfile`/:file:`Dockerfile` from a different
+    image (can be any image from a registry or an instance of
+    :py:class:`Container` or :py:class:`DerivedContainer`).
+
+    """
+
     base: Union[Container, "DerivedContainer", str] = ""
 
     #: The :file:`Containerfile` that is used to build this container derived
@@ -560,6 +599,12 @@ class DerivedContainer(ContainerBase, ContainerBaseABC):
 
 @dataclass(frozen=True)
 class ContainerData:
+    """Class returned by the ``*container*`` fixtures to the test function. It
+    contains information about the launched container and the testinfra
+    :py:attr:`connection` to the running container.
+
+    """
+
     #: url to the container image on the registry or the id of the local image
     #: if the container has been build locally
     image_url_or_id: str
