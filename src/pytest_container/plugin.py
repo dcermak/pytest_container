@@ -1,5 +1,10 @@
+"""The plugin module contains all fixtures that are provided by
+``pytest_container``.
+
+"""
 import datetime
 import os
+import sys
 import time
 from pathlib import Path
 from subprocess import check_output
@@ -7,7 +12,6 @@ from tempfile import gettempdir
 from typing import Callable
 from typing import Generator
 from typing import Optional
-from typing import TYPE_CHECKING
 
 from pytest_container.container import container_from_pytest_param
 from pytest_container.container import ContainerData
@@ -19,13 +23,10 @@ from pytest_container.runtime import ContainerHealth
 from pytest_container.runtime import get_selected_runtime
 from pytest_container.runtime import OciRuntimeBase
 
-if TYPE_CHECKING:
+if sys.version_info >= (3, 8):
     from typing import Literal
 else:
-    try:
-        from typing import Literal
-    except ImportError:
-        from typing_extensions import Literal
+    from typing_extensions import Literal
 
 import pytest
 import testinfra
@@ -50,7 +51,9 @@ def _create_auto_container_fixture(
 ]:
     def fixture(
         request: SubRequest,
-        # pylint: disable=W0621
+        # we must call this parameter container runtime, so that pytest will
+        # treat it as a fixture, but that causes pylint to complain…
+        # pylint: disable=redefined-outer-name
         container_runtime: OciRuntimeBase,
         pytestconfig: Config,
     ) -> Generator[ContainerData, None, None]:
@@ -231,8 +234,24 @@ def _create_auto_container_fixture(
     return pytest.fixture(scope=scope)(fixture)
 
 
+#: This fixture parametrizes the test function once for each container image
+#: defined in the module level variable ``CONTAINER_IMAGES`` of the current test
+#: module and yield an instance of
+#: :py:attr:`~pytest_container.container.ContainerData`.
+#: This fixture will reuse the same container for all tests of the same session.
 auto_container = _create_auto_container_fixture("session")
+
+#: Fixture that expects to be parametrized with an instance of a subclass of
+#: :py:class:`~pytest_container.container.ContainerBase` with `indirect=True`.
+#: It will launch the container and yield an instance of
+#: :py:attr:`~pytest_container.container.ContainerData`.
+#: This fixture will reuse the same container for all tests of the same session.
 container = _create_auto_container_fixture("session")
 
+#: Same as :py:func:`auto_container` but it will launch individual containers
+#: for each test function.
 auto_container_per_test = _create_auto_container_fixture("function")
+
+#: Same as :py:func:`container` but it will launch individual containers for
+#: each test function.
 container_per_test = _create_auto_container_fixture("function")

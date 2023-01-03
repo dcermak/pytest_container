@@ -1,3 +1,4 @@
+"""The logging module handles everything related to logging (unsurprisingly)."""
 import logging
 from typing import Union
 
