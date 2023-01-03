@@ -256,6 +256,9 @@ class ContainerVolume:
 
         """
         if self._create_tmp:
+            # we don't want to use a with statement, as the temporary directory
+            # must survive this function
+            # pylint: disable=consider-using-with
             self._tmpdir = tempfile.TemporaryDirectory()
             self.host_path = self._tmpdir.name
 
