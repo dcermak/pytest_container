@@ -1,3 +1,7 @@
+"""The plugin module contains all fixtures that are provided by
+``pytest_container``.
+
+"""
 import datetime
 import os
 import sys
@@ -228,8 +232,24 @@ def _create_auto_container_fixture(
     return pytest.fixture(scope=scope)(fixture)
 
 
+#: This fixture parametrizes the test function once for each container image
+#: defined in the module level variable ``CONTAINER_IMAGES`` of the current test
+#: module and yield an instance of
+#: :py:attr:`~pytest_container.container.ContainerData`.
+#: This fixture will reuse the same container for all tests of the same session.
 auto_container = _create_auto_container_fixture("session")
+
+#: Fixture that expects to be parametrized with an instance of a subclass of
+#: :py:class:`~pytest_container.container.ContainerBase` with `indirect=True`.
+#: It will launch the container and yield an instance of
+#: :py:attr:`~pytest_container.container.ContainerData`.
+#: This fixture will reuse the same container for all tests of the same session.
 container = _create_auto_container_fixture("session")
 
+#: Same as :py:func:`auto_container` but it will launch individual containers
+#: for each test function.
 auto_container_per_test = _create_auto_container_fixture("function")
+
+#: Same as :py:func:`container` but it will launch individual containers for
+#: each test function.
 container_per_test = _create_auto_container_fixture("function")

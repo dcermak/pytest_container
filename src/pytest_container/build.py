@@ -1,3 +1,8 @@
+"""The build module contains helper classes for building from git repositories
+via :py:class:`GitRepositoryBuild` and to perform multistage containerfile
+builds via :py:class:`MultiStageBuild`.
+
+"""
 from dataclasses import dataclass
 from os import path
 from pathlib import Path

@@ -1,3 +1,8 @@
+"""The helpers module contains various functions for adding & retrieving command
+line flags from pytest and for automatically parametrizing tests using the
+``auto_container*`` fixtures.
+
+"""
 import logging
 from typing import List
 
@@ -8,6 +13,20 @@ from pytest_container.logging import set_internal_logging_level
 
 
 def auto_container_parametrize(metafunc: Metafunc) -> None:
+    """Helper function to automatically parametrize the ``auto_container_*``
+    fixtures.
+
+    Use it by adding the following code snippet to :file:`conftest.py`:
+
+    .. code-block:: python
+
+       from pytest_container import auto_container_parametrize
+
+       def pytest_generate_tests(metafunc):
+           auto_container_parametrize(metafunc)
+
+
+    """
     container_images = getattr(metafunc.module, "CONTAINER_IMAGES", None)
 
     for fixture_name in ("auto_container", "auto_container_per_test"):
