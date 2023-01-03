@@ -1,5 +1,6 @@
 import datetime
 import os
+import sys
 import time
 from pathlib import Path
 from subprocess import check_output
@@ -7,7 +8,6 @@ from tempfile import gettempdir
 from typing import Callable
 from typing import Generator
 from typing import Optional
-from typing import TYPE_CHECKING
 
 from pytest_container.container import container_from_pytest_param
 from pytest_container.container import ContainerData
@@ -19,13 +19,10 @@ from pytest_container.runtime import ContainerHealth
 from pytest_container.runtime import get_selected_runtime
 from pytest_container.runtime import OciRuntimeBase
 
-if TYPE_CHECKING:
+if sys.version_info >= (3, 8):
     from typing import Literal
 else:
-    try:
-        from typing import Literal
-    except ImportError:
-        from typing_extensions import Literal
+    from typing_extensions import Literal
 
 import pytest
 import testinfra
