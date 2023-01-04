@@ -261,7 +261,7 @@ will be used as the mount point. Alternatively, you can also specify the
 path on the host yourself via <a class="reference internal" href="#pytest_container.container.ContainerVolume.host_path" title="pytest_container.container.ContainerVolume.host_path"><code class="xref py py-attr docutils literal notranslate"><span class="pre">host_path</span></code></a>.</p>
 <dl class="py method">
 <dt class="sig sig-object py" id="pytest_container.container.ContainerVolume.cleanup">
-<span class="sig-name descname"><span class="pre">cleanup</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.11)"><span class="pre">None</span></a></span></span><a class="headerlink" href="#pytest_container.container.ContainerVolume.cleanup" title="Permalink to this definition">¶</a></dt>
+<span class="sig-name descname"><span class="pre">cleanup</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">container_runtime</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.11)"><span class="pre">str</span></a></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.11)"><span class="pre">None</span></a></span></span><a class="headerlink" href="#pytest_container.container.ContainerVolume.cleanup" title="Permalink to this definition">¶</a></dt>
 <dd><p>Cleans up the temporary host directory if necessary. This function is
 called automatically by the <code class="docutils literal notranslate"><span class="pre">*container*</span></code> fixtures.</p>
 </dd></dl>
@@ -291,7 +291,8 @@ to the flags unless <a class="reference internal" href="#pytest_container.contai
 <dl class="py attribute">
 <dt class="sig sig-object py" id="pytest_container.container.ContainerVolume.host_path">
 <span class="sig-name descname"><span class="pre">host_path</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Optional" title="(in Python v3.11)"><span class="pre">Optional</span></a><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.11)"><span class="pre">str</span></a><span class="p"><span class="pre">]</span></span></em><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">None</span></em><a class="headerlink" href="#pytest_container.container.ContainerVolume.host_path" title="Permalink to this definition">¶</a></dt>
-<dd><p>Path on the host that will be mounted. When omitted, a temporary
+<dd><p>Path on the host that will be mounted if absolute. if relative,
+it refers to a volume to be auto-created. When omitted, a temporary
 directory will be created and the path will be saved in this attribute.</p>
 </dd></dl>
 
@@ -452,6 +453,18 @@ so there’s no need for the user to modify it</p>
 <dt class="sig sig-object py" id="pytest_container.container.VolumeFlag">
 <em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">pytest_container.container.</span></span><span class="sig-name descname"><span class="pre">VolumeFlag</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">value</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">names</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">*</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">module</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">qualname</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">type</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">start</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">1</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">boundary</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#pytest_container.container.VolumeFlag" title="Permalink to this definition">¶</a></dt>
 <dd><p>Supported flags for mounting container volumes.</p>
+<dl class="py attribute">
+<dt class="sig sig-object py" id="pytest_container.container.VolumeFlag.CHOWN_USER">
+<span class="sig-name descname"><span class="pre">CHOWN_USER</span></span><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">'U'</span></em><a class="headerlink" href="#pytest_container.container.VolumeFlag.CHOWN_USER" title="Permalink to this definition">¶</a></dt>
+<dd><p>chown the content of the volume for rootless runs</p>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="pytest_container.container.VolumeFlag.NOEXEC">
+<span class="sig-name descname"><span class="pre">NOEXEC</span></span><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">'noexec'</span></em><a class="headerlink" href="#pytest_container.container.VolumeFlag.NOEXEC" title="Permalink to this definition">¶</a></dt>
+<dd><p>ensure the volume is mounted as noexec (data only)</p>
+</dd></dl>
+
 <dl class="py attribute">
 <dt class="sig sig-object py" id="pytest_container.container.VolumeFlag.OVERLAY">
 <span class="sig-name descname"><span class="pre">OVERLAY</span></span><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">'O'</span></em><a class="headerlink" href="#pytest_container.container.VolumeFlag.OVERLAY" title="Permalink to this definition">¶</a></dt>
