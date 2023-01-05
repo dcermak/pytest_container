@@ -3,6 +3,7 @@ launching containers away. These classes are used to parametrize test cases
 using the fixtures provided by this plugin.
 
 """
+import contextlib
 import enum
 import functools
 import itertools
@@ -11,26 +12,35 @@ import os
 import socket
 import sys
 import tempfile
+import time
 from abc import ABC
 from abc import abstractmethod
 from dataclasses import dataclass
 from dataclasses import field
+from datetime import datetime
 from datetime import timedelta
 from hashlib import md5
 from pathlib import Path
 from subprocess import check_output
+from types import TracebackType
 from typing import Any
 from typing import Collection
 from typing import Dict
 from typing import List
 from typing import Optional
+from typing import overload
+from typing import Type
 from typing import Union
 
 import pytest
+import testinfra
 from _pytest.mark.structures import MarkDecorator
 from _pytest.mark.structures import ParameterSet
+from filelock import FileLock
 from pytest_container.logging import _logger
+from pytest_container.runtime import ContainerHealth
 from pytest_container.runtime import get_selected_runtime
+from pytest_container.runtime import OciRuntimeBase
 
 
 @enum.unique
@@ -184,55 +194,32 @@ else:
 
 
 @dataclass
-class ContainerVolume:
-    """A volume mounted into a container from the host using bind mounts.
-
-    This class describes a bind mount of a host directory into a container. In
-    the most minimal configuration, all you need to specify is the path in the
-    container via :py:attr:`~ContainerVolume.container_path`. The ``container*``
-    fixtures will then create a temporary directory on the host for you that
-    will be used as the mount point. Alternatively, you can also specify the
-    path on the host yourself via :py:attr:`host_path`.
-
-    """
+class ContainerVolumeBase:
+    """Base class for container volumes."""
 
     #: Path inside the container where this volume will be mounted
     container_path: str
-
-    #: Path on the host that will be mounted if absolute. if relative,
-    #: it refers to a volume to be auto-created. When omitted, a temporary
-    #: directory will be created and the path will be saved in this attribute.
-    host_path: Optional[str] = None
 
     #: Flags for mounting this volume.
     #:
     #: Note that some flags are mutually exclusive and potentially not supported
     #: by all container runtimes.
     #: The :py:attr:`VolumeFlag.SELINUX_PRIVATE` flag will be added by default
-    #: to the flags unless :py:attr:`ContainerVolume.shared` is ``True``.
+    #: to the flags unless :py:attr:`ContainerVolumeBase.shared` is ``True``.
     flags: List[VolumeFlag] = field(default_factory=list)
 
     #: Define whether this volume should can be shared between
     #: containers. Defaults to ``False``.
     #:
     #: This affects only the addition of SELinux flags to
-    #: :py:attr:`~ContainerVolume.flags`.
+    #: :py:attr:`~ContainerVolumeBase.flags`.
     shared: bool = False
 
-    _tmpdir: Optional[TEMPDIR_T] = None
-
-    # This is a stupid hack that we require for this plugin to work with
-    # pytest-rerunfailures:
-    # rerunfailures will reset this class only partially, it sets `_tmpdir` to
-    # `None` but it does **not** reset `host_path`...
-    # That makes it more or less impossible to correctly implement setup()
-    # without an auxiliary variable that stores whether a tmpdir should be
-    # created. Well and that's the story behind this one...
-    _create_tmp: bool = True
+    #: internal volume name via which it can be mounted, e.g. the volume's ID or
+    #: the path on the host
+    _vol_name: str = ""
 
     def __post_init__(self) -> None:
-        self._create_tmp = not self.host_path
-
         if (
             VolumeFlag.SELINUX_PRIVATE not in self.flags
             and VolumeFlag.SELINUX_SHARED not in self.flags
@@ -257,68 +244,196 @@ class ContainerVolume:
                     "are mutually exclusive"
                 )
 
-    def setup(self) -> None:
-        """Creates the temporary host path if necessary. This function is called
-        automatically by the ``*container*`` fixtures.
+    @property
+    def cli_arg(self) -> str:
+        """Command line argument to mount this volume."""
+        assert self._vol_name
+        res = f"-v={self._vol_name}:{self.container_path}"
+        if self.flags:
+            res += ":" + ",".join(str(f) for f in self.flags)
+        return res
+
+
+@dataclass
+class ContainerVolume(ContainerVolumeBase):
+    """A container volume created by the container runtime for persisting files
+    outside of (ephemeral) containers.
+
+    """
+
+    @property
+    def volume_id(self) -> str:
+        """Unique ID of the volume. It is automatically set when the volume is
+        created by :py:class:`VolumeCreator`.
 
         """
-        if self._create_tmp:
+        return self._vol_name
+
+
+@dataclass
+class BindMount(ContainerVolumeBase):
+    """A volume mounted into a container from the host using bind mounts.
+
+    This class describes a bind mount of a host directory into a container. In
+    the most minimal configuration, all you need to specify is the path in the
+    container via :py:attr:`~ContainerVolumeBase.container_path`. The
+    ``container*`` fixtures will then create a temporary directory on the host
+    for you that will be used as the mount point. Alternatively, you can also
+    specify the path on the host yourself via :py:attr:`host_path`.
+
+    """
+
+    #: Path on the host that will be mounted if absolute. if relative,
+    #: it refers to a volume to be auto-created. When omitted, a temporary
+    #: directory will be created and the path will be saved in this attribute.
+    host_path: Optional[str] = None
+
+    def __post_init__(self) -> None:
+        super().__post_init__()
+        if self.host_path:
+            self._vol_name = self.host_path
+
+
+@dataclass
+class VolumeCreator:
+    """Context Manager to create and remove a :py:class:`ContainerVolume`.
+
+    This context manager creates a volume using the supplied
+    :py:attr:`container_runtime` When the ``with`` block is entered and removes
+    it once it is exited.
+    """
+
+    #: The volume to be created
+    volume: ContainerVolume
+
+    #: The container runtime, via which the volume is created & destroyed
+    container_runtime: OciRuntimeBase
+
+    def __enter__(self) -> "VolumeCreator":
+        """Creates the container volume"""
+        vol_id = (
+            check_output(
+                [self.container_runtime.runner_binary, "volume", "create"]
+            )
+            .decode()
+            .strip()
+        )
+        self.volume._vol_name = vol_id
+        return self
+
+    def __exit__(
+        self,
+        __exc_type: Optional[Type[BaseException]],
+        __exc_value: Optional[BaseException],
+        __traceback: Optional[TracebackType],
+    ) -> None:
+        """Cleans up the container volume."""
+        assert self.volume.volume_id
+
+        # Clean up container volume
+        check_output(
+            [
+                self.container_runtime.runner_binary,
+                "volume",
+                "rm",
+                "-f",
+                self.volume.volume_id,
+            ],
+        )
+        self.volume._vol_name = ""
+
+
+@dataclass
+class BindMountCreator:
+    """Context Manager that creates temporary directories for bind mounts (if
+    necessary, i.e. when :py:attr:`BindMount.host_path` is ``None``).
+
+    """
+
+    #: The bind mount which host path should be created
+    volume: BindMount
+
+    #: internal temporary directory
+    _tmpdir: Optional[TEMPDIR_T] = None
+
+    def __post__init__(self) -> None:
+        # the tempdir must not be set accidentally by the user
+        assert self._tmpdir is None, "_tmpdir must only be set in __enter__()"
+
+    def __enter__(self) -> "BindMountCreator":
+        """Creates the temporary host path if necessary."""
+        if not self.volume.host_path:
             # we don't want to use a with statement, as the temporary directory
             # must survive this function
             # pylint: disable=consider-using-with
             self._tmpdir = tempfile.TemporaryDirectory()
-            self.host_path = self._tmpdir.name
+            self.volume.host_path = self._tmpdir.name
 
             _logger.debug(
                 "created temporary directory %s for the container volume %s",
                 self._tmpdir.name,
-                self.container_path,
+                self.volume.container_path,
             )
 
-        assert self.host_path
-        if os.path.isabs(self.host_path) and not os.path.exists(
-            self.host_path
+        assert self.volume.host_path
+        self.volume._vol_name = self.volume.host_path
+        if os.path.isabs(self.volume.host_path) and not os.path.exists(
+            self.volume.host_path
         ):
             raise RuntimeError(
-                f"Volume with the host path '{self.host_path}' "
+                f"Volume with the host path '{self.volume.host_path}' "
                 "was requested but the directory does not exist"
             )
+        return self
 
-    def cleanup(self, container_runtime: str) -> None:
-        """Cleans up the temporary host directory if necessary. This function is
-        called automatically by the ``*container*`` fixtures.
-
-        """
-        assert self.host_path
+    def __exit__(
+        self,
+        __exc_type: Optional[Type[BaseException]],
+        __exc_value: Optional[BaseException],
+        __traceback: Optional[TracebackType],
+    ) -> None:
+        """Cleans up the temporary host directory or the container volume."""
+        assert self.volume.host_path
 
         if self._tmpdir:
             _logger.debug(
                 "cleaning up directory %s for the container volume %s",
-                self.host_path,
-                self.container_path,
+                self.volume.host_path,
+                self.volume.container_path,
             )
             self._tmpdir.cleanup()
-            return
-        # Clean up container volume
-        if not os.path.isabs(self.host_path):
-            check_output(
-                [
-                    container_runtime,
-                    "volume",
-                    "rm",
-                    "-f",
-                    self.host_path,
-                ],
-            )
+            self.volume.host_path = None
+            self.volume._vol_name = ""
 
-    @property
-    def cli_arg(self) -> str:
-        """Command line argument to mount this volume."""
-        assert self.host_path
-        res = f"-v={self.host_path}:{self.container_path}"
-        if self.flags:
-            res += ":" + ",".join(str(f) for f in self.flags)
-        return res
+
+@overload
+def get_volume_creator(
+    volume: ContainerVolume, runtime: OciRuntimeBase
+) -> VolumeCreator:
+    ...
+
+
+@overload
+def get_volume_creator(
+    volume: BindMount, runtime: OciRuntimeBase
+) -> BindMountCreator:
+    ...
+
+
+def get_volume_creator(
+    volume: Union[ContainerVolume, BindMount], runtime: OciRuntimeBase
+) -> Union[VolumeCreator, BindMountCreator]:
+    """Returns the appropriate volume creation context manager for the given
+    volume.
+
+    """
+    if isinstance(volume, ContainerVolume):
+        return VolumeCreator(volume, runtime)
+
+    if isinstance(volume, BindMount):
+        return BindMountCreator(volume)
+
+    assert False, f"invalid volume type {type(volume)}"
 
 
 @dataclass
@@ -369,7 +484,9 @@ class ContainerBase:
     forwarded_ports: List[PortForwarding] = field(default_factory=list)
 
     #: optional list of volumes that should be mounted in this container
-    volume_mounts: List[ContainerVolume] = field(default_factory=list)
+    volume_mounts: List[Union[ContainerVolume, BindMount]] = field(
+        default_factory=list
+    )
 
     _is_local: bool = False
 
@@ -679,3 +796,181 @@ def container_from_pytest_param(
         return param.values[0]
 
     raise ValueError(f"Invalid pytest.param values: {param.values}")
+
+
+@dataclass
+class ContainerLauncher:
+    """Helper context manager to setup, start and teardown a container including
+    all of its resources. It is used by the ``*container*`` fixtures.
+
+    """
+
+    #: The container that will be launched
+    container: Union[Container, DerivedContainer]
+
+    #: The container runtime via which the container will be launched
+    container_runtime: OciRuntimeBase
+
+    #: root directory of the pytest testsuite
+    rootdir: Path
+
+    #: additional arguments to pass to the container build commands
+    extra_build_args: List[str] = field(default_factory=list)
+
+    #: additional arguments to pass to the container run commands
+    extra_run_args: List[str] = field(default_factory=list)
+
+    _new_port_forwards: List[PortForwarding] = field(default_factory=list)
+    _container_id: Optional[str] = None
+
+    _stack: contextlib.ExitStack = field(default_factory=contextlib.ExitStack)
+
+    def __enter__(self) -> "ContainerLauncher":
+        # Lock guarding the container preparation, so that only one process
+        # tries to pull/build it at the same time.
+        # If this container is a singleton, then we use it as a lock until
+        # __exit__()
+        lock = FileLock(
+            Path(tempfile.gettempdir()) / self.container.filelock_filename
+        )
+        _logger.debug(
+            "Locking container preparation via file %s", lock.lock_file
+        )
+        lock.acquire()
+
+        def release_lock() -> None:
+            _logger.debug("Releasing lock %s", lock.lock_file)
+            lock.release()
+            os.unlink(lock.lock_file)
+
+        self.container.prepare_container(self.rootdir, self.extra_build_args)
+
+        # ordinary containers are only locked during the build,
+        # singleton containers are unlocked after everything
+        if not self.container.singleton:
+            release_lock()
+        else:
+            self._stack.callback(release_lock)
+
+        for cont_vol in self.container.volume_mounts:
+            self._stack.enter_context(
+                get_volume_creator(cont_vol, self.container_runtime)
+            )
+
+        forwarded_ports = self.container.forwarded_ports
+
+        # We must perform the launches in separate branches, as containers with
+        # port forwards must be launched while the lock is being held. Otherwise
+        # another container could pick the same ports before this one launches.
+        if forwarded_ports:
+            with FileLock(self.rootdir / "port_check.lock"):
+                self._new_port_forwards = create_host_port_port_forward(
+                    forwarded_ports
+                )
+                port_forward_args = []
+                for new_forward in self._new_port_forwards:
+                    port_forward_args += new_forward.forward_cli_args
+
+                launch_cmd = [
+                    self.container_runtime.runner_binary
+                ] + self.container.get_launch_cmd(
+                    extra_run_args=(self.extra_run_args or [])
+                    + port_forward_args
+                )
+
+                _logger.debug("Launching container via: %s", launch_cmd)
+                self._container_id = check_output(launch_cmd).decode().strip()
+        else:
+            launch_cmd = [
+                self.container_runtime.runner_binary
+            ] + self.container.get_launch_cmd(
+                extra_run_args=self.extra_run_args
+            )
+
+            _logger.debug("Launching container via: %s", launch_cmd)
+            self._container_id = check_output(launch_cmd).decode().strip()
+
+        self._wait_for_container_to_become_healthy()
+
+        return self
+
+    @property
+    def container_data(self) -> ContainerData:
+        """The :py:class:`ContainerData` instance corresponding to the running
+        container. This property is only valid after the context manager has
+        been "entered" via a ``with`` statement.
+
+        """
+        assert self._container_id
+        return ContainerData(
+            image_url_or_id=self.container.url or self.container.container_id,
+            container_id=self._container_id,
+            connection=testinfra.get_host(
+                f"{self.container_runtime.runner_binary}://{self._container_id}"
+            ),
+            container=self.container,
+            forwarded_ports=self._new_port_forwards,
+        )
+
+    def _wait_for_container_to_become_healthy(self) -> None:
+        assert self._container_id
+
+        start = datetime.now()
+        timeout: Optional[timedelta] = self.container.healthcheck_timeout
+        _logger.debug(
+            "Started container with %s at %s", self._container_id, start
+        )
+
+        if timeout is None:
+            healthcheck = self.container_runtime.get_container_healthcheck(
+                self.container
+            )
+            if healthcheck is not None:
+                timeout = healthcheck.max_wait_time
+
+        if timeout is not None and timeout > timedelta(seconds=0):
+            _logger.debug(
+                "Container has a healthcheck defined, will wait at most %s ms",
+                timeout,
+            )
+            while True:
+                health = self.container_runtime.get_container_health(
+                    self._container_id
+                )
+                _logger.debug("Container has the health status %s", health)
+
+                if health in (
+                    ContainerHealth.NO_HEALTH_CHECK,
+                    ContainerHealth.HEALTHY,
+                ):
+                    break
+                delta = datetime.now() - start
+                if delta > timeout:
+                    raise RuntimeError(
+                        f"Container {self._container_id} did not become healthy within "
+                        f"{1000 * timeout.total_seconds()}ms, took {delta} and "
+                        f"state is {str(health)}"
+                    )
+                time.sleep(max(0.5, timeout.total_seconds() / 10))
+
+    def __exit__(
+        self,
+        __exc_type: Optional[Type[BaseException]],
+        __exc_value: Optional[BaseException],
+        __traceback: Optional[TracebackType],
+    ) -> None:
+        if self._container_id is not None:
+            _logger.debug(
+                "Removing container %s via %s",
+                self._container_id,
+                self.container_runtime.runner_binary,
+            )
+            check_output(
+                [
+                    self.container_runtime.runner_binary,
+                    "rm",
+                    "-f",
+                    self._container_id,
+                ]
+            )
+        self._stack.close()

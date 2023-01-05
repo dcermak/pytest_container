@@ -7,7 +7,7 @@ from pytest_container import DerivedContainer
 from pytest_container.container import ImageFormat
 
 
-def test_container_default_entry_point_and_custom_one_set():
+def test_container_default_entry_point_and_custom_one_set() -> None:
     with pytest.raises(ValueError) as val_err_ctx:
         Container(
             url="ignore", default_entry_point=True, custom_entry_point="foobar"
@@ -15,7 +15,7 @@ def test_container_default_entry_point_and_custom_one_set():
     assert "A custom entry point has been provided" in str(val_err_ctx.value)
 
 
-def test_derived_container_default_entry_point_and_custom_one_set():
+def test_derived_container_default_entry_point_and_custom_one_set() -> None:
     with pytest.raises(ValueError) as val_err_ctx:
         DerivedContainer(
             base="foobar",
@@ -25,7 +25,7 @@ def test_derived_container_default_entry_point_and_custom_one_set():
     assert "A custom entry point has been provided" in str(val_err_ctx.value)
 
 
-def test_derived_container_fails_without_base():
+def test_derived_container_fails_without_base() -> None:
     """Ensure that a DerivedContainer cannot be instantiated without providing
     the base parameter.
 
@@ -36,7 +36,7 @@ def test_derived_container_fails_without_base():
     assert str(val_err_ctx.value) == "A base container must be provided"
 
 
-def test_get_base_of_derived_container():
+def test_get_base_of_derived_container() -> None:
     """Ensure that :py:meth:`~pytest_container.DerivedContainer.get_base`
     returns a :py:class:`Container` with the correct url.
 
@@ -45,13 +45,13 @@ def test_get_base_of_derived_container():
     assert DerivedContainer(base=url).get_base() == Container(url=url)
 
 
-def test_image_format():
+def test_image_format() -> None:
     """Check that the string representation of the ImageFormat enum is correct."""
     assert str(ImageFormat.DOCKER) == "docker"
     assert str(ImageFormat.OCIv1) == "oci"
 
 
-def test_local_image_url():
+def test_local_image_url() -> None:
     url = "docker.io/library/iDontExistHopefully/bazbarf/something"
     cont = Container(url=f"containers-storage:{url}")
     assert cont.local_image
@@ -60,7 +60,7 @@ def test_local_image_url():
     cont.prepare_container(Path("."), [])
 
 
-def test_lockfile_path(pytestconfig: pytest.Config):
+def test_lockfile_path(pytestconfig: pytest.Config) -> None:
     """Check that the attribute
     :py:attr:`~pytest_container.ContainerBase.lockfile_filename` does change by
     the container having the attribute
@@ -75,7 +75,7 @@ def test_lockfile_path(pytestconfig: pytest.Config):
     assert cont.filelock_filename == original_lock_fname
 
 
-def test_lockfile_unique():
+def test_lockfile_unique() -> None:
     cont1 = DerivedContainer(
         base="docker.io/library/busybox", containerfile=""
     )

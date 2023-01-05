@@ -23,6 +23,7 @@ import pytest
 import testinfra
 from _pytest.mark.structures import ParameterSet
 
+
 try:
     from typing import TypedDict
 except ImportError:
@@ -34,8 +35,7 @@ from typing import Union
 # cached_property from stdlib and we'll be fine
 if TYPE_CHECKING:
     from functools import cached_property
-    from .container import Container
-    from .container import DerivedContainer
+    from .container import ContainerBase
 else:
     try:
         from functools import cached_property
@@ -315,7 +315,7 @@ class OciRuntimeABC(ABC):
 
     @abstractmethod
     def get_container_healthcheck(
-        self, container_image: Union[str, "Container", "DerivedContainer"]
+        self, container_image: Union[str, "ContainerBase"]
     ) -> Optional[HealthCheck]:
         """Obtain the container image's ``HEALTCHECK`` if defined by the
         container image or ``None`` otherwise.
@@ -448,7 +448,7 @@ class PodmanRuntime(OciRuntimeBase):
         )
 
     def get_container_healthcheck(
-        self, container_image: Union[str, "Container", "DerivedContainer"]
+        self, container_image: Union[str, "ContainerBase"]
     ) -> Optional[HealthCheck]:
         img_inspect_list: List[_PodmanInspect] = json.loads(
             LOCALHOST.run_expect(
@@ -531,7 +531,7 @@ class DockerRuntime(OciRuntimeBase):
         )
 
     def get_container_healthcheck(
-        self, container_image: Union[str, "Container", "DerivedContainer"]
+        self, container_image: Union[str, "ContainerBase"]
     ) -> Optional[HealthCheck]:
         img_inspect_list: List[_DockerInspect] = json.loads(
             LOCALHOST.run_expect(

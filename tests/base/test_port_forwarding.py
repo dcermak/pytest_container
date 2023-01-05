@@ -81,7 +81,7 @@ if _curl_version >= Version(major=7, minor=71, patch=0):
     _CURL = f"{_CURL} --retry-all-errors"
 
 
-def test_forward_cli_args_with_valid_port():
+def test_forward_cli_args_with_valid_port() -> None:
     assert PortForwarding(
         container_port=80, host_port=8080
     ).forward_cli_args == ["-p", "8080:80/tcp"]

@@ -3,12 +3,16 @@ import os
 from typing import List
 
 import pytest
+from pytest_container.container import BindMount
+from pytest_container.container import BindMountCreator
 from pytest_container.container import ContainerData
 from pytest_container.container import ContainerVolume
+from pytest_container.container import ContainerVolumeBase
 from pytest_container.container import DerivedContainer
+from pytest_container.container import get_volume_creator
 from pytest_container.container import VolumeFlag
-from pytest_container.runtime import get_selected_runtime
 from pytest_container.runtime import LOCALHOST
+from pytest_container.runtime import OciRuntimeBase
 
 from tests.base.test_container_build import LEAP
 
@@ -20,7 +24,7 @@ from tests.base.test_container_build import LEAP
         (ContainerVolume("/foo", shared=True), VolumeFlag.SELINUX_SHARED),
     ],
 )
-def test_adds_selinux(volume: ContainerVolume, expected_flag: VolumeFlag):
+def test_adds_selinux(volume: ContainerVolumeBase, expected_flag: VolumeFlag):
     assert len(volume.flags) == 1
     assert volume.flags[0] == expected_flag
 
@@ -42,32 +46,48 @@ def test_errors_on_mutually_exclusive_flags(flags: List[VolumeFlag]):
 @pytest.mark.parametrize(
     "vol,expected_cli",
     [
-        (ContainerVolume("/src", "/bar"), "-v=/bar:/src:Z"),
+        (BindMount("/src", host_path="/bar"), "-v=/bar:/src:Z"),
         (
-            ContainerVolume(
+            BindMount(
                 "/src",
-                "/bar",
+                host_path="/bar",
                 flags=[VolumeFlag.READ_ONLY, VolumeFlag.SELINUX_SHARED],
             ),
             "-v=/bar:/src:ro,z",
         ),
     ],
 )
-def test_cli_arg(vol: ContainerVolume, expected_cli: str):
+def test_cli_arg(vol: ContainerVolumeBase, expected_cli: str):
     assert vol.cli_arg == expected_cli
 
 
-def test_volume_re_create():
-    vol = ContainerVolume("/foo")
+def test_bind_mount_host_path() -> None:
+    vol = BindMount("/foo")
 
-    runtime = get_selected_runtime()
+    with BindMountCreator(vol) as _:
+        assert vol.host_path
+
+    assert not vol.host_path
+
+
+@pytest.mark.parametrize("vol", [BindMount("/foo"), ContainerVolume("/foo")])
+def test_volume_re_create(
+    vol: ContainerVolumeBase, container_runtime: OciRuntimeBase
+) -> None:
+    vol = BindMount("/foo")
+
     for _ in range(10):
-        vol.setup()
-        vol.cleanup(runtime.runner_binary)
+        with get_volume_creator(vol, container_runtime) as _:
+            if isinstance(vol, BindMount):
+                assert vol.host_path
+            elif isinstance(vol, ContainerVolume):
+                assert vol.volume_id
+            else:
+                assert False
 
 
 LEAP_WITH_VOLUMES = DerivedContainer(
-    base=LEAP, volume_mounts=[ContainerVolume("/foo"), ContainerVolume("/bar")]
+    base=LEAP, volume_mounts=[BindMount("/foo"), BindMount("/bar")]
 )
 
 
@@ -77,6 +97,7 @@ LEAP_WITH_VOLUMES = DerivedContainer(
 def test_container_host_volumes(container_per_test: ContainerData):
     assert len(container_per_test.container.volume_mounts) == 2
     for vol in container_per_test.container.volume_mounts:
+        assert isinstance(vol, BindMount)
         assert vol.host_path
         dir_on_host = LOCALHOST.file(vol.host_path)
         assert dir_on_host.exists and dir_on_host.is_directory
@@ -99,6 +120,7 @@ def test_does_not_add_selinux_flags_if_present(flags: List[VolumeFlag]):
 )
 def test_container_volume_host_writing(container_per_test: ContainerData):
     vol = container_per_test.container.volume_mounts[0]
+    assert isinstance(vol, BindMount)
     assert vol.host_path
 
     host_dir = LOCALHOST.file(vol.host_path)
@@ -132,10 +154,7 @@ def test_container_volume_host_writing(container_per_test: ContainerData):
 
 LEAP_WITH_CONTAINER_VOLUMES = DerivedContainer(
     base=LEAP,
-    volume_mounts=[
-        ContainerVolume("/foo", "foo"),
-        ContainerVolume("/bar", "bar"),
-    ],
+    volume_mounts=[ContainerVolume("/foo"), ContainerVolume("/bar")],
 )
 
 
@@ -156,7 +175,7 @@ def test_container_volumes(container_per_test: ContainerData):
 )
 def test_container_volume_writeable(container_per_test: ContainerData):
     vol = container_per_test.container.volume_mounts[0]
-    assert vol.host_path
+    assert isinstance(vol, ContainerVolume) and vol.volume_id
 
     container_dir = container_per_test.connection.file(vol.container_path)
     assert not container_dir.listdir()
@@ -180,3 +199,59 @@ def test_container_volume_writeable(container_per_test: ContainerData):
     assert not container_per_test.connection.file(
         vol2.container_path
     ).listdir()
+
+
+LEAP_WITH_BIND_MOUNT_AND_VOLUME = DerivedContainer(
+    base=LEAP, volume_mounts=[BindMount("/foo"), ContainerVolume("/bar")]
+)
+
+
+@pytest.mark.parametrize(
+    "container_per_test",
+    [LEAP_WITH_BIND_MOUNT_AND_VOLUME for _ in range(10)],
+    indirect=True,
+)
+def test_concurent_container_volumes(container_per_test: ContainerData):
+    """Test that containers can be launched using the same ContainerVolume or
+    BindMount and do not influence each other.
+
+    """
+    assert container_per_test.container.volume_mounts
+
+    for vol in container_per_test.container.volume_mounts:
+        assert container_per_test.connection.file(vol.container_path).exists
+        assert not container_per_test.connection.file(
+            vol.container_path
+        ).listdir()
+
+        container_per_test.connection.run_expect(
+            [0], f"echo > {vol.container_path}/test_file"
+        )
+
+
+LEAP_WITH_ROOTDIR_BIND_MOUNTED = DerivedContainer(
+    base=LEAP,
+    volume_mounts=[BindMount("/src/", host_path=os.path.abspath(os.getcwd()))],
+)
+
+
+@pytest.mark.parametrize(
+    "container", [LEAP_WITH_ROOTDIR_BIND_MOUNTED], indirect=True
+)
+def test_bind_mount_cwd(container: ContainerData):
+    vol = container.container.volume_mounts[0]
+    assert isinstance(vol, BindMount)
+    assert container.connection.file("/src/").exists and sorted(
+        container.connection.file("/src/").listdir()
+    ) == sorted(LOCALHOST.file(vol.host_path).listdir())
+
+
+def test_bind_mount_fails_when_host_path_not_present() -> None:
+    vol = BindMount(
+        "/src/", host_path="/path/to/something/that/should/be/absent"
+    )
+    with pytest.raises(RuntimeError) as runtime_err_ctx:
+        with BindMountCreator(vol) as _:
+            pass
+
+    assert "directory does not exist" in str(runtime_err_ctx.value)

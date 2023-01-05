@@ -1,5 +1,6 @@
 # pylint: disable=missing-function-docstring,missing-module-docstring
 from pytest_container.container import Container
+from pytest_container.container import ContainerData
 
 from tests.base.test_container_build import LEAP
 
@@ -13,7 +14,7 @@ LEAP_WITH_ENV = Container(
 CONTAINER_IMAGES = [LEAP_WITH_ENV]
 
 
-def test_environment_variables_present(auto_container):
+def test_environment_variables_present(auto_container: ContainerData):
     for env_var_name, env_var_val in ENV.items():
         assert (
             auto_container.connection.run_expect(

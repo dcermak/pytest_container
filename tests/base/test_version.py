@@ -20,11 +20,11 @@ def test_version_eq(ver1: Version, ver2: Version):
     assert ver1 == ver2
 
 
-def test_incompatible_types_eq():
+def test_incompatible_types_eq() -> None:
     assert Version(1, 2) != 3
 
 
-def test_incompatible_types_cmp():
+def test_incompatible_types_cmp() -> None:
     with pytest.raises(TypeError) as ctx:
         # pragma pylint: disable=expression-not-assigned
         Version(1, 2) < 3
@@ -63,7 +63,7 @@ def test_version_ne(ver1: Version, ver2: Version):
         ),
     ],
 )
-def test_version_str(ver: Version, stringified):
+def test_version_str(ver: Version, stringified: str):
     assert str(ver) == stringified
 
 
