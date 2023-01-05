@@ -687,6 +687,12 @@ class DerivedContainer(ContainerBase, ContainerBaseABC):
 
         runtime = get_selected_runtime()
 
+        # do not build containers without a containerfile and where no build
+        # tags are added
+        if not self.containerfile and not self.add_build_tags:
+            self.container_id = str(self.get_base())
+            return
+
         with tempfile.TemporaryDirectory() as tmpdirname:
             containerfile_path = os.path.join(tmpdirname, "Dockerfile")
             with open(containerfile_path, "w") as containerfile:

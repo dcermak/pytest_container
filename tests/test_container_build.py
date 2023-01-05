@@ -53,6 +53,8 @@ SLEEP_CONTAINER = DerivedContainer(
     default_entry_point=True,
 )
 
+LEAP2 = DerivedContainer(base=LEAP)
+
 CONTAINER_IMAGES = [LEAP, LEAP_WITH_MAN, LEAP_WITH_MAN_AND_LUA]
 
 MULTI_STAGE_BUILD = MultiStageBuild(
@@ -112,6 +114,32 @@ def test_derived_container_data(container: ContainerData):
     assert container.container_id
     assert container.image_url_or_id == LEAP_WITH_MAN.container_id
     assert container.container == LEAP_WITH_MAN
+
+
+@pytest.mark.parametrize("container", [LEAP2], indirect=True)
+def test_container_without_containerfile_and_without_tags_not_rebuild(
+    container: ContainerData,
+):
+    assert (
+        isinstance(container.container, DerivedContainer)
+        and not container.container.containerfile
+        and not container.container.add_build_tags
+    )
+    assert container.container.get_base() == LEAP
+    assert container.container.container_id == LEAP.url
+
+
+@pytest.mark.parametrize("container", [LEAP_WITH_TAG], indirect=True)
+def test_container_without_containerfile_but_with_tags_is_rebuild(
+    container: ContainerData,
+):
+    assert (
+        isinstance(container.container, DerivedContainer)
+        and not container.container.containerfile
+        and container.container.add_build_tags
+    )
+    assert container.container.get_base() == LEAP
+    assert container.container.container_id != LEAP.url
 
 
 @pytest.mark.parametrize(
