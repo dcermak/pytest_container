@@ -12,10 +12,12 @@ import os
 import socket
 import sys
 import tempfile
+import time
 from abc import ABC
 from abc import abstractmethod
 from dataclasses import dataclass
 from dataclasses import field
+from datetime import datetime
 from datetime import timedelta
 from hashlib import md5
 from pathlib import Path
@@ -31,10 +33,14 @@ from typing import Type
 from typing import Union
 
 import pytest
+import testinfra
 from _pytest.mark.structures import MarkDecorator
 from _pytest.mark.structures import ParameterSet
+from filelock import FileLock
 from pytest_container.logging import _logger
+from pytest_container.runtime import ContainerHealth
 from pytest_container.runtime import get_selected_runtime
+from pytest_container.runtime import OciRuntimeBase
 
 
 @enum.unique
@@ -790,3 +796,181 @@ def container_from_pytest_param(
         return param.values[0]
 
     raise ValueError(f"Invalid pytest.param values: {param.values}")
+
+
+@dataclass
+class ContainerLauncher:
+    """Helper context manager to setup, start and teardown a container including
+    all of its resources. It is used by the ``*container*`` fixtures.
+
+    """
+
+    #: The container that will be launched
+    container: Union[Container, DerivedContainer]
+
+    #: The container runtime via which the container will be launched
+    container_runtime: OciRuntimeBase
+
+    #: root directory of the pytest testsuite
+    rootdir: Path
+
+    #: additional arguments to pass to the container build commands
+    extra_build_args: List[str] = field(default_factory=list)
+
+    #: additional arguments to pass to the container run commands
+    extra_run_args: List[str] = field(default_factory=list)
+
+    _new_port_forwards: List[PortForwarding] = field(default_factory=list)
+    _container_id: Optional[str] = None
+
+    _stack: contextlib.ExitStack = field(default_factory=contextlib.ExitStack)
+
+    def __enter__(self) -> "ContainerLauncher":
+        # Lock guarding the container preparation, so that only one process
+        # tries to pull/build it at the same time.
+        # If this container is a singleton, then we use it as a lock until
+        # __exit__()
+        lock = FileLock(
+            Path(tempfile.gettempdir()) / self.container.filelock_filename
+        )
+        _logger.debug(
+            "Locking container preparation via file %s", lock.lock_file
+        )
+        lock.acquire()
+
+        def release_lock() -> None:
+            _logger.debug("Releasing lock %s", lock.lock_file)
+            lock.release()
+            os.unlink(lock.lock_file)
+
+        self.container.prepare_container(self.rootdir, self.extra_build_args)
+
+        # ordinary containers are only locked during the build,
+        # singleton containers are unlocked after everything
+        if not self.container.singleton:
+            release_lock()
+        else:
+            self._stack.callback(release_lock)
+
+        for cont_vol in self.container.volume_mounts:
+            self._stack.enter_context(
+                get_volume_creator(cont_vol, self.container_runtime)
+            )
+
+        forwarded_ports = self.container.forwarded_ports
+
+        # We must perform the launches in separate branches, as containers with
+        # port forwards must be launched while the lock is being held. Otherwise
+        # another container could pick the same ports before this one launches.
+        if forwarded_ports:
+            with FileLock(self.rootdir / "port_check.lock"):
+                self._new_port_forwards = create_host_port_port_forward(
+                    forwarded_ports
+                )
+                port_forward_args = []
+                for new_forward in self._new_port_forwards:
+                    port_forward_args += new_forward.forward_cli_args
+
+                launch_cmd = [
+                    self.container_runtime.runner_binary
+                ] + self.container.get_launch_cmd(
+                    extra_run_args=(self.extra_run_args or [])
+                    + port_forward_args
+                )
+
+                _logger.debug("Launching container via: %s", launch_cmd)
+                self._container_id = check_output(launch_cmd).decode().strip()
+        else:
+            launch_cmd = [
+                self.container_runtime.runner_binary
+            ] + self.container.get_launch_cmd(
+                extra_run_args=self.extra_run_args
+            )
+
+            _logger.debug("Launching container via: %s", launch_cmd)
+            self._container_id = check_output(launch_cmd).decode().strip()
+
+        self._wait_for_container_to_become_healthy()
+
+        return self
+
+    @property
+    def container_data(self) -> ContainerData:
+        """The :py:class:`ContainerData` instance corresponding to the running
+        container. This property is only valid after the context manager has
+        been "entered" via a ``with`` statement.
+
+        """
+        assert self._container_id
+        return ContainerData(
+            image_url_or_id=self.container.url or self.container.container_id,
+            container_id=self._container_id,
+            connection=testinfra.get_host(
+                f"{self.container_runtime.runner_binary}://{self._container_id}"
+            ),
+            container=self.container,
+            forwarded_ports=self._new_port_forwards,
+        )
+
+    def _wait_for_container_to_become_healthy(self) -> None:
+        assert self._container_id
+
+        start = datetime.now()
+        timeout: Optional[timedelta] = self.container.healthcheck_timeout
+        _logger.debug(
+            "Started container with %s at %s", self._container_id, start
+        )
+
+        if timeout is None:
+            healthcheck = self.container_runtime.get_container_healthcheck(
+                self.container
+            )
+            if healthcheck is not None:
+                timeout = healthcheck.max_wait_time
+
+        if timeout is not None and timeout > timedelta(seconds=0):
+            _logger.debug(
+                "Container has a healthcheck defined, will wait at most %s ms",
+                timeout,
+            )
+            while True:
+                health = self.container_runtime.get_container_health(
+                    self._container_id
+                )
+                _logger.debug("Container has the health status %s", health)
+
+                if health in (
+                    ContainerHealth.NO_HEALTH_CHECK,
+                    ContainerHealth.HEALTHY,
+                ):
+                    break
+                delta = datetime.now() - start
+                if delta > timeout:
+                    raise RuntimeError(
+                        f"Container {self._container_id} did not become healthy within "
+                        f"{1000 * timeout.total_seconds()}ms, took {delta} and "
+                        f"state is {str(health)}"
+                    )
+                time.sleep(max(0.5, timeout.total_seconds() / 10))
+
+    def __exit__(
+        self,
+        __exc_type: Optional[Type[BaseException]],
+        __exc_value: Optional[BaseException],
+        __traceback: Optional[TracebackType],
+    ) -> None:
+        if self._container_id is not None:
+            _logger.debug(
+                "Removing container %s via %s",
+                self._container_id,
+                self.container_runtime.runner_binary,
+            )
+            check_output(
+                [
+                    self.container_runtime.runner_binary,
+                    "rm",
+                    "-f",
+                    self._container_id,
+                ]
+            )
+        self._stack.close()
