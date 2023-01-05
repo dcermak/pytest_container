@@ -4,6 +4,7 @@ from time import sleep
 from typing import Optional
 
 import pytest
+from pytest_container.container import ContainerData
 from pytest_container.container import DerivedContainer
 from pytest_container.container import ImageFormat
 from pytest_container.runtime import ContainerHealth
@@ -45,7 +46,9 @@ CONTAINER_WITH_FAILING_HEALTHCHECK = _failing_healthcheck_container(
 @pytest.mark.parametrize(
     "container", [CONTAINER_WITH_HEALTHCHECK], indirect=True
 )
-def test_container_healthcheck(container, container_runtime: OciRuntimeBase):
+def test_container_healthcheck(
+    container: ContainerData, container_runtime: OciRuntimeBase
+):
     assert (
         container_runtime.get_container_health(container.container_id)
         == ContainerHealth.HEALTHY
@@ -55,7 +58,7 @@ def test_container_healthcheck(container, container_runtime: OciRuntimeBase):
 
 @pytest.mark.parametrize("container", [LEAP], indirect=True)
 def test_container_without_healthcheck(
-    container, container_runtime: OciRuntimeBase
+    container: ContainerData, container_runtime: OciRuntimeBase
 ):
     assert (
         container_runtime.get_container_health(container.container_id)
@@ -67,7 +70,7 @@ def test_container_without_healthcheck(
     "container", [CONTAINER_WITH_FAILING_HEALTHCHECK], indirect=True
 )
 def test_container_with_failing_healthcheck(
-    container, container_runtime: OciRuntimeBase
+    container: ContainerData, container_runtime: OciRuntimeBase
 ):
     # the container must be in starting state at first
     assert (
@@ -125,7 +128,7 @@ def test_container_with_failing_healthcheck(
     indirect=["container"],
 )
 def test_healthcheck_timeout(
-    container,
+    container: ContainerData,
     container_runtime: OciRuntimeBase,
     healthcheck: Optional[HealthCheck],
 ):
