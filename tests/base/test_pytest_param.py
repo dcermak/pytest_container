@@ -1,4 +1,6 @@
 # pylint: disable=missing-function-docstring,missing-module-docstring
+from pathlib import Path
+
 import pytest
 from pytest_container import container_from_pytest_param
 from pytest_container import container_to_pytest_param
@@ -6,6 +8,7 @@ from pytest_container import DerivedContainer
 from pytest_container import get_extra_build_args
 from pytest_container import MultiStageBuild
 from pytest_container import OciRuntimeBase
+from pytest_container.container import ContainerData
 
 from tests.base.test_container_build import LEAP
 
@@ -29,7 +32,9 @@ CONTAINER_IMAGES = [LEAP_PARAM]
 
 
 def test_multistage_with_param(
-    tmp_path, pytestconfig: pytest.Config, container_runtime: OciRuntimeBase
+    tmp_path: Path,
+    pytestconfig: pytest.Config,
+    container_runtime: OciRuntimeBase,
 ):
     MultiStageBuild(
         containers={"builder": LEAP_PARAM, "runner": LEAP_PARAM_2},
@@ -42,7 +47,9 @@ def test_multistage_with_param(
     )
 
 
-def test_multistage_build_invalid_param(tmp_path, pytestconfig: pytest.Config):
+def test_multistage_build_invalid_param(
+    tmp_path: Path, pytestconfig: pytest.Config
+):
     with pytest.raises(ValueError):
         MultiStageBuild(
             containers={"runner": pytest.param()},
@@ -59,15 +66,15 @@ def test_multistage_build_invalid_param(tmp_path, pytestconfig: pytest.Config):
 @pytest.mark.parametrize(
     "container_per_test", [container_to_pytest_param(LEAP)], indirect=True
 )
-def test_container_build_with_param(container_per_test):
+def test_container_build_with_param(container_per_test: ContainerData):
     container_per_test.connection.run_expect([0], "true")
 
 
-def test_auto_container_build_with_param(auto_container):
+def test_auto_container_build_with_param(auto_container: ContainerData):
     auto_container.connection.run_expect([0], "true")
 
 
-def test_container_to_pytest_param():
+def test_container_to_pytest_param() -> None:
     param = container_to_pytest_param(LEAP)
     assert len(param.values) == 1 and param.values[0] == LEAP
     assert param.id == str(LEAP)
@@ -87,7 +94,7 @@ def test_container_to_pytest_param():
     )
 
 
-def test_container_from_pytest_param():
+def test_container_from_pytest_param() -> None:
     assert container_from_pytest_param(container_to_pytest_param(LEAP)) == LEAP
     assert container_from_pytest_param(pytest.param(LEAP, 1, "a")) == LEAP
     assert container_from_pytest_param(LEAP) == LEAP

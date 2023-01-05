@@ -1,6 +1,7 @@
 # pylint: disable=missing-function-docstring,missing-module-docstring
 from pytest import Config
 from pytest_container import DerivedContainer
+from pytest_container.container import ContainerData
 
 
 LEAP_WITH_CONFIG_FILE = DerivedContainer(
@@ -12,7 +13,9 @@ COPY pyproject.toml /opt/app/pyproject.toml""",
 CONTAINER_IMAGES = [LEAP_WITH_CONFIG_FILE]
 
 
-def test_config_file_present(auto_container, pytestconfig: Config):
+def test_config_file_present(
+    auto_container: ContainerData, pytestconfig: Config
+):
     assert auto_container.connection.file("/opt/app/pyproject.toml").exists
     with open(
         pytestconfig.rootpath / "pyproject.toml", encoding="utf-8"

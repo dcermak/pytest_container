@@ -7,6 +7,7 @@ from pytest_container import Container
 from pytest_container import DerivedContainer
 from pytest_container import get_extra_build_args
 from pytest_container.build import MultiStageBuild
+from pytest_container.container import ContainerData
 from pytest_container.runtime import LOCALHOST
 from pytest_container.runtime import OciRuntimeBase
 
@@ -77,21 +78,21 @@ COPY --from=builder /src/test.sh .
 
 
 @pytest.mark.parametrize("container", [LEAP], indirect=["container"])
-def test_leap(container):
+def test_leap(container: ContainerData):
     assert container.connection.file("/etc/os-release").exists
     assert not container.connection.exists("man")
     assert not container.connection.exists("lua")
 
 
 @pytest.mark.parametrize("container", [LEAP], indirect=["container"])
-def test_container_data(container):
+def test_container_data(container: ContainerData):
     assert container.container_id
     assert container.image_url_or_id == LEAP.url
     assert container.container == LEAP
 
 
 @pytest.mark.parametrize("container", [LOCAL_CONTAINER], indirect=True)
-def test_local_container_image_ref(container):
+def test_local_container_image_ref(container: ContainerData):
     assert container.connection.file("/etc/os-release").exists
     assert (
         'ID="opensuse-leap"'
@@ -100,13 +101,13 @@ def test_local_container_image_ref(container):
 
 
 @pytest.mark.parametrize("container", [LEAP_WITH_MAN], indirect=["container"])
-def test_leap_with_man(container):
+def test_leap_with_man(container: ContainerData):
     assert container.connection.exists("man")
     assert not container.connection.exists("lua")
 
 
 @pytest.mark.parametrize("container", [LEAP_WITH_MAN], indirect=["container"])
-def test_derived_container_data(container):
+def test_derived_container_data(container: ContainerData):
     assert container.container_id
     assert container.image_url_or_id == LEAP_WITH_MAN.container_id
     assert container.container == LEAP_WITH_MAN
@@ -115,31 +116,31 @@ def test_derived_container_data(container):
 @pytest.mark.parametrize(
     "container", [LEAP_WITH_MAN_AND_LUA], indirect=["container"]
 )
-def test_leap_with_man_and_info(container):
+def test_leap_with_man_and_info(container: ContainerData):
     assert container.connection.exists("man")
     assert container.connection.exists("lua")
 
 
-def test_container_objects():
+def test_container_objects() -> None:
     for cont in CONTAINER_IMAGES:
         assert cont.get_base() == LEAP
 
 
-def test_auto_container_fixture(auto_container):
+def test_auto_container_fixture(auto_container: ContainerData):
     assert auto_container.connection.file("/etc/os-release").exists
 
 
 @pytest.mark.parametrize(
     "container", [BUSYBOX_WITH_ENTRYPOINT], indirect=["container"]
 )
-def test_custom_entry_point(container):
+def test_custom_entry_point(container: ContainerData):
     container.connection.run_expect([0], "true")
 
 
 @pytest.mark.parametrize(
     "container", [SLEEP_CONTAINER], indirect=["container"]
 )
-def test_default_entry_point(container):
+def test_default_entry_point(container: ContainerData):
     sleep = container.connection.process.filter(comm="sleep")
     assert len(sleep) == 1
     assert "/usr/bin/sleep 3600" == sleep[0].args
@@ -161,12 +162,12 @@ def test_container_size(
     )
 
 
-def test_multistage_containerfile():
+def test_multistage_containerfile() -> None:
     assert "FROM docker.io/alpine" in MULTI_STAGE_BUILD.containerfile
 
 
 def test_multistage_build(
-    tmp_path, pytestconfig: Config, container_runtime: OciRuntimeBase
+    tmp_path: Path, pytestconfig: Config, container_runtime: OciRuntimeBase
 ):
     MULTI_STAGE_BUILD.build(
         tmp_path,
@@ -177,7 +178,7 @@ def test_multistage_build(
 
 
 def test_multistage_build_target(
-    tmp_path, pytestconfig: Config, container_runtime: OciRuntimeBase
+    tmp_path: Path, pytestconfig: Config, container_runtime: OciRuntimeBase
 ):
     first_target = MULTI_STAGE_BUILD.build(
         tmp_path,
