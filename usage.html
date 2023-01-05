@@ -245,36 +245,90 @@ the port that <code class="docutils literal notranslate"><span class="pre">pytes
 </pre></div>
 </div>
 </section>
-<section id="setting-up-bind-mounts">
-<h2>Setting up bind mounts<a class="headerlink" href="#setting-up-bind-mounts" title="Permalink to this heading">¶</a></h2>
-<p>Some tests require that containers are launched with a bind-mounted
-volume. While this can be easily achieved by adding the bind mount command line
-arguments to
+<section id="setting-up-bind-mounts-or-container-volumes">
+<h2>Setting up bind mounts or container volumes<a class="headerlink" href="#setting-up-bind-mounts-or-container-volumes" title="Permalink to this heading">¶</a></h2>
+<p>Some tests require that containers are launched with a bind mount or a container
+volume attached to the container. While this can be achieved by adding the
+respective mount command line arguments to
 <a class="reference internal" href="api.html#pytest_container.container.ContainerBase.extra_launch_args" title="pytest_container.container.ContainerBase.extra_launch_args"><code class="xref py py-attr docutils literal notranslate"><span class="pre">extra_launch_args</span></code></a>, this
 approach can quickly cause problems for concurrent tests (multiple containers
-could be accessing the a volume at the same time).</p>
-<p><code class="docutils literal notranslate"><span class="pre">pytest_container</span></code> offers a convenience class for abstracting away the
-creation of bind mounts via the
-<a class="reference internal" href="api.html#pytest_container.container.ContainerBase.volume_mounts" title="pytest_container.container.ContainerBase.volume_mounts"><code class="xref py py-attr docutils literal notranslate"><span class="pre">volume_mounts</span></code></a> attribute
-using the <a class="reference internal" href="api.html#pytest_container.container.ContainerVolume" title="pytest_container.container.ContainerVolume"><code class="xref py py-class docutils literal notranslate"><span class="pre">ContainerVolume</span></code></a> class. It
-allows you to automatically create temporary directories on the host, mounts
-them in the container and cleans everything up after the test run.</p>
-<p>The following snippet illustrates how to mount</p>
+could be accessing the a volume at the same time) and poses challenges to
+correctly clean up after the test runs and not leave stray volumes on the test
+runner.</p>
+<p><code class="docutils literal notranslate"><span class="pre">pytest_container</span></code> offers a convenience class for creating bind mounts and
+container volumes via <a class="reference internal" href="api.html#pytest_container.container.BindMount" title="pytest_container.container.BindMount"><code class="xref py py-class docutils literal notranslate"><span class="pre">BindMount</span></code></a> and
+<a class="reference internal" href="api.html#pytest_container.container.ContainerVolume" title="pytest_container.container.ContainerVolume"><code class="xref py py-class docutils literal notranslate"><span class="pre">ContainerVolume</span></code></a>, respectively. Instances
+of either of these two classes can be added to the list
+<a class="reference internal" href="api.html#pytest_container.container.ContainerBase.volume_mounts" title="pytest_container.container.ContainerBase.volume_mounts"><code class="xref py py-attr docutils literal notranslate"><span class="pre">volume_mounts</span></code></a> and will be
+automatically configured and mounted into the respective container. The volumes
+will also be cleaned up after the test run.</p>
+<p><a class="reference external" href="https://docs.docker.com/storage/volumes/">Container volumes</a> are created
+using the <a class="reference internal" href="api.html#pytest_container.container.ContainerVolume" title="pytest_container.container.ContainerVolume"><code class="xref py py-class docutils literal notranslate"><span class="pre">ContainerVolume</span></code></a> class. For the
+most basic use case, provide a mount point in the container as a parameter to
+the class. The <code class="docutils literal notranslate"><span class="pre">*container*</span></code> fixtures will then create a volume for you and
+remove it after the test finishes. Additionally, they set the attribute
+<a class="reference internal" href="api.html#pytest_container.container.ContainerVolume.volume_id" title="pytest_container.container.ContainerVolume.volume_id"><code class="xref py py-attr docutils literal notranslate"><span class="pre">volume_id</span></code></a> to the id of
+the newly created volume. You can also add mount flags to the volume via
+<a class="reference internal" href="api.html#pytest_container.container.ContainerVolumeBase.flags" title="pytest_container.container.ContainerVolumeBase.flags"><code class="xref py py-attr docutils literal notranslate"><span class="pre">flags</span></code></a> and specify
+whether the volume can be shared between containers or not via
+<a class="reference internal" href="api.html#pytest_container.container.ContainerVolumeBase.shared" title="pytest_container.container.ContainerVolumeBase.shared"><code class="xref py py-attr docutils literal notranslate"><span class="pre">shared</span></code></a>. Note that the
+<a class="reference internal" href="api.html#pytest_container.container.ContainerVolumeBase.shared" title="pytest_container.container.ContainerVolumeBase.shared"><code class="xref py py-attr docutils literal notranslate"><span class="pre">shared</span></code></a> attribute only
+affects whether the SELinux mount flag <code class="docutils literal notranslate"><span class="pre">Z</span></code> or <code class="docutils literal notranslate"><span class="pre">z</span></code> will be used. It will not
+result in the same volume being available to multiple containers.</p>
+<p><a class="reference external" href="https://docs.docker.com/storage/bind-mounts/">Bind mounts</a> are setup using
+<a class="reference internal" href="api.html#pytest_container.container.BindMount" title="pytest_container.container.BindMount"><code class="xref py py-class docutils literal notranslate"><span class="pre">BindMount</span></code></a>. The user can either specify
+the <a class="reference internal" href="api.html#pytest_container.container.BindMount.host_path" title="pytest_container.container.BindMount.host_path"><code class="xref py py-attr docutils literal notranslate"><span class="pre">host_path</span></code></a> themselves with
+the caveat that the directory must be created manually beforehand and your tests
+must be able to handle concurrency (if using <a class="reference external" href="https://github.com/pytest-dev/pytest-xdist">pytest-xdist</a>). You can also omit the
+<a class="reference internal" href="api.html#pytest_container.container.BindMount.host_path" title="pytest_container.container.BindMount.host_path"><code class="xref py py-attr docutils literal notranslate"><span class="pre">host_path</span></code></a> attribute, in case an
+ephemeral directory is sufficient. Then the <code class="docutils literal notranslate"><span class="pre">*container*</span></code> fixtures will create
+a unique temporary directory before the test and clean it up afterwards. The
+path to the temporary director is accessible via the
+<a class="reference internal" href="api.html#pytest_container.container.BindMount.host_path" title="pytest_container.container.BindMount.host_path"><code class="xref py py-attr docutils literal notranslate"><span class="pre">host_path</span></code></a> attribute during the
+test. Flags can be added similarly to container volumes via
+<a class="reference internal" href="api.html#pytest_container.container.ContainerVolumeBase.flags" title="pytest_container.container.ContainerVolumeBase.flags"><code class="xref py py-attr docutils literal notranslate"><span class="pre">flags</span></code></a> as well as
+configuring sharing via
+<a class="reference internal" href="api.html#pytest_container.container.ContainerVolumeBase.shared" title="pytest_container.container.ContainerVolumeBase.shared"><code class="xref py py-attr docutils literal notranslate"><span class="pre">shared</span></code></a>.</p>
+<div class="admonition important">
+<p class="admonition-title">Important</p>
+<p>If you are using a bind mount with an existing directory on the host and want
+to run tests in parallel, then you <strong>must</strong> set the attribute
+<a class="reference internal" href="api.html#pytest_container.container.ContainerVolumeBase.shared" title="pytest_container.container.ContainerVolumeBase.shared"><code class="xref py py-attr docutils literal notranslate"><span class="pre">shared</span></code></a> to
+<code class="docutils literal notranslate"><span class="pre">True</span></code>. Otherwise the directory will be relabeled to permit mounting from a
+single container only and will cause SELinux errors when two containers try
+to mount it at the same time.</p>
+</div>
+<p>The following snippet illustrates the usage of container volumes and bind
+mounts:</p>
 <div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">NGINX</span> <span class="o">=</span> <span class="n">DerivedContainer</span><span class="p">(</span>
     <span class="n">base</span><span class="o">=</span><span class="s2">&quot;docker.io/library/nginx&quot;</span><span class="p">,</span>
     <span class="n">containerfile</span><span class="o">=</span><span class="s2">&quot;&quot;&quot; # snip</span>
 <span class="s2">    EXPOSE 80</span>
 <span class="s2">    &quot;&quot;&quot;</span><span class="p">,</span>
     <span class="n">volume_mounts</span><span class="o">=</span><span class="p">[</span>
-        <span class="n">ContainerVolume</span><span class="p">(</span><span class="s2">&quot;/etc/nginx/templates&quot;</span><span class="p">,</span> <span class="s2">&quot;/path/to/templates&quot;</span><span class="p">),</span>
-        <span class="n">ContainerVolume</span><span class="p">(</span><span class="s2">&quot;/etc/nginx/nginx.conf&quot;</span><span class="p">,</span> <span class="s2">&quot;/path/to/nginx.conf&quot;</span><span class="p">,</span> <span class="n">flags</span><span class="o">=</span><span class="p">[</span><span class="n">VolumeFlag</span><span class="o">.</span><span class="n">READ_ONLY</span><span class="p">]),</span>
-        <span class="n">ContainerVolume</span><span class="p">(</span><span class="s2">&quot;/var/cache/nginx&quot;</span><span class="p">)</span>
+        <span class="n">BindMount</span><span class="p">(</span>
+            <span class="s2">&quot;/etc/nginx/templates&quot;</span><span class="p">,</span>
+            <span class="n">host_path</span><span class="o">=</span><span class="s2">&quot;/path/to/templates&quot;</span>
+        <span class="p">),</span>
+        <span class="n">BindMount</span><span class="p">(</span>
+            <span class="s2">&quot;/etc/nginx/nginx.conf&quot;</span><span class="p">,</span>
+            <span class="n">host_path</span><span class="o">=</span><span class="s2">&quot;/path/to/nginx.conf&quot;</span><span class="p">,</span>
+            <span class="n">flags</span><span class="o">=</span><span class="p">[</span><span class="n">VolumeFlag</span><span class="o">.</span><span class="n">READ_ONLY</span><span class="p">]</span>
+        <span class="p">),</span>
+        <span class="n">ContainerVolume</span><span class="p">(</span><span class="s2">&quot;/var/log/&quot;</span><span class="p">),</span>
+        <span class="n">BindMount</span><span class="p">(</span><span class="s2">&quot;/var/cache/nginx&quot;</span><span class="p">),</span>
     <span class="p">]</span>
 <span class="p">)</span>
 
+<span class="nd">@pytest</span><span class="o">.</span><span class="n">mark</span><span class="o">.</span><span class="n">parametrize</span><span class="p">(</span><span class="s2">&quot;container_per_test&quot;</span><span class="p">,</span> <span class="p">[</span><span class="n">NGINX</span><span class="p">],</span> <span class="n">indirect</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
 <span class="k">def</span> <span class="nf">check_nginx_cache</span><span class="p">(</span><span class="n">container_per_test</span><span class="p">:</span> <span class="n">ContainerData</span><span class="p">):</span>
-    <span class="n">cache_on_host</span> <span class="o">=</span> <span class="n">container_per_test</span><span class="o">.</span><span class="n">container</span><span class="o">.</span><span class="n">volume_mounts</span><span class="o">.</span><span class="n">host_path</span>
+    <span class="n">cache_on_host</span> <span class="o">=</span> <span class="n">container_per_test</span><span class="o">.</span><span class="n">container</span><span class="o">.</span><span class="n">volume_mounts</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span><span class="o">.</span><span class="n">host_path</span>
     <span class="c1"># cache_on_host is a temporary directory that was just created</span>
+
+    <span class="c1"># var_log is a ContainerVolume and received a unique volume id</span>
+    <span class="c1"># it will be destroyed once the test finishes</span>
+    <span class="n">var_log</span> <span class="o">=</span> <span class="n">container_per_test</span><span class="o">.</span><span class="n">container</span><span class="o">.</span><span class="n">volume_mounts</span><span class="p">[</span><span class="o">-</span><span class="mi">2</span><span class="p">]</span>
+    <span class="k">assert</span> <span class="n">var_log</span><span class="o">.</span><span class="n">volume_id</span>
 </pre></div>
 </div>
 </section>
@@ -309,7 +363,7 @@ them in the container and cleans everything up after the test run.</p>
 <li class="toctree-l2"><a class="reference internal" href="#container-runtime-version">Container Runtime version</a></li>
 <li class="toctree-l2"><a class="reference internal" href="#copying-files-into-containers">Copying files into containers</a></li>
 <li class="toctree-l2"><a class="reference internal" href="#exposing-ports-from-containers">Exposing ports from containers</a></li>
-<li class="toctree-l2"><a class="reference internal" href="#setting-up-bind-mounts">Setting up bind mounts</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#setting-up-bind-mounts-or-container-volumes">Setting up bind mounts or container volumes</a></li>
 </ul>
 </li>
 <li class="toctree-l1"><a class="reference internal" href="api.html">API documentation</a></li>
