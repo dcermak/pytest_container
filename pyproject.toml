@@ -4,9 +4,6 @@ version = "0.0.2"
 description = "Pytest fixtures for writing container based tests"
 authors = ["Dan Čermák <dcermak@suse.com>"]
 license = "LGPL-2.1-or-later"
-packages = [
-    { include = "pytest_container", from = "src" },
-]
 classifiers = [
     "Development Status :: 3 - Alpha",
     "Framework :: Pytest",
@@ -37,7 +34,6 @@ black = ">=21.9b0"
 mypy = ">=0.942"
 pylint = ">=2.10.2"
 reorder-python-imports = ">=2.6.0"
-pytest-cov = ">=4.0.0"
 pytest-xdist = ">=2.4.0"
 Sphinx = ">=5.0"
 pytest-rerunfailures = ">=10.2"

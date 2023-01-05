@@ -10,38 +10,43 @@ from nox_poetry import session
     "container_runtime",
     [nox.param(runtime, id=runtime) for runtime in ("podman", "docker")],
 )
-def test(session, container_runtime):
+def test(session: Session, container_runtime: str):
     session.install(
         "pytest",
         "pytest-xdist",
-        "pytest-cov",
+        "coverage",
         "pytest-rerunfailures",
         "typeguard",
         ".",
     )
     session.run(
+        "coverage",
+        "run",
+        "-m",
         "pytest",
-        "--cov=pytest_container",
-        "--cov-report",
-        "term",
-        "--cov-report",
-        "html",
-        "--cov-report",
-        "xml",
         "-vv",
-        "tests/base/",
+        "tests",
+        "-p",
+        "pytest_container",
         *session.posargs,
         env={"CONTAINER_RUNTIME": container_runtime}
     )
 
 
 @session()
+def coverage(session: Session):
+    session.install("coverage")
+    session.run("coverage", "combine")
+    session.run("coverage", "report", "-m")
+    session.run("coverage", "html")
+    session.run("coverage", "xml")
+
+
+@session()
 def lint(session: Session):
     session.install("mypy", "pytest", "filelock", "pylint", "typeguard", ".")
-    session.run("mypy", "src/pytest_container")
-    session.run(
-        "pylint", "--fail-under", "9.0", "src/pytest_container", "tests/"
-    )
+    session.run("mypy", "pytest_container")
+    session.run("pylint", "--fail-under", "9.0", "pytest_container", "tests/")
 
 
 @session()

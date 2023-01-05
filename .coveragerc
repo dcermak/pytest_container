@@ -1,6 +1,8 @@
 [run]
 branch = True
-source = src/
+source = ./pytest_container
+concurrency = multiprocessing
+parallel = true
 
 [report]
 show_missing = true

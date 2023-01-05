@@ -4,14 +4,14 @@ from time import sleep
 from typing import Optional
 
 import pytest
+
+from .test_container_build import LEAP
 from pytest_container.container import ContainerData
 from pytest_container.container import DerivedContainer
 from pytest_container.container import ImageFormat
 from pytest_container.runtime import ContainerHealth
 from pytest_container.runtime import HealthCheck
 from pytest_container.runtime import OciRuntimeBase
-
-from tests.base.test_container_build import LEAP
 
 
 CONTAINER_WITH_HEALTHCHECK = DerivedContainer(

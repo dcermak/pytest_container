@@ -4,12 +4,12 @@ from time import sleep
 
 from _pytest.config import Config
 from filelock import FileLock
+
+from .test_container_build import BUSYBOX_WITH_ENTRYPOINT
+from .test_container_build import LEAP
 from pytest_container import Container
 from pytest_container import DerivedContainer
 from pytest_container.container import ContainerData
-
-from tests.base.test_container_build import BUSYBOX_WITH_ENTRYPOINT
-from tests.base.test_container_build import LEAP
 
 LEAP_WITH_LOCK = DerivedContainer(
     base=BUSYBOX_WITH_ENTRYPOINT,

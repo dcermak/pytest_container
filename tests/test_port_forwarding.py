@@ -2,14 +2,14 @@
 :py:attr:`~pytest_container.container.ContainerBase.forwarded_ports`."""
 # pylint: disable=missing-function-docstring
 import pytest
+
+from .test_container_build import LEAP
 from pytest_container.container import ContainerData
 from pytest_container.container import DerivedContainer
 from pytest_container.container import NetworkProtocol
 from pytest_container.container import PortForwarding
 from pytest_container.runtime import LOCALHOST
 from pytest_container.runtime import Version
-
-from tests.base.test_container_build import LEAP
 
 
 WEB_SERVER = DerivedContainer(
@@ -42,9 +42,9 @@ def _create_nginx_container(number: int) -> DerivedContainer:
     """
     return DerivedContainer(
         base="docker.io/library/nginx:latest",
-        containerfile=f"""COPY tests/base/files/nginx.default.conf /etc/nginx/conf.d/default.conf
-COPY tests/base/files/mk_certs.sh /bin/mk_certs.sh
-COPY tests/base/files/index.html /usr/share/nginx/html/
+        containerfile=f"""COPY tests/files/nginx.default.conf /etc/nginx/conf.d/default.conf
+COPY tests/files/mk_certs.sh /bin/mk_certs.sh
+COPY tests/files/index.html /usr/share/nginx/html/
 RUN mkdir -p /root/certs/ && cd /root/certs && mk_certs.sh foobar
 EXPOSE 80 443
 RUN sed -i 's|PLACEHOLDER|Test page {number}|' /usr/share/nginx/html/index.html

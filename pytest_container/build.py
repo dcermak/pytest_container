@@ -15,6 +15,7 @@ from typing import Union
 
 from _pytest.config import Config
 from _pytest.mark.structures import ParameterSet
+
 from pytest_container.container import Container
 from pytest_container.container import container_from_pytest_param
 from pytest_container.container import DerivedContainer

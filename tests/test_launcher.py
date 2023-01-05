@@ -4,6 +4,11 @@ from time import sleep
 from typing import Any
 
 import pytest
+
+from .test_container_build import LEAP
+from .test_volumes import LEAP_WITH_BIND_MOUNT_AND_VOLUME
+from .test_volumes import LEAP_WITH_CONTAINER_VOLUMES
+from .test_volumes import LEAP_WITH_VOLUMES
 from pytest_container.container import BindMount
 from pytest_container.container import ContainerData
 from pytest_container.container import ContainerLauncher
@@ -12,11 +17,6 @@ from pytest_container.container import DerivedContainer
 from pytest_container.container import ImageFormat
 from pytest_container.runtime import LOCALHOST
 from pytest_container.runtime import OciRuntimeBase
-
-from .test_container_build import LEAP
-from tests.base.test_volumes import LEAP_WITH_BIND_MOUNT_AND_VOLUME
-from tests.base.test_volumes import LEAP_WITH_CONTAINER_VOLUMES
-from tests.base.test_volumes import LEAP_WITH_VOLUMES
 
 
 def _test_func(con: Any) -> None:
