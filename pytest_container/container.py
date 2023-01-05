@@ -411,14 +411,14 @@ class BindMountCreator:
 def get_volume_creator(
     volume: ContainerVolume, runtime: OciRuntimeBase
 ) -> VolumeCreator:
-    ...
+    ...  # pragma: no cover
 
 
 @overload
 def get_volume_creator(
     volume: BindMount, runtime: OciRuntimeBase
 ) -> BindMountCreator:
-    ...
+    ...  # pragma: no cover
 
 
 def get_volume_creator(
@@ -434,7 +434,7 @@ def get_volume_creator(
     if isinstance(volume, BindMount):
         return BindMountCreator(volume)
 
-    assert False, f"invalid volume type {type(volume)}"
+    assert False, f"invalid volume type {type(volume)}"  # pragma: no cover
 
 
 @dataclass
