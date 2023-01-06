@@ -990,3 +990,4 @@ class ContainerLauncher:
                 ]
             )
         self._stack.close()
+        self._container_id = None

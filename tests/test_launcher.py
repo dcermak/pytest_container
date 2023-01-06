@@ -77,6 +77,20 @@ def test_launcher_creates_and_cleanes_up_volumes(
             assert False, f"invalid volume type {type(vol)}"
 
 
+def test_launcher_container_data_not_available_after_exit(
+    container_runtime: OciRuntimeBase, pytestconfig: pytest.Config
+) -> None:
+    with ContainerLauncher(
+        LEAP, container_runtime, pytestconfig.rootpath
+    ) as launcher:
+        assert launcher.container_data
+
+    with pytest.raises(RuntimeError) as runtime_err_ctx:
+        launcher.container_data
+
+    assert f"{LEAP} has not started" in str(runtime_err_ctx.value)
+
+
 CONTAINER_THAT_FAILS_TO_LAUNCH = DerivedContainer(
     base=LEAP,
     image_format=ImageFormat.DOCKER,
