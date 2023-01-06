@@ -86,7 +86,7 @@ def test_launcher_container_data_not_available_after_exit(
         assert launcher.container_data
 
     with pytest.raises(RuntimeError) as runtime_err_ctx:
-        launcher.container_data
+        _ = launcher.container_data
 
     assert f"{LEAP} has not started" in str(runtime_err_ctx.value)
 
