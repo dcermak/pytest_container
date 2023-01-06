@@ -9,6 +9,7 @@ from pytest_container import DerivedContainer
 from pytest_container import get_extra_build_args
 from pytest_container.build import MultiStageBuild
 from pytest_container.container import ContainerData
+from pytest_container.container import ContainerLauncher
 from pytest_container.runtime import LOCALHOST
 from pytest_container.runtime import OciRuntimeBase
 
@@ -20,11 +21,6 @@ LEAP_WITH_TAG = DerivedContainer(
     base=LEAP.url, add_build_tags=[TAG1, "localhost/opensuse/leap/man:latest"]
 )
 
-# HACK: create this container before collecting tests… dirty, but otherwise the
-# local container test fails because we cannot really express a dependency on
-# the local image
-LEAP_WITH_TAG.prepare_container(Path("."))
-
 LEAP_WITH_MAN = DerivedContainer(
     base=LEAP,
     containerfile="RUN zypper -n in man",
@@ -34,7 +30,6 @@ LEAP_WITH_MAN_AND_LUA = DerivedContainer(
     base=LEAP_WITH_MAN, containerfile="RUN zypper -n in lua"
 )
 
-LOCAL_CONTAINER = Container(url=f"containers-storage:{TAG1}")
 
 BUSYBOX_WITH_ENTRYPOINT = Container(
     url="registry.opensuse.org/opensuse/busybox:latest",
@@ -94,13 +89,23 @@ def test_container_data(container: ContainerData):
     assert container.container == LEAP
 
 
-@pytest.mark.parametrize("container", [LOCAL_CONTAINER], indirect=True)
-def test_local_container_image_ref(container: ContainerData):
-    assert container.connection.file("/etc/os-release").exists
-    assert (
-        'ID="opensuse-leap"'
-        in container.connection.file("/etc/os-release").content_string
-    )
+def test_local_container_image_ref(
+    container_runtime: OciRuntimeBase, pytestconfig: Config
+):
+    LEAP_WITH_TAG.prepare_container(pytestconfig.rootpath)
+
+    # this container only works if LEAP_WITH_TAG exists already
+    local_container = Container(url=f"containers-storage:{TAG1}")
+
+    with ContainerLauncher(
+        local_container, container_runtime, pytestconfig.rootpath
+    ) as launcher:
+        connection = launcher.container_data.connection
+        assert connection.file("/etc/os-release").exists
+        assert (
+            'ID="opensuse-leap"'
+            in connection.file("/etc/os-release").content_string
+        )
 
 
 @pytest.mark.parametrize("container", [LEAP_WITH_MAN], indirect=["container"])
