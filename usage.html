@@ -62,7 +62,7 @@ invocation of <strong class="command">pytest</strong> via the flags <code class=
 </div>
 </div>
 <p>Then pass any extra arguments to your pytest invocation as follows:</p>
-<div class="highlight-shell-session notranslate"><div class="highlight"><pre><span></span><span class="gp">$ </span>pytest --extra-build-args<span class="o">=</span><span class="s2">&quot;--network=host&quot;</span> --extra-build-args<span class="o">=</span><span class="s2">&quot;--no-cache&quot;</span>
+<div class="highlight-shell-session notranslate"><div class="highlight"><pre><span></span><span class="gp">$ </span>pytest<span class="w"> </span>--extra-build-args<span class="o">=</span><span class="s2">&quot;--network=host&quot;</span><span class="w"> </span>--extra-build-args<span class="o">=</span><span class="s2">&quot;--no-cache&quot;</span>
 </pre></div>
 </div>
 <p>Note that multiple arguments have to be passed individually as shown in the
@@ -161,7 +161,7 @@ refer to e.g. <a class="reference external" href="https://phoenixnap.com/kb/dock
 <span class="n">CDIR</span> <span class="o">=</span> <span class="s2">&quot;/dir/in/container&quot;</span>
 <span class="n">DOCKERFILE</span> <span class="o">=</span> <span class="sa">f</span><span class="s2">&quot;&quot;&quot;</span>
 <span class="s2">...</span>
-<span class="s2">COPY </span><span class="si">{</span><span class="n">DIR</span><span class="si">}</span><span class="s2">/</span><span class="si">{</span><span class="n">FILE</span><span class="si">}</span><span class="s2"> </span><span class="si">{</span><span class="n">CDIR</span><span class="si">}</span><span class="s2"></span>
+<span class="s2">COPY </span><span class="si">{</span><span class="n">DIR</span><span class="si">}</span><span class="s2">/</span><span class="si">{</span><span class="n">FILE</span><span class="si">}</span><span class="s2"> </span><span class="si">{</span><span class="n">CDIR</span><span class="si">}</span>
 <span class="s2">...</span>
 <span class="s2">&quot;&quot;&quot;</span>
 <span class="n">CONTAINER1</span> <span class="o">=</span> <span class="n">DerivedContainer</span><span class="p">(</span>

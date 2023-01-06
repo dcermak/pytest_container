@@ -78,9 +78,9 @@ openSUSE Tumbleweed, install <strong class="command">pip</strong> into it, copy 
 python project into the image and install it in the container:</p>
 <div class="highlight-Dockerfile notranslate"><div class="highlight"><pre><span></span><span class="k">FROM</span><span class="w"> </span><span class="s">registry.opensuse.org/opensuse/tumbleweed</span>
 
-<span class="k">RUN</span><span class="w"> </span>zypper -n <span class="k">in</span> python3-pip
-<span class="k">COPY</span><span class="w"> </span>dist/*whl .
-<span class="k">RUN</span><span class="w"> </span>pip install *whl
+<span class="k">RUN</span><span class="w"> </span>zypper<span class="w"> </span>-n<span class="w"> </span><span class="k">in</span><span class="w"> </span>python3-pip
+<span class="k">COPY</span><span class="w"> </span>dist/*whl<span class="w"> </span>.
+<span class="k">RUN</span><span class="w"> </span>pip<span class="w"> </span>install<span class="w"> </span>*whl
 </pre></div>
 </div>
 <p>Plug the <code class="file docutils literal notranslate"><span class="pre">Dockerfile</span></code> into <code class="docutils literal notranslate"><span class="pre">pytest_container</span></code> using the
