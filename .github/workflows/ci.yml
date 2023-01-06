@@ -68,6 +68,10 @@ jobs:
           nox -s "test-${{ matrix.python_version }}(${{ matrix.container_runtime }})" -- --reruns 3 --pytest-container-log-level DEBUG
           nox -s coverage
 
+      - name: verify that no stray containers are left
+        run: |
+          [[ $(${{ matrix.container_runtime }} ps -aq|wc -l) = "0" ]]
+
       - name: Upload coverage to Codecov
         uses: codecov/codecov-action@v3
         with:
