@@ -33,7 +33,7 @@ from typing import Union
 # mypy will try to import cached_property but fail to find its types
 # since we run mypy with the most recent python version, we can simply import
 # cached_property from stdlib and we'll be fine
-if TYPE_CHECKING:
+if TYPE_CHECKING:  # pragma: no cover
     from functools import cached_property
     from .container import ContainerBase
 else:
@@ -42,7 +42,7 @@ else:
     except ImportError:
         from cached_property import cached_property
 
-if TYPE_CHECKING:
+if TYPE_CHECKING:  # pragma: no cover
     import pytest_container
 
 
