@@ -66,6 +66,7 @@ jobs:
           export TMPDIR="$(pwd)/tmp"
           nox -s "test-${{ matrix.python_version }}(${{ matrix.container_runtime }})" -- -n auto --reruns 3 --pytest-container-log-level DEBUG
           nox -s "test-${{ matrix.python_version }}(${{ matrix.container_runtime }})" -- --reruns 3 --pytest-container-log-level DEBUG
+          nox -s coverage
 
       - name: Upload coverage to Codecov
         uses: codecov/codecov-action@v3

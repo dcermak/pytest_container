@@ -37,6 +37,7 @@ import testinfra
 from _pytest.mark.structures import MarkDecorator
 from _pytest.mark.structures import ParameterSet
 from filelock import FileLock
+
 from pytest_container.logging import _logger
 from pytest_container.runtime import ContainerHealth
 from pytest_container.runtime import get_selected_runtime
@@ -410,14 +411,14 @@ class BindMountCreator:
 def get_volume_creator(
     volume: ContainerVolume, runtime: OciRuntimeBase
 ) -> VolumeCreator:
-    ...
+    ...  # pragma: no cover
 
 
 @overload
 def get_volume_creator(
     volume: BindMount, runtime: OciRuntimeBase
 ) -> BindMountCreator:
-    ...
+    ...  # pragma: no cover
 
 
 def get_volume_creator(
@@ -433,7 +434,7 @@ def get_volume_creator(
     if isinstance(volume, BindMount):
         return BindMountCreator(volume)
 
-    assert False, f"invalid volume type {type(volume)}"
+    assert False, f"invalid volume type {type(volume)}"  # pragma: no cover
 
 
 @dataclass
@@ -685,6 +686,12 @@ class DerivedContainer(ContainerBase, ContainerBaseABC):
             self.base.prepare_container(rootdir)
 
         runtime = get_selected_runtime()
+
+        # do not build containers without a containerfile and where no build
+        # tags are added
+        if not self.containerfile and not self.add_build_tags:
+            self.container_id = str(self.get_base())
+            return
 
         with tempfile.TemporaryDirectory() as tmpdirname:
             containerfile_path = os.path.join(tmpdirname, "Dockerfile")

@@ -243,6 +243,10 @@ class HealthCheck:
     def from_container_inspect(
         inspect_json: ContainerInspectHealthCheck,
     ) -> "HealthCheck":
+        """Convert the json-loaded output of :command:`podman inspect $ctr` or
+        :command:`docker inspect $ctr` into a :py:class:`HealthCheck`.
+
+        """
         return HealthCheck(
             start_period=timedelta(
                 microseconds=inspect_json["StartPeriod"] / 1000

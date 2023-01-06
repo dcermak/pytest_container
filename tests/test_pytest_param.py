@@ -2,6 +2,8 @@
 from pathlib import Path
 
 import pytest
+
+from .test_container_build import LEAP
 from pytest_container import container_from_pytest_param
 from pytest_container import container_to_pytest_param
 from pytest_container import DerivedContainer
@@ -9,8 +11,6 @@ from pytest_container import get_extra_build_args
 from pytest_container import MultiStageBuild
 from pytest_container import OciRuntimeBase
 from pytest_container.container import ContainerData
-
-from tests.base.test_container_build import LEAP
 
 
 LEAP_PARAM = pytest.param(LEAP)
