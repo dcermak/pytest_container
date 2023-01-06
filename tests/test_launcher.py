@@ -102,14 +102,22 @@ HEALTHCHECK --retries=1 --interval=1s --timeout=1s CMD false
 
 
 def test_launcher_fails_on_failing_healthcheck(
-    container_runtime: OciRuntimeBase, pytestconfig: pytest.Config
+    container_runtime: OciRuntimeBase, pytestconfig: pytest.Config, host
 ):
+    container_name = "container_with_failing_healthcheck"
     with pytest.raises(RuntimeError) as runtime_err_ctx:
         with ContainerLauncher(
             container=CONTAINER_THAT_FAILS_TO_LAUNCH,
             container_runtime=container_runtime,
             rootdir=pytestconfig.rootpath,
+            container_name=container_name,
         ) as _:
             pass
+
+    # manually delete the container as pytest prevents the __exit__() block from
+    # running
+    host.run_expect(
+        [0], f"{container_runtime.runner_binary} rm -f {container_name}"
+    )
 
     assert "did not become healthy within" in str(runtime_err_ctx.value)
