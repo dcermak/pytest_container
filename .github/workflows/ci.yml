@@ -72,6 +72,10 @@ jobs:
         run: |
           [[ $(${{ matrix.container_runtime }} ps -aq|wc -l) = "0" ]]
 
+      - name: verify that no stray volumes are left
+        run: |
+          [[ $(${{ matrix.container_runtime }} volume ls -q|wc -l) = "0" ]]
+
       - name: Upload coverage to Codecov
         uses: codecov/codecov-action@v3
         with:
