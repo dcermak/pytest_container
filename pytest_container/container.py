@@ -916,7 +916,8 @@ class ContainerLauncher:
         been "entered" via a ``with`` statement.
 
         """
-        assert self._container_id
+        if not self._container_id:
+            raise RuntimeError(f"Container {self.container} has not started")
         return ContainerData(
             image_url_or_id=self.container.url or self.container.container_id,
             container_id=self._container_id,
