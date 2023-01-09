@@ -17,6 +17,9 @@ Pytest container
            :alt: PyPI
            :target: https://pypi.org/project/pytest-container/
 
+Find the latest documentation on `dcermak.github.io/pytest_container
+<https://dcermak.github.io/pytest_container/>`_.
+
 ``pytest_container`` is a `pytest <https://pytest.org>`_ plugin
 to test container images via pytest fixtures and `testinfra
 <https://testinfra.readthedocs.io/en/latest/>`_. It takes care of all the boring
