@@ -827,6 +827,9 @@ class ContainerLauncher:
     #: additional arguments to pass to the container run commands
     extra_run_args: List[str] = field(default_factory=list)
 
+    #: optional name of this container
+    container_name: str = ""
+
     _new_port_forwards: List[PortForwarding] = field(default_factory=list)
     _container_id: Optional[str] = None
 
@@ -866,6 +869,10 @@ class ContainerLauncher:
 
         forwarded_ports = self.container.forwarded_ports
 
+        container_name_args = (
+            ["--name", self.container_name] if self.container_name else []
+        )
+
         # We must perform the launches in separate branches, as containers with
         # port forwards must be launched while the lock is being held. Otherwise
         # another container could pick the same ports before this one launches.
@@ -883,6 +890,7 @@ class ContainerLauncher:
                 ] + self.container.get_launch_cmd(
                     extra_run_args=(self.extra_run_args or [])
                     + port_forward_args
+                    + container_name_args
                 )
 
                 _logger.debug("Launching container via: %s", launch_cmd)
@@ -891,7 +899,7 @@ class ContainerLauncher:
             launch_cmd = [
                 self.container_runtime.runner_binary
             ] + self.container.get_launch_cmd(
-                extra_run_args=self.extra_run_args
+                extra_run_args=self.extra_run_args + container_name_args
             )
 
             _logger.debug("Launching container via: %s", launch_cmd)
@@ -908,7 +916,8 @@ class ContainerLauncher:
         been "entered" via a ``with`` statement.
 
         """
-        assert self._container_id
+        if not self._container_id:
+            raise RuntimeError(f"Container {self.container} has not started")
         return ContainerData(
             image_url_or_id=self.container.url or self.container.container_id,
             container_id=self._container_id,
@@ -981,3 +990,4 @@ class ContainerLauncher:
                 ]
             )
         self._stack.close()
+        self._container_id = None

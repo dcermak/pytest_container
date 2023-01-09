@@ -231,7 +231,12 @@ def test_concurent_container_volumes(container_per_test: ContainerData):
 
 LEAP_WITH_ROOTDIR_BIND_MOUNTED = DerivedContainer(
     base=LEAP,
-    volume_mounts=[BindMount("/src/", host_path=os.path.abspath(os.getcwd()))],
+    volume_mounts=[
+        BindMount(
+            "/src/",
+            host_path=os.path.join(os.path.abspath(os.getcwd()), "tests"),
+        )
+    ],
 )
 
 

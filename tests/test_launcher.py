@@ -77,6 +77,20 @@ def test_launcher_creates_and_cleanes_up_volumes(
             assert False, f"invalid volume type {type(vol)}"
 
 
+def test_launcher_container_data_not_available_after_exit(
+    container_runtime: OciRuntimeBase, pytestconfig: pytest.Config
+) -> None:
+    with ContainerLauncher(
+        LEAP, container_runtime, pytestconfig.rootpath
+    ) as launcher:
+        assert launcher.container_data
+
+    with pytest.raises(RuntimeError) as runtime_err_ctx:
+        _ = launcher.container_data
+
+    assert f"{LEAP} has not started" in str(runtime_err_ctx.value)
+
+
 CONTAINER_THAT_FAILS_TO_LAUNCH = DerivedContainer(
     base=LEAP,
     image_format=ImageFormat.DOCKER,
@@ -88,14 +102,22 @@ HEALTHCHECK --retries=1 --interval=1s --timeout=1s CMD false
 
 
 def test_launcher_fails_on_failing_healthcheck(
-    container_runtime: OciRuntimeBase, pytestconfig: pytest.Config
+    container_runtime: OciRuntimeBase, pytestconfig: pytest.Config, host
 ):
+    container_name = "container_with_failing_healthcheck"
     with pytest.raises(RuntimeError) as runtime_err_ctx:
         with ContainerLauncher(
             container=CONTAINER_THAT_FAILS_TO_LAUNCH,
             container_runtime=container_runtime,
             rootdir=pytestconfig.rootpath,
+            container_name=container_name,
         ) as _:
             pass
+
+    # manually delete the container as pytest prevents the __exit__() block from
+    # running
+    host.run_expect(
+        [0], f"{container_runtime.runner_binary} rm -f {container_name}"
+    )
 
     assert "did not become healthy within" in str(runtime_err_ctx.value)

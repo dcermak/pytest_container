@@ -60,12 +60,27 @@ def _create_auto_container_fixture(
                 f"A singleton container ({launch_data}) cannot be used in a session level fixture"
             )
 
+        add_labels = [
+            "--label",
+            f"pytest_container.request={request}",
+            "--label",
+            f"pytest_container.node.name={request.node.name}",
+            "--label",
+            f"pytest_container.scope={request.scope}",
+        ]
+        try:
+            add_labels.extend(
+                ["--label", f"pytest_container.path={request.path}"]
+            )
+        except AttributeError:
+            pass
+
         with ContainerLauncher(
             container=launch_data,
             container_runtime=container_runtime,
             rootdir=pytestconfig.rootpath,
             extra_build_args=get_extra_build_args(pytestconfig),
-            extra_run_args=get_extra_run_args(pytestconfig),
+            extra_run_args=get_extra_run_args(pytestconfig) + add_labels,
         ) as launcher:
             yield launcher.container_data
 
