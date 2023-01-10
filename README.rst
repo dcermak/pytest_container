@@ -27,6 +27,7 @@ tasks, like spinning up containers, finding free ports and cleaning up after
 tests, and allows you to focus on implementing the actual tests.
 
 The plugin automates the following tasks:
+
 - pull, launch, and stop containers
 - build containers using a :file:`Dockerfile`
 - wait for containers to become healthy before executing tests
