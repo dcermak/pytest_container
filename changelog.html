@@ -1,0 +1,201 @@
+
+<!DOCTYPE html>
+
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="generator" content="Docutils 0.18.1: http://docutils.sourceforge.net/" />
+
+    <title>Changelog &#8212; pytest_container  documentation</title>
+    <link rel="stylesheet" type="text/css" href="_static/pygments.css" />
+    <link rel="stylesheet" type="text/css" href="_static/alabaster.css" />
+    <script data-url_root="./" id="documentation_options" src="_static/documentation_options.js"></script>
+    <script src="_static/jquery.js"></script>
+    <script src="_static/underscore.js"></script>
+    <script src="_static/_sphinx_javascript_frameworks_compat.js"></script>
+    <script src="_static/doctools.js"></script>
+    <script src="_static/sphinx_highlight.js"></script>
+    <link rel="index" title="Index" href="genindex.html" />
+    <link rel="search" title="Search" href="search.html" />
+    <link rel="next" title="API documentation" href="api.html" />
+    <link rel="prev" title="Usage Tips" href="usage.html" />
+   
+  <link rel="stylesheet" href="_static/custom.css" type="text/css" />
+  
+  
+  <meta name="viewport" content="width=device-width, initial-scale=0.9, maximum-scale=0.9" />
+
+  </head><body>
+  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          
+
+          <div class="body" role="main">
+            
+  <section id="changelog">
+<h1>Changelog<a class="headerlink" href="#changelog" title="Permalink to this heading">¶</a></h1>
+<section id="xx-january-2023">
+<h2>0.0.3 (xx January 2023)<a class="headerlink" href="#xx-january-2023" title="Permalink to this heading">¶</a></h2>
+<p>Breaking changes:</p>
+<ul class="simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">ContainerBase.healtcheck_timeout_ms</span></code> got renamed to
+<a class="reference internal" href="api.html#pytest_container.container.ContainerBase.healthcheck_timeout" title="pytest_container.container.ContainerBase.healthcheck_timeout"><code class="xref py py-attr docutils literal notranslate"><span class="pre">healthcheck_timeout</span></code></a> and was
+changed as follows: it is now a <a class="reference external" href="https://docs.python.org/3/library/datetime.html#datetime.timedelta" title="(in Python v3.11)"><code class="xref py py-class docutils literal notranslate"><span class="pre">timedelta</span></code></a> with the
+default value being <code class="docutils literal notranslate"><span class="pre">None</span></code> and implies that <code class="docutils literal notranslate"><span class="pre">pytest_container</span></code> figures the
+maximum timeout out itself. If a positive timedelta is provided, then that
+timeout is used instead of the inferred default and if it is negative, then no
+timeout is applied.</p></li>
+</ul>
+<p>Improvements and new features:</p>
+<ul class="simple">
+<li><p>Add support for automatically exposing ports in containers via the
+<a class="reference internal" href="api.html#pytest_container.container.ContainerBase.forwarded_ports" title="pytest_container.container.ContainerBase.forwarded_ports"><code class="xref py py-attr docutils literal notranslate"><span class="pre">forwarded_ports</span></code></a>
+attribute: Container Images can now define which ports they want to publish
+automatically and let the <cite>container_*</cite> fixtures automatically find the next
+free port for them. This allows the user to launch multiple containers from
+Container Images exposing the same ports in parallel without marking them as
+<code class="docutils literal notranslate"><span class="pre">singleton=True</span></code>.</p></li>
+<li><p>The attribute <a class="reference internal" href="api.html#pytest_container.container.ContainerData.container" title="pytest_container.container.ContainerData.container"><code class="xref py py-attr docutils literal notranslate"><span class="pre">container</span></code></a>
+was added to <a class="reference internal" href="api.html#pytest_container.container.ContainerData" title="pytest_container.container.ContainerData"><code class="xref py py-class docutils literal notranslate"><span class="pre">ContainerData</span></code></a> (the
+datastructure that is passed to test functions via the <code class="docutils literal notranslate"><span class="pre">*container*</span></code>
+fixtures). This attribute contains the
+<a class="reference internal" href="api.html#pytest_container.container.ContainerBase" title="pytest_container.container.ContainerBase"><code class="xref py py-class docutils literal notranslate"><span class="pre">ContainerBase</span></code></a> that was used to
+parametrize this test run.</p></li>
+<li><p>Add support to add tags to container images via
+<a class="reference internal" href="api.html#pytest_container.container.DerivedContainer.add_build_tags" title="pytest_container.container.DerivedContainer.add_build_tags"><code class="xref py py-attr docutils literal notranslate"><span class="pre">add_build_tags</span></code></a>.</p></li>
+<li><p>Lock container preparation so that only a single process is pulling &amp; building
+a container image.</p></li>
+<li><p>Add the helper class <a class="reference internal" href="api.html#pytest_container.runtime.Version" title="pytest_container.runtime.Version"><code class="xref py py-class docutils literal notranslate"><span class="pre">Version</span></code></a> for parsing
+and comparing versions.</p></li>
+<li><p>Container volumes and bind mounts can now be automatically created via the
+<a class="reference internal" href="api.html#pytest_container.container.ContainerVolume" title="pytest_container.container.ContainerVolume"><code class="xref py py-class docutils literal notranslate"><span class="pre">ContainerVolume</span></code></a> and
+<a class="reference internal" href="api.html#pytest_container.container.BindMount" title="pytest_container.container.BindMount"><code class="xref py py-class docutils literal notranslate"><span class="pre">BindMount</span></code></a> classes and adding them to
+the <a class="reference internal" href="api.html#pytest_container.container.ContainerBase.volume_mounts" title="pytest_container.container.ContainerBase.volume_mounts"><code class="xref py py-attr docutils literal notranslate"><span class="pre">volume_mounts</span></code></a>
+attribute.</p></li>
+</ul>
+<p>Documentation:</p>
+<ul class="simple">
+<li><p>Add a tutorial how to start using <code class="docutils literal notranslate"><span class="pre">pytest_container</span></code></p></li>
+<li><p>Document most public and private functions, classes and modules</p></li>
+</ul>
+<p>Internal changes:</p>
+<ul class="simple">
+<li><p>Switch from tox to nox and nox-poetry.</p></li>
+<li><p>Add <a class="reference external" href="https://typeguard.readthedocs.io/en/stable/index.html">typeguard</a> to
+the test runs to check type hints.</p></li>
+<li><p>Use context managers in the fixtures to make the code more readable and
+robust.</p></li>
+</ul>
+</section>
+<section id="february-2022">
+<h2>0.0.2 (01 February 2022)<a class="headerlink" href="#february-2022" title="Permalink to this heading">¶</a></h2>
+<p>Breaking changes:</p>
+<p>Improvements and new features:</p>
+<blockquote>
+<div><ul class="simple">
+<li><p>Support healthcheck in Container images</p></li>
+<li><p>Add support for internal logging and make the level user configurable</p></li>
+<li><p>Allow for singleton container images</p></li>
+<li><p>Add support for passing run &amp; build arguments via the pytest CLI to podman/docker</p></li>
+<li><p>Add support for adding environment variables into containers</p></li>
+</ul>
+</div></blockquote>
+<p>Documentation:</p>
+<blockquote>
+<div><ul class="simple">
+<li><p>treat unresolved references as errors</p></li>
+<li><p>enable intersphinx</p></li>
+</ul>
+</div></blockquote>
+<p>Internal changes:</p>
+<blockquote>
+<div><ul class="simple">
+<li><p>Provide a better error message in auto_container_parametrize</p></li>
+<li><p>Add support for using pytest.param instead of Container classes</p></li>
+</ul>
+</div></blockquote>
+</section>
+</section>
+
+
+          </div>
+          
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper">
+<h1 class="logo"><a href="index.html">pytest_container</a></h1>
+
+
+
+
+
+
+
+
+<h3>Navigation</h3>
+<p class="caption" role="heading"><span class="caption-text">Contents:</span></p>
+<ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="prerequisites.html">Prerequisites</a></li>
+<li class="toctree-l1"><a class="reference internal" href="tutorials.html">Tutorials</a></li>
+<li class="toctree-l1"><a class="reference internal" href="fixtures.html">Fixtures</a></li>
+<li class="toctree-l1"><a class="reference internal" href="usage.html">Usage Tips</a></li>
+<li class="toctree-l1 current"><a class="current reference internal" href="#">Changelog</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="#xx-january-2023">0.0.3 (xx January 2023)</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#february-2022">0.0.2 (01 February 2022)</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="api.html">API documentation</a></li>
+</ul>
+
+<div class="relations">
+<h3>Related Topics</h3>
+<ul>
+  <li><a href="index.html">Documentation overview</a><ul>
+      <li>Previous: <a href="usage.html" title="previous chapter">Usage Tips</a></li>
+      <li>Next: <a href="api.html" title="next chapter">API documentation</a></li>
+  </ul></li>
+</ul>
+</div>
+<div id="searchbox" style="display: none" role="search">
+  <h3 id="searchlabel">Quick search</h3>
+    <div class="searchformwrapper">
+    <form class="search" action="search.html" method="get">
+      <input type="text" name="q" aria-labelledby="searchlabel" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false"/>
+      <input type="submit" value="Go" />
+    </form>
+    </div>
+</div>
+<script>document.getElementById('searchbox').style.display = "block"</script>
+
+
+
+
+
+
+
+
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="footer">
+      &copy;2021-2023, Dan Čermák.
+      
+      |
+      Powered by <a href="http://sphinx-doc.org/">Sphinx 5.3.0</a>
+      &amp; <a href="https://github.com/bitprophet/alabaster">Alabaster 0.7.12</a>
+      
+      |
+      <a href="_sources/changelog.rst.txt"
+          rel="nofollow">Page source</a>
+    </div>
+
+    
+
+    
+  </body>
+</html>
