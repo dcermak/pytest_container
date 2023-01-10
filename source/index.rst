@@ -17,6 +17,8 @@
 
    usage
 
+   changelog
+
    api
 
 Indices and tables
