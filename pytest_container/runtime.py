@@ -263,7 +263,7 @@ class HealthCheck:
         )
 
 
-class _PodmanInspect(TypedDict, total=False):
+class _PodmanImageInspect(TypedDict, total=False):
     """Object created by json loading the output of :command:`podman inspect
     $img_id`.
 
@@ -281,7 +281,7 @@ class _DockerInspectConfig(TypedDict, total=False):
     Healthcheck: ContainerInspectHealthCheck
 
 
-class _DockerInspect(TypedDict, total=False):
+class _DockerImageInspect(TypedDict, total=False):
     """Object created by json loading the output of :command:`docker inspect
     $img_id`.
 
@@ -454,7 +454,7 @@ class PodmanRuntime(OciRuntimeBase):
     def get_container_healthcheck(
         self, container_image: Union[str, "ContainerBase"]
     ) -> Optional[HealthCheck]:
-        img_inspect_list: List[_PodmanInspect] = json.loads(
+        img_inspect_list: List[_PodmanImageInspect] = json.loads(
             LOCALHOST.run_expect(
                 [0], f"podman inspect {container_image}"
             ).stdout
@@ -537,7 +537,7 @@ class DockerRuntime(OciRuntimeBase):
     def get_container_healthcheck(
         self, container_image: Union[str, "ContainerBase"]
     ) -> Optional[HealthCheck]:
-        img_inspect_list: List[_DockerInspect] = json.loads(
+        img_inspect_list: List[_DockerImageInspect] = json.loads(
             LOCALHOST.run_expect(
                 [0], f"docker inspect {str(container_image)}"
             ).stdout
