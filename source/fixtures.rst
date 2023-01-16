@@ -17,13 +17,13 @@ with a ``HEALTHCHECK``, the container will become available once it is healthy.
 
 In certain cases it makes sense to not wait for the healthcheck or to
 explicitly ignore it. In that case set the attribute
-:py:attr:`pytest_container.container.ContainerBase.healthcheck_timeout` to a
+:py:attr:`~pytest_container.container.ContainerBase.healthcheck_timeout` to a
 negative timedelta. The container launch fixtures will then treat this container
 as if it had no ``HEALTHCHECK`` attribute at all.
 
 It is also possible to check the container health via the container runtime
 using the function
-:py:meth:`pytest_container.runtime.OciRuntimeABC.get_container_health`:
+:py:meth:`~pytest_container.runtime.OciRuntimeABC.get_container_health`:
 
 .. code-block:: python
 
@@ -45,5 +45,5 @@ directive is only supported for docker images. While this is the default with
 :command:`docker`, :command:`buildah` will by default build images in the
 ``OCIv1`` format which does **not** support ``HEALTHCHECK``. To ensure that your
 created container includes the ``HEALTHCHECK``, set the attribute
-:py:attr:`pytest_container.container.DerivedContainer.image_format` to
-:py:attr:`pytest_container.container.ImageFormat.DOCKER`.
+:py:attr:`~pytest_container.container.DerivedContainer.image_format` to
+:py:attr:`~pytest_container.container.ImageFormat.DOCKER`.
