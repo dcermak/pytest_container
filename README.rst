@@ -36,6 +36,7 @@ The plugin automates the following tasks:
 - parallel test execution through pytest-xdist
 - build dependent container images in the correct order
 - run the same test on as many container images as necessary
+- create, launch and destroy podman pods
 
 ``pytest_container`` provides four fixtures that give you everything you need
 for testing containers. Spinning up a container image can be as simple as

@@ -1,7 +1,9 @@
 # pylint: disable=missing-function-docstring,missing-module-docstring
 from pathlib import Path
+from typing import Union
 
 import pytest
+from _pytest.mark import ParameterSet
 
 from .test_container_build import LEAP
 from pytest_container import container_from_pytest_param
@@ -11,6 +13,9 @@ from pytest_container import get_extra_build_args
 from pytest_container import MultiStageBuild
 from pytest_container import OciRuntimeBase
 from pytest_container.container import ContainerData
+from pytest_container.pod import Pod
+from pytest_container.pod import pod_from_pytest_param
+from tests.test_pod import TEST_POD
 
 
 LEAP_PARAM = pytest.param(LEAP)
@@ -110,3 +115,13 @@ def test_container_from_pytest_param() -> None:
         container_from_pytest_param(pytest.param(16, 45))
     assert "Invalid pytest.param values" in str(val_err_ctx.value)
     assert "(16, 45)" in str(val_err_ctx.value)
+
+
+@pytest.mark.parametrize(
+    "param,expected_pod",
+    [(TEST_POD, TEST_POD), (pytest.param(TEST_POD), TEST_POD)],
+)
+def test_pod_from_pytest_param(
+    param: Union[Pod, ParameterSet], expected_pod: Pod
+) -> None:
+    assert pod_from_pytest_param(param) == expected_pod

@@ -830,6 +830,8 @@ class ContainerLauncher:
     #: optional name of this container
     container_name: str = ""
 
+    _expose_ports: bool = True
+
     _new_port_forwards: List[PortForwarding] = field(default_factory=list)
     _container_id: Optional[str] = None
 
@@ -876,7 +878,7 @@ class ContainerLauncher:
         # We must perform the launches in separate branches, as containers with
         # port forwards must be launched while the lock is being held. Otherwise
         # another container could pick the same ports before this one launches.
-        if forwarded_ports:
+        if forwarded_ports and self._expose_ports:
             with FileLock(self.rootdir / "port_check.lock"):
                 self._new_port_forwards = create_host_port_port_forward(
                     forwarded_ports

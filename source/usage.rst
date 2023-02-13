@@ -1,20 +1,21 @@
 Usage Tips
 ==========
 
-Adding global build and run arguments
--------------------------------------
+Adding global build, run or pod create arguments
+------------------------------------------------
 
-Sometimes it is necessary to customize the build and run parameters of the
-container runtime globally, e.g. to use the host's network with docker via
-``--network=host``.
+Sometimes it is necessary to customize the build, run or pod create parameters
+of the container runtime globally, e.g. to use the host's network with docker
+via ``--network=host``.
 
 The :py:meth:`~pytest_container.container.ContainerBaseABC.prepare_container`
 and :py:meth:`~pytest_container.container.ContainerBase.get_launch_cmd` methods
 support passing such additional arguments/flags, but this is rather cumbersome
-to use in practice. The ``*_container`` fixtures will therefore automatically
-collect such additional arguments from the CLI that were passed alongside the
-invocation of :command:`pytest` via the flags ``--extra-run-args`` and
-``--extra-build-args``, respectively. This requires that you call the function
+to use in practice. The ``*container*`` and ``pod*`` fixtures will therefore
+automatically collect such additional arguments from the CLI that were passed
+alongside the invocation of :command:`pytest` via the flags
+``--extra-run-args``, ``--extra-build-args`` and
+``--extra-pod-create-args``. This requires that you call the function
 :py:func:`~pytest_container.helpers.add_extra_run_and_build_args_options` in the
 ``pytest_addoption`` function in your :file:`conftest.py` as follows:
 
@@ -338,3 +339,58 @@ mounts:
        # it will be destroyed once the test finishes
        var_log = container_per_test.container.volume_mounts[-2]
        assert var_log.volume_id
+
+
+Create and manage pods
+----------------------
+
+Podman supports the creation of pods, a collection of containers that share the
+same network and port forwards. ``pytest_container`` can automatically create
+pods, launch all containers in the pod and remove the pod after the test via the
+:py:func:`~pytest_container.plugin.pod` and
+:py:func:`~pytest_container.plugin.pod_per_test` fixtures. Both fixtures require
+to be parametrized with an instance of :py:class:`~pytest_container.pod.Pod` as
+follows:
+
+.. code-block:: python
+
+   NGINX_PROXY = DerivedContainer(
+       base="docker.io/library/nginx",
+       containerfile=r"""RUN echo 'server { \n\
+       listen 80; \n\
+       server_name  localhost; \n\
+       location / { \n\
+           proxy_pass http://localhost:8000/; \n\
+       } \n\
+   }' > /etc/nginx/conf.d/default.conf
+   """,
+       default_entry_point=True,
+   )
+
+   WEB_SERVER = DerivedContainer(
+       base="registry.opensuse.org/opensuse/tumbleweed",
+       containerfile="""
+   RUN zypper -n in python3 && echo "Hello Green World!" > index.html
+   ENTRYPOINT ["/usr/bin/python3", "-m", "http.server"]
+   """,
+       default_entry_point=True,
+   )
+
+   PROXY_POD = Pod(
+       containers=[WEB_SERVER, NGINX_PROXY],
+       port_forwardings=[PortForwarding(container_port=80)],
+   )
+
+   @pytest.mark.parametrize("pod_per_test", [PROXY_POD], indirect=True)
+   def test_proxy_pod(pod_per_test: PodData, host) -> None:
+       assert pod_per_test.pod_id
+
+       port_80_on_host = pod_per_test.forwarded_ports[0].host_port
+
+.. important:
+
+   Pods can only be created via :command:`podman`. The
+   :py:func:`~pytest_container.plugin.pod` and
+   :py:func:`~pytest_container.plugin.pod_per_test` fixtures will therefore
+   automatically skip the tests if the selected container runtime is not
+   :command:`podman`.

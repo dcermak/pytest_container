@@ -1,0 +1,5 @@
+BUSYBOX = "docker.io/library/busybox"
+LEAP = "registry.opensuse.org/opensuse/leap:latest"
+OPENSUSE_BUSYBOX = "registry.opensuse.org/opensuse/busybox:latest"
+NGINX = "docker.io/library/nginx"
+ALPINE = "docker.io/library/alpine"

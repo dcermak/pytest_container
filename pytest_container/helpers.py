@@ -42,12 +42,14 @@ def auto_container_parametrize(metafunc: Metafunc) -> None:
 
 
 def add_extra_run_and_build_args_options(parser: Parser) -> None:
-    """Add the command line flags '--extra-run-args' and '--extra-build-args' to
-    the pytest parser.
+    """Add the command line flags ``--extra-run-args``, ``--extra-build-args``
+    and ``--extra-pod-create-args`` to the pytest parser.
 
-    The parameters of these flags are used by the ``*_container`` fixtures and
-    can be retrieved via :py:func:`get_extra_run_args` and
-    :py:func:`get_extra_build_args` respectively.
+    The parameters of these flags are used by the ``*container*`` and ``pod*``
+    fixtures and can be retrieved via :py:func:`get_extra_run_args`,
+    :py:func:`get_extra_build_args` and :py:func:`get_extra_pod_create_args`
+    respectively.
+
     """
     parser.addoption(
         "--extra-run-args",
@@ -64,6 +66,14 @@ def add_extra_run_and_build_args_options(parser: Parser) -> None:
         default=[],
         help="""Specify additional CLI arguments to be passed to 'buildah bud'
  or 'docker build'. Each argument must be passed as an individual argument itself""",
+    )
+    parser.addoption(
+        "--extra-pod-create-args",
+        type=str,
+        nargs="*",
+        default=[],
+        help="""Specify additional CLI arguments that will be passed to 'podman
+pod create'. Each argument must be passed individually.""",
     )
 
 
@@ -123,3 +133,14 @@ def get_extra_build_args(pytestconfig: Config) -> List[str]:
 
     """
     return pytestconfig.getoption("extra_build_args", default=[]) or []
+
+
+def get_extra_pod_create_args(pytestconfig: Config) -> List[str]:
+    """Get all extra arguments for :command:`podman pod create` that were passed
+    via the CLI flag ``--extra-pod-create-args``.
+
+    This requires that :py:func:`add_extra_run_and_build_args_options` was
+    called in :file:`conftest.py`.
+
+    """
+    return pytestconfig.getoption("extra_pod_create_args", default=[]) or []

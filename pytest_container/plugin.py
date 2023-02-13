@@ -10,8 +10,12 @@ from pytest_container.container import container_from_pytest_param
 from pytest_container.container import ContainerData
 from pytest_container.container import ContainerLauncher
 from pytest_container.helpers import get_extra_build_args
+from pytest_container.helpers import get_extra_pod_create_args
 from pytest_container.helpers import get_extra_run_args
 from pytest_container.logging import _logger
+from pytest_container.pod import pod_from_pytest_param
+from pytest_container.pod import PodData
+from pytest_container.pod import PodLauncher
 from pytest_container.runtime import get_selected_runtime
 from pytest_container.runtime import OciRuntimeBase
 
@@ -87,6 +91,35 @@ def _create_auto_container_fixture(
     return pytest.fixture(scope=scope)(fixture)
 
 
+def _create_auto_pod_fixture(
+    scope: Literal["session", "function"]
+) -> Callable[
+    [SubRequest, OciRuntimeBase, Config], Generator[PodData, None, None]
+]:
+    def fixture(
+        request: SubRequest,
+        # we must call this parameter container runtime, so that pytest will
+        # treat it as a fixture, but that causes pylint to complain…
+        # pylint: disable=redefined-outer-name
+        container_runtime: OciRuntimeBase,
+        pytestconfig: Config,
+    ) -> Generator[PodData, None, None]:
+        if "podman" not in container_runtime.runner_binary:
+            pytest.skip("Pods are only supported in podman")
+
+        pod = pod_from_pytest_param(request.param)
+        with PodLauncher(
+            pod,
+            rootdir=pytestconfig.rootpath,
+            extra_build_args=get_extra_build_args(pytestconfig),
+            extra_run_args=get_extra_run_args(pytestconfig),
+            extra_pod_create_args=get_extra_pod_create_args(pytestconfig),
+        ) as launcher:
+            yield launcher.pod_data
+
+    return pytest.fixture(scope=scope)(fixture)
+
+
 #: This fixture parametrizes the test function once for each container image
 #: defined in the module level variable ``CONTAINER_IMAGES`` of the current test
 #: module and yield an instance of
@@ -108,3 +141,14 @@ auto_container_per_test = _create_auto_container_fixture("function")
 #: Same as :py:func:`container` but it will launch individual containers for
 #: each test function.
 container_per_test = _create_auto_container_fixture("function")
+
+#: Fixture that has to be parametrized with an instance of
+#: :py:class:`~pytest_container.pod.Pod` with `indirect=True`.
+#: It creates the pod, launches all of its containers and yields an instance of
+#: :py:class:`~pytest_container.pod.PodData`. The fixture automatically skips
+#: the test when the current container runtime is not :command:`podman`.
+#: The pod created by this fixture is shared by all test functions.
+pod = _create_auto_pod_fixture("session")
+
+#: Same as :py:func:`pod`, except that it creates a pod for each test function.
+pod_per_test = _create_auto_pod_fixture("function")
