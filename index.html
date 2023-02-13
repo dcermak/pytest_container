@@ -46,15 +46,17 @@
 to test container images via pytest fixtures and <a class="reference external" href="https://testinfra.readthedocs.io/en/latest/">testinfra</a>. It takes care of all the boring
 tasks, like spinning up containers, finding free ports and cleaning up after
 tests, and allows you to focus on implementing the actual tests.</p>
-<p>The plugin automates the following tasks:
-- pull, launch, and stop containers
-- build containers using a <code class="file docutils literal notranslate"><span class="pre">Dockerfile</span></code>
-- wait for containers to become healthy before executing tests
-- bind exposed container ports to free ports on the host
-- mount volumes via temporary directories
-- parallel test execution through pytest-xdist
-- build dependent container images in the correct order
-- run the same test on as many container images as necessary</p>
+<p>The plugin automates the following tasks:</p>
+<ul class="simple">
+<li><p>pull, launch, and stop containers</p></li>
+<li><p>build containers using a <code class="file docutils literal notranslate"><span class="pre">Dockerfile</span></code></p></li>
+<li><p>wait for containers to become healthy before executing tests</p></li>
+<li><p>bind exposed container ports to free ports on the host</p></li>
+<li><p>mount volumes via temporary directories</p></li>
+<li><p>parallel test execution through pytest-xdist</p></li>
+<li><p>build dependent container images in the correct order</p></li>
+<li><p>run the same test on as many container images as necessary</p></li>
+</ul>
 <p><code class="docutils literal notranslate"><span class="pre">pytest_container</span></code> provides four fixtures that give you everything you need
 for testing containers. Spinning up a container image can be as simple as
 instantiating a <a class="reference internal" href="api.html#pytest_container.container.Container" title="pytest_container.container.Container"><code class="xref py py-class docutils literal notranslate"><span class="pre">Container</span></code></a> and
