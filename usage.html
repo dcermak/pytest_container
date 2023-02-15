@@ -37,18 +37,19 @@
             
   <section id="usage-tips">
 <h1>Usage Tips<a class="headerlink" href="#usage-tips" title="Permalink to this heading">¶</a></h1>
-<section id="adding-global-build-and-run-arguments">
-<h2>Adding global build and run arguments<a class="headerlink" href="#adding-global-build-and-run-arguments" title="Permalink to this heading">¶</a></h2>
-<p>Sometimes it is necessary to customize the build and run parameters of the
-container runtime globally, e.g. to use the host’s network with docker via
-<code class="docutils literal notranslate"><span class="pre">--network=host</span></code>.</p>
+<section id="adding-global-build-run-or-pod-create-arguments">
+<h2>Adding global build, run or pod create arguments<a class="headerlink" href="#adding-global-build-run-or-pod-create-arguments" title="Permalink to this heading">¶</a></h2>
+<p>Sometimes it is necessary to customize the build, run or pod create parameters
+of the container runtime globally, e.g. to use the host’s network with docker
+via <code class="docutils literal notranslate"><span class="pre">--network=host</span></code>.</p>
 <p>The <a class="reference internal" href="api.html#pytest_container.container.ContainerBaseABC.prepare_container" title="pytest_container.container.ContainerBaseABC.prepare_container"><code class="xref py py-meth docutils literal notranslate"><span class="pre">prepare_container()</span></code></a>
 and <a class="reference internal" href="api.html#pytest_container.container.ContainerBase.get_launch_cmd" title="pytest_container.container.ContainerBase.get_launch_cmd"><code class="xref py py-meth docutils literal notranslate"><span class="pre">get_launch_cmd()</span></code></a> methods
 support passing such additional arguments/flags, but this is rather cumbersome
-to use in practice. The <code class="docutils literal notranslate"><span class="pre">*_container</span></code> fixtures will therefore automatically
-collect such additional arguments from the CLI that were passed alongside the
-invocation of <strong class="command">pytest</strong> via the flags <code class="docutils literal notranslate"><span class="pre">--extra-run-args</span></code> and
-<code class="docutils literal notranslate"><span class="pre">--extra-build-args</span></code>, respectively. This requires that you call the function
+to use in practice. The <code class="docutils literal notranslate"><span class="pre">*container*</span></code> and <code class="docutils literal notranslate"><span class="pre">pod*</span></code> fixtures will therefore
+automatically collect such additional arguments from the CLI that were passed
+alongside the invocation of <strong class="command">pytest</strong> via the flags
+<code class="docutils literal notranslate"><span class="pre">--extra-run-args</span></code>, <code class="docutils literal notranslate"><span class="pre">--extra-build-args</span></code> and
+<code class="docutils literal notranslate"><span class="pre">--extra-pod-create-args</span></code>. This requires that you call the function
 <a class="reference internal" href="api.html#pytest_container.helpers.add_extra_run_and_build_args_options" title="pytest_container.helpers.add_extra_run_and_build_args_options"><code class="xref py py-func docutils literal notranslate"><span class="pre">add_extra_run_and_build_args_options()</span></code></a> in the
 <code class="docutils literal notranslate"><span class="pre">pytest_addoption</span></code> function in your <code class="file docutils literal notranslate"><span class="pre">conftest.py</span></code> as follows:</p>
 <div class="literal-block-wrapper docutils container" id="id1">
@@ -332,6 +333,50 @@ mounts:</p>
 </pre></div>
 </div>
 </section>
+<section id="create-and-manage-pods">
+<h2>Create and manage pods<a class="headerlink" href="#create-and-manage-pods" title="Permalink to this heading">¶</a></h2>
+<p>Podman supports the creation of pods, a collection of containers that share the
+same network and port forwards. <code class="docutils literal notranslate"><span class="pre">pytest_container</span></code> can automatically create
+pods, launch all containers in the pod and remove the pod after the test via the
+<a class="reference internal" href="api.html#pytest_container.plugin.pod" title="pytest_container.plugin.pod"><code class="xref py py-func docutils literal notranslate"><span class="pre">pod()</span></code></a> and
+<a class="reference internal" href="api.html#pytest_container.plugin.pod_per_test" title="pytest_container.plugin.pod_per_test"><code class="xref py py-func docutils literal notranslate"><span class="pre">pod_per_test()</span></code></a> fixtures. Both fixtures require
+to be parametrized with an instance of <a class="reference internal" href="api.html#pytest_container.pod.Pod" title="pytest_container.pod.Pod"><code class="xref py py-class docutils literal notranslate"><span class="pre">Pod</span></code></a> as
+follows:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">NGINX_PROXY</span> <span class="o">=</span> <span class="n">DerivedContainer</span><span class="p">(</span>
+    <span class="n">base</span><span class="o">=</span><span class="s2">&quot;docker.io/library/nginx&quot;</span><span class="p">,</span>
+    <span class="n">containerfile</span><span class="o">=</span><span class="sa">r</span><span class="s2">&quot;&quot;&quot;RUN echo &#39;server { \n\</span>
+<span class="s2">    listen 80; \n\</span>
+<span class="s2">    server_name  localhost; \n\</span>
+<span class="s2">    location / { \n\</span>
+<span class="s2">        proxy_pass http://localhost:8000/; \n\</span>
+<span class="s2">    } \n\</span>
+<span class="s2">}&#39; &gt; /etc/nginx/conf.d/default.conf</span>
+<span class="s2">&quot;&quot;&quot;</span><span class="p">,</span>
+    <span class="n">default_entry_point</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+<span class="p">)</span>
+
+<span class="n">WEB_SERVER</span> <span class="o">=</span> <span class="n">DerivedContainer</span><span class="p">(</span>
+    <span class="n">base</span><span class="o">=</span><span class="s2">&quot;registry.opensuse.org/opensuse/tumbleweed&quot;</span><span class="p">,</span>
+    <span class="n">containerfile</span><span class="o">=</span><span class="s2">&quot;&quot;&quot;</span>
+<span class="s2">RUN zypper -n in python3 &amp;&amp; echo &quot;Hello Green World!&quot; &gt; index.html</span>
+<span class="s2">ENTRYPOINT [&quot;/usr/bin/python3&quot;, &quot;-m&quot;, &quot;http.server&quot;]</span>
+<span class="s2">&quot;&quot;&quot;</span><span class="p">,</span>
+    <span class="n">default_entry_point</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+<span class="p">)</span>
+
+<span class="n">PROXY_POD</span> <span class="o">=</span> <span class="n">Pod</span><span class="p">(</span>
+    <span class="n">containers</span><span class="o">=</span><span class="p">[</span><span class="n">WEB_SERVER</span><span class="p">,</span> <span class="n">NGINX_PROXY</span><span class="p">],</span>
+    <span class="n">port_forwardings</span><span class="o">=</span><span class="p">[</span><span class="n">PortForwarding</span><span class="p">(</span><span class="n">container_port</span><span class="o">=</span><span class="mi">80</span><span class="p">)],</span>
+<span class="p">)</span>
+
+<span class="nd">@pytest</span><span class="o">.</span><span class="n">mark</span><span class="o">.</span><span class="n">parametrize</span><span class="p">(</span><span class="s2">&quot;pod_per_test&quot;</span><span class="p">,</span> <span class="p">[</span><span class="n">PROXY_POD</span><span class="p">],</span> <span class="n">indirect</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+<span class="k">def</span> <span class="nf">test_proxy_pod</span><span class="p">(</span><span class="n">pod_per_test</span><span class="p">:</span> <span class="n">PodData</span><span class="p">,</span> <span class="n">host</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+    <span class="k">assert</span> <span class="n">pod_per_test</span><span class="o">.</span><span class="n">pod_id</span>
+
+    <span class="n">port_80_on_host</span> <span class="o">=</span> <span class="n">pod_per_test</span><span class="o">.</span><span class="n">forwarded_ports</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">host_port</span>
+</pre></div>
+</div>
+</section>
 </section>
 
 
@@ -357,13 +402,14 @@ mounts:</p>
 <li class="toctree-l1"><a class="reference internal" href="tutorials.html">Tutorials</a></li>
 <li class="toctree-l1"><a class="reference internal" href="fixtures.html">Fixtures</a></li>
 <li class="toctree-l1 current"><a class="current reference internal" href="#">Usage Tips</a><ul>
-<li class="toctree-l2"><a class="reference internal" href="#adding-global-build-and-run-arguments">Adding global build and run arguments</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#adding-global-build-run-or-pod-create-arguments">Adding global build, run or pod create arguments</a></li>
 <li class="toctree-l2"><a class="reference internal" href="#configuring-logging">Configuring logging</a></li>
 <li class="toctree-l2"><a class="reference internal" href="#testing-local-images">Testing local images</a></li>
 <li class="toctree-l2"><a class="reference internal" href="#container-runtime-version">Container Runtime version</a></li>
 <li class="toctree-l2"><a class="reference internal" href="#copying-files-into-containers">Copying files into containers</a></li>
 <li class="toctree-l2"><a class="reference internal" href="#exposing-ports-from-containers">Exposing ports from containers</a></li>
 <li class="toctree-l2"><a class="reference internal" href="#setting-up-bind-mounts-or-container-volumes">Setting up bind mounts or container volumes</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#create-and-manage-pods">Create and manage pods</a></li>
 </ul>
 </li>
 <li class="toctree-l1"><a class="reference internal" href="changelog.html">Changelog</a></li>

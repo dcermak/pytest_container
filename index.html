@@ -56,6 +56,7 @@ tests, and allows you to focus on implementing the actual tests.</p>
 <li><p>parallel test execution through pytest-xdist</p></li>
 <li><p>build dependent container images in the correct order</p></li>
 <li><p>run the same test on as many container images as necessary</p></li>
+<li><p>create, launch and destroy podman pods</p></li>
 </ul>
 <p><code class="docutils literal notranslate"><span class="pre">pytest_container</span></code> provides four fixtures that give you everything you need
 for testing containers. Spinning up a container image can be as simple as
@@ -95,13 +96,14 @@ check whether files are present, packages are installed, etc.</p>
 </ul>
 </li>
 <li class="toctree-l1"><a class="reference internal" href="usage.html">Usage Tips</a><ul>
-<li class="toctree-l2"><a class="reference internal" href="usage.html#adding-global-build-and-run-arguments">Adding global build and run arguments</a></li>
+<li class="toctree-l2"><a class="reference internal" href="usage.html#adding-global-build-run-or-pod-create-arguments">Adding global build, run or pod create arguments</a></li>
 <li class="toctree-l2"><a class="reference internal" href="usage.html#configuring-logging">Configuring logging</a></li>
 <li class="toctree-l2"><a class="reference internal" href="usage.html#testing-local-images">Testing local images</a></li>
 <li class="toctree-l2"><a class="reference internal" href="usage.html#container-runtime-version">Container Runtime version</a></li>
 <li class="toctree-l2"><a class="reference internal" href="usage.html#copying-files-into-containers">Copying files into containers</a></li>
 <li class="toctree-l2"><a class="reference internal" href="usage.html#exposing-ports-from-containers">Exposing ports from containers</a></li>
 <li class="toctree-l2"><a class="reference internal" href="usage.html#setting-up-bind-mounts-or-container-volumes">Setting up bind mounts or container volumes</a></li>
+<li class="toctree-l2"><a class="reference internal" href="usage.html#create-and-manage-pods">Create and manage pods</a></li>
 </ul>
 </li>
 <li class="toctree-l1"><a class="reference internal" href="changelog.html">Changelog</a><ul>
@@ -111,6 +113,7 @@ check whether files are present, packages are installed, etc.</p>
 </li>
 <li class="toctree-l1"><a class="reference internal" href="api.html">API documentation</a><ul>
 <li class="toctree-l2"><a class="reference internal" href="api.html#module-pytest_container.container">The container module</a></li>
+<li class="toctree-l2"><a class="reference internal" href="api.html#module-pytest_container.pod">The pod module</a></li>
 <li class="toctree-l2"><a class="reference internal" href="api.html#module-pytest_container.build">The build module</a></li>
 <li class="toctree-l2"><a class="reference internal" href="api.html#module-pytest_container.runtime">The runtime module</a></li>
 <li class="toctree-l2"><a class="reference internal" href="api.html#module-pytest_container.helpers">The helpers module</a></li>

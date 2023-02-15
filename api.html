@@ -284,7 +284,7 @@ if the container has been build locally</p>
 
 <dl class="py class">
 <dt class="sig sig-object py" id="pytest_container.container.ContainerLauncher">
-<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">pytest_container.container.</span></span><span class="sig-name descname"><span class="pre">ContainerLauncher</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="pre">container:</span> <span class="pre">~typing.Union[~pytest_container.container.Container,</span> <span class="pre">~pytest_container.container.DerivedContainer],</span> <span class="pre">container_runtime:</span> <span class="pre">~pytest_container.runtime.OciRuntimeBase,</span> <span class="pre">rootdir:</span> <span class="pre">~pathlib.Path,</span> <span class="pre">extra_build_args:</span> <span class="pre">~typing.List[str]</span> <span class="pre">=</span> <span class="pre">&lt;factory&gt;,</span> <span class="pre">extra_run_args:</span> <span class="pre">~typing.List[str]</span> <span class="pre">=</span> <span class="pre">&lt;factory&gt;,</span> <span class="pre">container_name:</span> <span class="pre">str</span> <span class="pre">=</span> <span class="pre">'',</span> <span class="pre">_new_port_forwards:</span> <span class="pre">~typing.List[~pytest_container.container.PortForwarding]</span> <span class="pre">=</span> <span class="pre">&lt;factory&gt;,</span> <span class="pre">_container_id:</span> <span class="pre">~typing.Optional[str]</span> <span class="pre">=</span> <span class="pre">None,</span> <span class="pre">_stack:</span> <span class="pre">~contextlib.ExitStack</span> <span class="pre">=</span> <span class="pre">&lt;factory&gt;</span></em><span class="sig-paren">)</span><a class="headerlink" href="#pytest_container.container.ContainerLauncher" title="Permalink to this definition">¶</a></dt>
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">pytest_container.container.</span></span><span class="sig-name descname"><span class="pre">ContainerLauncher</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="pre">container:</span> <span class="pre">~typing.Union[~pytest_container.container.Container,</span> <span class="pre">~pytest_container.container.DerivedContainer],</span> <span class="pre">container_runtime:</span> <span class="pre">~pytest_container.runtime.OciRuntimeBase,</span> <span class="pre">rootdir:</span> <span class="pre">~pathlib.Path,</span> <span class="pre">extra_build_args:</span> <span class="pre">~typing.List[str]</span> <span class="pre">=</span> <span class="pre">&lt;factory&gt;,</span> <span class="pre">extra_run_args:</span> <span class="pre">~typing.List[str]</span> <span class="pre">=</span> <span class="pre">&lt;factory&gt;,</span> <span class="pre">container_name:</span> <span class="pre">str</span> <span class="pre">=</span> <span class="pre">'',</span> <span class="pre">_expose_ports:</span> <span class="pre">bool</span> <span class="pre">=</span> <span class="pre">True,</span> <span class="pre">_new_port_forwards:</span> <span class="pre">~typing.List[~pytest_container.container.PortForwarding]</span> <span class="pre">=</span> <span class="pre">&lt;factory&gt;,</span> <span class="pre">_container_id:</span> <span class="pre">~typing.Optional[str]</span> <span class="pre">=</span> <span class="pre">None,</span> <span class="pre">_stack:</span> <span class="pre">~contextlib.ExitStack</span> <span class="pre">=</span> <span class="pre">&lt;factory&gt;</span></em><span class="sig-paren">)</span><a class="headerlink" href="#pytest_container.container.ContainerLauncher" title="Permalink to this definition">¶</a></dt>
 <dd><p>Helper context manager to setup, start and teardown a container including
 all of its resources. It is used by the <code class="docutils literal notranslate"><span class="pre">*container*</span></code> fixtures.</p>
 <dl class="py attribute">
@@ -628,6 +628,127 @@ list of appropriately configured <a class="reference internal" href="#pytest_con
 <span class="sig-prename descclassname"><span class="pre">pytest_container.container.</span></span><span class="sig-name descname"><span class="pre">get_volume_creator</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">volume</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="#pytest_container.container.BindMount" title="pytest_container.container.BindMount"><span class="pre">BindMount</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">runtime</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="#pytest_container.runtime.OciRuntimeBase" title="pytest_container.runtime.OciRuntimeBase"><span class="pre">OciRuntimeBase</span></a></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference internal" href="#pytest_container.container.BindMountCreator" title="pytest_container.container.BindMountCreator"><span class="pre">BindMountCreator</span></a></span></span></dt>
 <dd><p>Returns the appropriate volume creation context manager for the given
 volume.</p>
+</dd></dl>
+
+</section>
+<section id="module-pytest_container.pod">
+<span id="the-pod-module"></span><h2>The pod module<a class="headerlink" href="#module-pytest_container.pod" title="Permalink to this heading">¶</a></h2>
+<p>Module for managing podman pods.</p>
+<dl class="py class">
+<dt class="sig sig-object py" id="pytest_container.pod.Pod">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">pytest_container.pod.</span></span><span class="sig-name descname"><span class="pre">Pod</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="pre">containers:</span> <span class="pre">~typing.List[~typing.Union[~pytest_container.container.DerivedContainer,</span> <span class="pre">~pytest_container.container.Container]],</span> <span class="pre">forwarded_ports:</span> <span class="pre">~typing.List[~pytest_container.container.PortForwarding]</span> <span class="pre">=</span> <span class="pre">&lt;factory&gt;</span></em><span class="sig-paren">)</span><a class="headerlink" href="#pytest_container.pod.Pod" title="Permalink to this definition">¶</a></dt>
+<dd><p>A pod is a collection of containers that share the same network and port
+forwards. Currently only <strong class="command">podman</strong> supports creating pods.</p>
+<p><strong>Caution</strong>: port forwards of the individual containers are ignored and only
+the port forwards in the pod class are taken into account!</p>
+<dl class="py attribute">
+<dt class="sig sig-object py" id="pytest_container.pod.Pod.containers">
+<span class="sig-name descname"><span class="pre">containers</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.List" title="(in Python v3.11)"><span class="pre">List</span></a><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Union" title="(in Python v3.11)"><span class="pre">Union</span></a><span class="p"><span class="pre">[</span></span><a class="reference internal" href="#pytest_container.container.DerivedContainer" title="pytest_container.container.DerivedContainer"><span class="pre">DerivedContainer</span></a><span class="p"><span class="pre">,</span></span><span class="w"> </span><a class="reference internal" href="#pytest_container.container.Container" title="pytest_container.container.Container"><span class="pre">Container</span></a><span class="p"><span class="pre">]</span></span><span class="p"><span class="pre">]</span></span></em><a class="headerlink" href="#pytest_container.pod.Pod.containers" title="Permalink to this definition">¶</a></dt>
+<dd><p>containers belonging to the pod</p>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="pytest_container.pod.Pod.forwarded_ports">
+<span class="sig-name descname"><span class="pre">forwarded_ports</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.List" title="(in Python v3.11)"><span class="pre">List</span></a><span class="p"><span class="pre">[</span></span><a class="reference internal" href="#pytest_container.container.PortForwarding" title="pytest_container.container.PortForwarding"><span class="pre">PortForwarding</span></a><span class="p"><span class="pre">]</span></span></em><a class="headerlink" href="#pytest_container.pod.Pod.forwarded_ports" title="Permalink to this definition">¶</a></dt>
+<dd><p>ports exposed by the pod</p>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="pytest_container.pod.PodData">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">pytest_container.pod.</span></span><span class="sig-name descname"><span class="pre">PodData</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">pod</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="#pytest_container.pod.Pod" title="pytest_container.pod.Pod"><span class="pre">Pod</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">container_data</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.List" title="(in Python v3.11)"><span class="pre">List</span></a><span class="p"><span class="pre">[</span></span><a class="reference internal" href="#pytest_container.container.ContainerData" title="pytest_container.container.ContainerData"><span class="pre">ContainerData</span></a><span class="p"><span class="pre">]</span></span></span></em>, <em class="sig-param"><span class="n"><span class="pre">pod_id</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.11)"><span class="pre">str</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">infra_container_id</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.11)"><span class="pre">str</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">forwarded_ports</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.List" title="(in Python v3.11)"><span class="pre">List</span></a><span class="p"><span class="pre">[</span></span><a class="reference internal" href="#pytest_container.container.PortForwarding" title="pytest_container.container.PortForwarding"><span class="pre">PortForwarding</span></a><span class="p"><span class="pre">]</span></span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#pytest_container.pod.PodData" title="Permalink to this definition">¶</a></dt>
+<dd><p>Class that is returned by the <code class="docutils literal notranslate"><span class="pre">pod</span></code> and <code class="docutils literal notranslate"><span class="pre">pod_per_test</span></code> fixtures. It
+contains all necessary information about the created pod and the containers
+running inside it.</p>
+<dl class="py attribute">
+<dt class="sig sig-object py" id="pytest_container.pod.PodData.container_data">
+<span class="sig-name descname"><span class="pre">container_data</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.List" title="(in Python v3.11)"><span class="pre">List</span></a><span class="p"><span class="pre">[</span></span><a class="reference internal" href="#pytest_container.container.ContainerData" title="pytest_container.container.ContainerData"><span class="pre">ContainerData</span></a><span class="p"><span class="pre">]</span></span></em><a class="headerlink" href="#pytest_container.pod.PodData.container_data" title="Permalink to this definition">¶</a></dt>
+<dd><p>The <a class="reference internal" href="#pytest_container.container.ContainerData" title="pytest_container.container.ContainerData"><code class="xref py py-class docutils literal notranslate"><span class="pre">ContainerData</span></code></a> instances of
+each container in the pod.</p>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="pytest_container.pod.PodData.forwarded_ports">
+<span class="sig-name descname"><span class="pre">forwarded_ports</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.List" title="(in Python v3.11)"><span class="pre">List</span></a><span class="p"><span class="pre">[</span></span><a class="reference internal" href="#pytest_container.container.PortForwarding" title="pytest_container.container.PortForwarding"><span class="pre">PortForwarding</span></a><span class="p"><span class="pre">]</span></span></em><a class="headerlink" href="#pytest_container.pod.PodData.forwarded_ports" title="Permalink to this definition">¶</a></dt>
+<dd><p>ports exposed by this pod</p>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="pytest_container.pod.PodData.infra_container_id">
+<span class="sig-name descname"><span class="pre">infra_container_id</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.11)"><span class="pre">str</span></a></em><a class="headerlink" href="#pytest_container.pod.PodData.infra_container_id" title="Permalink to this definition">¶</a></dt>
+<dd><p>unique id/hash of the infra container of the pod</p>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="pytest_container.pod.PodData.pod">
+<span class="sig-name descname"><span class="pre">pod</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference internal" href="#pytest_container.pod.Pod" title="pytest_container.pod.Pod"><span class="pre">Pod</span></a></em><a class="headerlink" href="#pytest_container.pod.PodData.pod" title="Permalink to this definition">¶</a></dt>
+<dd><p>The actual pod that has been launched</p>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="pytest_container.pod.PodData.pod_id">
+<span class="sig-name descname"><span class="pre">pod_id</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.11)"><span class="pre">str</span></a></em><a class="headerlink" href="#pytest_container.pod.PodData.pod_id" title="Permalink to this definition">¶</a></dt>
+<dd><p>unique id/hash of the running pod</p>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="pytest_container.pod.PodLauncher">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">pytest_container.pod.</span></span><span class="sig-name descname"><span class="pre">PodLauncher</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">pod:</span> <span class="pre">~pytest_container.pod.Pod</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">rootdir:</span> <span class="pre">~pathlib.Path</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">pod_name:</span> <span class="pre">str</span> <span class="pre">=</span> <span class="pre">''</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">extra_build_args:</span> <span class="pre">~typing.List[str]</span> <span class="pre">=</span> <span class="pre">&lt;factory&gt;</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">extra_run_args:</span> <span class="pre">~typing.List[str]</span> <span class="pre">=</span> <span class="pre">&lt;factory&gt;</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">extra_pod_create_args:</span> <span class="pre">~typing.List[str]</span> <span class="pre">=</span> <span class="pre">&lt;factory&gt;</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">_launchers:</span> <span class="pre">~typing.List[~pytest_container.container.ContainerLauncher]</span> <span class="pre">=</span> <span class="pre">&lt;factory&gt;</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">_new_port_forwards:</span> <span class="pre">~typing.List[~pytest_container.container.PortForwarding]</span> <span class="pre">=</span> <span class="pre">&lt;factory&gt;</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">_pod_id:</span> <span class="pre">~typing.Optional[str]</span> <span class="pre">=</span> <span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">_infra_container_id:</span> <span class="pre">~typing.Optional[str]</span> <span class="pre">=</span> <span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">_stack:</span> <span class="pre">~contextlib.ExitStack</span> <span class="pre">=</span> <span class="pre">&lt;factory&gt;</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#pytest_container.pod.PodLauncher" title="Permalink to this definition">¶</a></dt>
+<dd><p>A context manager that creates, starts and destroys a pod with all of its
+containers.</p>
+<dl class="py attribute">
+<dt class="sig sig-object py" id="pytest_container.pod.PodLauncher.extra_build_args">
+<span class="sig-name descname"><span class="pre">extra_build_args</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.List" title="(in Python v3.11)"><span class="pre">List</span></a><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.11)"><span class="pre">str</span></a><span class="p"><span class="pre">]</span></span></em><a class="headerlink" href="#pytest_container.pod.PodLauncher.extra_build_args" title="Permalink to this definition">¶</a></dt>
+<dd><p>additional arguments to pass to the container build commands</p>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="pytest_container.pod.PodLauncher.extra_pod_create_args">
+<span class="sig-name descname"><span class="pre">extra_pod_create_args</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.List" title="(in Python v3.11)"><span class="pre">List</span></a><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.11)"><span class="pre">str</span></a><span class="p"><span class="pre">]</span></span></em><a class="headerlink" href="#pytest_container.pod.PodLauncher.extra_pod_create_args" title="Permalink to this definition">¶</a></dt>
+<dd><p>additional arguments to pass to the <code class="docutils literal notranslate"><span class="pre">pod</span> <span class="pre">create</span></code> command</p>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="pytest_container.pod.PodLauncher.extra_run_args">
+<span class="sig-name descname"><span class="pre">extra_run_args</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.List" title="(in Python v3.11)"><span class="pre">List</span></a><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.11)"><span class="pre">str</span></a><span class="p"><span class="pre">]</span></span></em><a class="headerlink" href="#pytest_container.pod.PodLauncher.extra_run_args" title="Permalink to this definition">¶</a></dt>
+<dd><p>additional arguments to pass to the container run commands</p>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="pytest_container.pod.PodLauncher.pod">
+<span class="sig-name descname"><span class="pre">pod</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference internal" href="#pytest_container.pod.Pod" title="pytest_container.pod.Pod"><span class="pre">Pod</span></a></em><a class="headerlink" href="#pytest_container.pod.PodLauncher.pod" title="Permalink to this definition">¶</a></dt>
+<dd><p>the pod that should be created and launched including all of its
+containers</p>
+</dd></dl>
+
+<dl class="py property">
+<dt class="sig sig-object py" id="pytest_container.pod.PodLauncher.pod_data">
+<em class="property"><span class="pre">property</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">pod_data</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference internal" href="#pytest_container.pod.PodData" title="pytest_container.pod.PodData"><span class="pre">PodData</span></a></em><a class="headerlink" href="#pytest_container.pod.PodLauncher.pod_data" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="pytest_container.pod.PodLauncher.pod_name">
+<span class="sig-name descname"><span class="pre">pod_name</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.11)"><span class="pre">str</span></a></em><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">''</span></em><a class="headerlink" href="#pytest_container.pod.PodLauncher.pod_name" title="Permalink to this definition">¶</a></dt>
+<dd><p>optional name of the pod</p>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="pytest_container.pod.PodLauncher.rootdir">
+<span class="sig-name descname"><span class="pre">rootdir</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/pathlib.html#pathlib.Path" title="(in Python v3.11)"><span class="pre">Path</span></a></em><a class="headerlink" href="#pytest_container.pod.PodLauncher.rootdir" title="Permalink to this definition">¶</a></dt>
+<dd><p>root directory of the pytest testsuite</p>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="pytest_container.pod.pod_from_pytest_param">
+<span class="sig-prename descclassname"><span class="pre">pytest_container.pod.</span></span><span class="sig-name descname"><span class="pre">pod_from_pytest_param</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">param</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Union" title="(in Python v3.11)"><span class="pre">Union</span></a><span class="p"><span class="pre">[</span></span><span class="pre">ParameterSet</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><a class="reference internal" href="#pytest_container.pod.Pod" title="pytest_container.pod.Pod"><span class="pre">Pod</span></a><span class="p"><span class="pre">]</span></span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference internal" href="#pytest_container.pod.Pod" title="pytest_container.pod.Pod"><span class="pre">Pod</span></a></span></span><a class="headerlink" href="#pytest_container.pod.pod_from_pytest_param" title="Permalink to this definition">¶</a></dt>
+<dd><p>Extracts the <a class="reference internal" href="#pytest_container.pod.Pod" title="pytest_container.pod.Pod"><code class="xref py py-class docutils literal notranslate"><span class="pre">Pod</span></code></a> from a <a class="reference external" href="https://docs.pytest.org/en/stable/reference.html?#pytest.param">pytest.param</a> or just
+returns the value directly, if it is a
+<a class="reference internal" href="#pytest_container.pod.Pod" title="pytest_container.pod.Pod"><code class="xref py py-class docutils literal notranslate"><span class="pre">Pod</span></code></a>.</p>
 </dd></dl>
 
 </section>
@@ -1142,11 +1263,12 @@ line flags from pytest and for automatically parametrizing tests using the
 <dl class="py function">
 <dt class="sig sig-object py" id="pytest_container.helpers.add_extra_run_and_build_args_options">
 <span class="sig-prename descclassname"><span class="pre">pytest_container.helpers.</span></span><span class="sig-name descname"><span class="pre">add_extra_run_and_build_args_options</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">parser</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Parser</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.11)"><span class="pre">None</span></a></span></span><a class="headerlink" href="#pytest_container.helpers.add_extra_run_and_build_args_options" title="Permalink to this definition">¶</a></dt>
-<dd><p>Add the command line flags ‘–extra-run-args’ and ‘–extra-build-args’ to
-the pytest parser.</p>
-<p>The parameters of these flags are used by the <code class="docutils literal notranslate"><span class="pre">*_container</span></code> fixtures and
-can be retrieved via <a class="reference internal" href="#pytest_container.helpers.get_extra_run_args" title="pytest_container.helpers.get_extra_run_args"><code class="xref py py-func docutils literal notranslate"><span class="pre">get_extra_run_args()</span></code></a> and
-<a class="reference internal" href="#pytest_container.helpers.get_extra_build_args" title="pytest_container.helpers.get_extra_build_args"><code class="xref py py-func docutils literal notranslate"><span class="pre">get_extra_build_args()</span></code></a> respectively.</p>
+<dd><p>Add the command line flags <code class="docutils literal notranslate"><span class="pre">--extra-run-args</span></code>, <code class="docutils literal notranslate"><span class="pre">--extra-build-args</span></code>
+and <code class="docutils literal notranslate"><span class="pre">--extra-pod-create-args</span></code> to the pytest parser.</p>
+<p>The parameters of these flags are used by the <code class="docutils literal notranslate"><span class="pre">*container*</span></code> and <code class="docutils literal notranslate"><span class="pre">pod*</span></code>
+fixtures and can be retrieved via <a class="reference internal" href="#pytest_container.helpers.get_extra_run_args" title="pytest_container.helpers.get_extra_run_args"><code class="xref py py-func docutils literal notranslate"><span class="pre">get_extra_run_args()</span></code></a>,
+<a class="reference internal" href="#pytest_container.helpers.get_extra_build_args" title="pytest_container.helpers.get_extra_build_args"><code class="xref py py-func docutils literal notranslate"><span class="pre">get_extra_build_args()</span></code></a> and <a class="reference internal" href="#pytest_container.helpers.get_extra_pod_create_args" title="pytest_container.helpers.get_extra_pod_create_args"><code class="xref py py-func docutils literal notranslate"><span class="pre">get_extra_pod_create_args()</span></code></a>
+respectively.</p>
 </dd></dl>
 
 <dl class="py function">
@@ -1178,6 +1300,15 @@ fixtures.</p>
 <span class="sig-prename descclassname"><span class="pre">pytest_container.helpers.</span></span><span class="sig-name descname"><span class="pre">get_extra_build_args</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">pytestconfig</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Config</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.List" title="(in Python v3.11)"><span class="pre">List</span></a><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.11)"><span class="pre">str</span></a><span class="p"><span class="pre">]</span></span></span></span><a class="headerlink" href="#pytest_container.helpers.get_extra_build_args" title="Permalink to this definition">¶</a></dt>
 <dd><p>Get any extra arguments for <strong class="command">buildah bud</strong> or <strong class="command">docker
 build</strong> that were passed via the CLI flag <code class="docutils literal notranslate"><span class="pre">--extra-build-args</span></code>.</p>
+<p>This requires that <a class="reference internal" href="#pytest_container.helpers.add_extra_run_and_build_args_options" title="pytest_container.helpers.add_extra_run_and_build_args_options"><code class="xref py py-func docutils literal notranslate"><span class="pre">add_extra_run_and_build_args_options()</span></code></a> was
+called in <code class="file docutils literal notranslate"><span class="pre">conftest.py</span></code>.</p>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="pytest_container.helpers.get_extra_pod_create_args">
+<span class="sig-prename descclassname"><span class="pre">pytest_container.helpers.</span></span><span class="sig-name descname"><span class="pre">get_extra_pod_create_args</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">pytestconfig</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Config</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.List" title="(in Python v3.11)"><span class="pre">List</span></a><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.11)"><span class="pre">str</span></a><span class="p"><span class="pre">]</span></span></span></span><a class="headerlink" href="#pytest_container.helpers.get_extra_pod_create_args" title="Permalink to this definition">¶</a></dt>
+<dd><p>Get all extra arguments for <strong class="command">podman pod create</strong> that were passed
+via the CLI flag <code class="docutils literal notranslate"><span class="pre">--extra-pod-create-args</span></code>.</p>
 <p>This requires that <a class="reference internal" href="#pytest_container.helpers.add_extra_run_and_build_args_options" title="pytest_container.helpers.add_extra_run_and_build_args_options"><code class="xref py py-func docutils literal notranslate"><span class="pre">add_extra_run_and_build_args_options()</span></code></a> was
 called in <code class="file docutils literal notranslate"><span class="pre">conftest.py</span></code>.</p>
 </dd></dl>
@@ -1248,6 +1379,23 @@ each test function.</p>
 according to the rules outlined <a class="reference internal" href="prerequisites.html#runtime-selection-rules"><span class="std std-ref">here</span></a>.</p>
 </dd></dl>
 
+<dl class="py function">
+<dt class="sig sig-object py" id="pytest_container.plugin.pod">
+<span class="sig-prename descclassname"><span class="pre">pytest_container.plugin.</span></span><span class="sig-name descname"><span class="pre">pod</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">request</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">SubRequest</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">container_runtime</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="#pytest_container.runtime.OciRuntimeBase" title="pytest_container.runtime.OciRuntimeBase"><span class="pre">OciRuntimeBase</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">pytestconfig</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Config</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Generator" title="(in Python v3.11)"><span class="pre">Generator</span></a><span class="p"><span class="pre">[</span></span><a class="reference internal" href="#pytest_container.pod.PodData" title="pytest_container.pod.PodData"><span class="pre">PodData</span></a><span class="p"><span class="pre">,</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.11)"><span class="pre">None</span></a><span class="p"><span class="pre">,</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.11)"><span class="pre">None</span></a><span class="p"><span class="pre">]</span></span></span></span><a class="headerlink" href="#pytest_container.plugin.pod" title="Permalink to this definition">¶</a></dt>
+<dd><p>Fixture that has to be parametrized with an instance of
+<a class="reference internal" href="#pytest_container.pod.Pod" title="pytest_container.pod.Pod"><code class="xref py py-class docutils literal notranslate"><span class="pre">Pod</span></code></a> with <cite>indirect=True</cite>.
+It creates the pod, launches all of its containers and yields an instance of
+<a class="reference internal" href="#pytest_container.pod.PodData" title="pytest_container.pod.PodData"><code class="xref py py-class docutils literal notranslate"><span class="pre">PodData</span></code></a>. The fixture automatically skips
+the test when the current container runtime is not <strong class="command">podman</strong>.
+The pod created by this fixture is shared by all test functions.</p>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="pytest_container.plugin.pod_per_test">
+<span class="sig-prename descclassname"><span class="pre">pytest_container.plugin.</span></span><span class="sig-name descname"><span class="pre">pod_per_test</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">request</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">SubRequest</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">container_runtime</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="#pytest_container.runtime.OciRuntimeBase" title="pytest_container.runtime.OciRuntimeBase"><span class="pre">OciRuntimeBase</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">pytestconfig</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Config</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Generator" title="(in Python v3.11)"><span class="pre">Generator</span></a><span class="p"><span class="pre">[</span></span><a class="reference internal" href="#pytest_container.pod.PodData" title="pytest_container.pod.PodData"><span class="pre">PodData</span></a><span class="p"><span class="pre">,</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.11)"><span class="pre">None</span></a><span class="p"><span class="pre">,</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.11)"><span class="pre">None</span></a><span class="p"><span class="pre">]</span></span></span></span><a class="headerlink" href="#pytest_container.plugin.pod_per_test" title="Permalink to this definition">¶</a></dt>
+<dd><p>Same as <a class="reference internal" href="#pytest_container.plugin.pod" title="pytest_container.plugin.pod"><code class="xref py py-func docutils literal notranslate"><span class="pre">pod()</span></code></a>, except that it creates a pod for each test function.</p>
+</dd></dl>
+
 </section>
 <section id="module-pytest_container.logging">
 <span id="the-logging-module"></span><h2>The logging module<a class="headerlink" href="#module-pytest_container.logging" title="Permalink to this heading">¶</a></h2>
@@ -1287,6 +1435,7 @@ according to the rules outlined <a class="reference internal" href="prerequisite
 <li class="toctree-l1"><a class="reference internal" href="changelog.html">Changelog</a></li>
 <li class="toctree-l1 current"><a class="current reference internal" href="#">API documentation</a><ul>
 <li class="toctree-l2"><a class="reference internal" href="#module-pytest_container.container">The container module</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#module-pytest_container.pod">The pod module</a></li>
 <li class="toctree-l2"><a class="reference internal" href="#module-pytest_container.build">The build module</a></li>
 <li class="toctree-l2"><a class="reference internal" href="#module-pytest_container.runtime">The runtime module</a></li>
 <li class="toctree-l2"><a class="reference internal" href="#module-pytest_container.helpers">The helpers module</a></li>
