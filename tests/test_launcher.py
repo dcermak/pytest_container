@@ -5,7 +5,8 @@ from typing import Any
 
 import pytest
 
-from .test_container_build import LEAP
+from .images import CONTAINER_THAT_FAILS_TO_LAUNCH
+from .images import LEAP
 from .test_volumes import LEAP_WITH_BIND_MOUNT_AND_VOLUME
 from .test_volumes import LEAP_WITH_CONTAINER_VOLUMES
 from .test_volumes import LEAP_WITH_VOLUMES
@@ -14,7 +15,6 @@ from pytest_container.container import ContainerData
 from pytest_container.container import ContainerLauncher
 from pytest_container.container import ContainerVolume
 from pytest_container.container import DerivedContainer
-from pytest_container.container import ImageFormat
 from pytest_container.runtime import LOCALHOST
 from pytest_container.runtime import OciRuntimeBase
 
@@ -89,16 +89,6 @@ def test_launcher_container_data_not_available_after_exit(
         _ = launcher.container_data
 
     assert f"{LEAP} has not started" in str(runtime_err_ctx.value)
-
-
-CONTAINER_THAT_FAILS_TO_LAUNCH = DerivedContainer(
-    base=LEAP,
-    image_format=ImageFormat.DOCKER,
-    containerfile="""CMD sleep 600
-# use a short timeout to keep the test run short
-HEALTHCHECK --retries=1 --interval=1s --timeout=1s CMD false
-""",
-)
 
 
 def test_launcher_fails_on_failing_healthcheck(

@@ -10,6 +10,14 @@ The container module
    :undoc-members:
 
 
+The pod module
+--------------
+
+.. automodule:: pytest_container.pod
+   :members:
+   :undoc-members:
+
+
 The build module
 ----------------
 

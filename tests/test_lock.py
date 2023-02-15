@@ -5,18 +5,18 @@ from time import sleep
 from _pytest.config import Config
 from filelock import FileLock
 
-from .test_container_build import BUSYBOX_WITH_ENTRYPOINT
-from .test_container_build import LEAP
+from .images import LEAP_URL
+from .images import OPENSUSE_BUSYBOX_URL
 from pytest_container import Container
 from pytest_container import DerivedContainer
 from pytest_container.container import ContainerData
 
 LEAP_WITH_LOCK = DerivedContainer(
-    base=BUSYBOX_WITH_ENTRYPOINT,
+    base=OPENSUSE_BUSYBOX_URL,
     custom_entry_point="/bin/sh",
     singleton=True,
 )
-LEAP2_WITH_LOCK = Container(url=LEAP.url, singleton=True)
+LEAP2_WITH_LOCK = Container(url=LEAP_URL, singleton=True)
 
 CONTAINER_IMAGES = [LEAP_WITH_LOCK, LEAP2_WITH_LOCK]
 

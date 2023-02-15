@@ -5,7 +5,8 @@ from typing import Optional
 
 import pytest
 
-from .test_container_build import LEAP
+from .images import LEAP
+from .images import LEAP_URL
 from pytest_container.container import ContainerData
 from pytest_container.container import DerivedContainer
 from pytest_container.container import ImageFormat
@@ -15,7 +16,7 @@ from pytest_container.runtime import OciRuntimeBase
 
 
 CONTAINER_WITH_HEALTHCHECK = DerivedContainer(
-    base=LEAP,
+    base=LEAP_URL,
     default_entry_point=True,
     image_format=ImageFormat.DOCKER,
     # iproute2 is needed for checking the socket connection
@@ -29,7 +30,7 @@ HEALTHCHECK --interval=5s --timeout=1s CMD curl --fail http://0.0.0.0:8000
 
 def _failing_healthcheck_container(healtcheck_args: str) -> DerivedContainer:
     return DerivedContainer(
-        base=LEAP,
+        base=LEAP_URL,
         image_format=ImageFormat.DOCKER,
         containerfile=f"""CMD sleep 600
 HEALTHCHECK {healtcheck_args} CMD false

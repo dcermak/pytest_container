@@ -27,8 +27,7 @@ def test_incompatible_types_eq() -> None:
 
 def test_incompatible_types_cmp() -> None:
     with pytest.raises(TypeError) as ctx:
-        # pragma pylint: disable=expression-not-assigned
-        Version(1, 2) < 3
+        _ = Version(1, 2) < 3
 
     assert "'<' not supported between instances of 'Version' and 'int'" in str(
         ctx.value
