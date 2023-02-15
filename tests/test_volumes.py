@@ -4,7 +4,7 @@ from typing import List
 
 import pytest
 
-from .test_container_build import LEAP
+from .images import LEAP_URL
 from pytest_container.container import BindMount
 from pytest_container.container import BindMountCreator
 from pytest_container.container import ContainerData
@@ -87,7 +87,7 @@ def test_volume_re_create(
 
 
 LEAP_WITH_VOLUMES = DerivedContainer(
-    base=LEAP, volume_mounts=[BindMount("/foo"), BindMount("/bar")]
+    base=LEAP_URL, volume_mounts=[BindMount("/foo"), BindMount("/bar")]
 )
 
 
@@ -153,7 +153,7 @@ def test_container_volume_host_writing(container_per_test: ContainerData):
 
 
 LEAP_WITH_CONTAINER_VOLUMES = DerivedContainer(
-    base=LEAP,
+    base=LEAP_URL,
     volume_mounts=[ContainerVolume("/foo"), ContainerVolume("/bar")],
 )
 
@@ -202,7 +202,7 @@ def test_container_volume_writeable(container_per_test: ContainerData):
 
 
 LEAP_WITH_BIND_MOUNT_AND_VOLUME = DerivedContainer(
-    base=LEAP, volume_mounts=[BindMount("/foo"), ContainerVolume("/bar")]
+    base=LEAP_URL, volume_mounts=[BindMount("/foo"), ContainerVolume("/bar")]
 )
 
 
@@ -230,7 +230,7 @@ def test_concurent_container_volumes(container_per_test: ContainerData):
 
 
 LEAP_WITH_ROOTDIR_BIND_MOUNTED = DerivedContainer(
-    base=LEAP,
+    base=LEAP_URL,
     volume_mounts=[
         BindMount(
             "/src/",

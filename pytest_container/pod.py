@@ -49,8 +49,8 @@ class PodData:
 
     """
 
-    #: containers that are in the pod
-    containers: List[Union[DerivedContainer, Container]]
+    #: The actual pod that has been launched
+    pod: Pod
 
     #: The :py:class:`~pytest_container.container.ContainerData` instances of
     #: each container in the pod.
@@ -191,7 +191,7 @@ class PodLauncher:
             raise RuntimeError("Pod has not been created")
 
         return PodData(
-            containers=self.pod.containers,
+            pod=self.pod,
             container_data=[
                 launcher.container_data for launcher in self._launchers
             ],

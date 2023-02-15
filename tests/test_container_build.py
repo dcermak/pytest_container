@@ -4,6 +4,10 @@ from pathlib import Path
 import pytest
 from pytest import Config
 
+from .images import LEAP
+from .images import LEAP_URL
+from .images import LEAP_WITH_MAN
+from .images import OPENSUSE_BUSYBOX_URL
 from pytest_container import Container
 from pytest_container import DerivedContainer
 from pytest_container import get_extra_build_args
@@ -13,18 +17,14 @@ from pytest_container.container import ContainerLauncher
 from pytest_container.runtime import LOCALHOST
 from pytest_container.runtime import OciRuntimeBase
 
-LEAP = Container(url="registry.opensuse.org/opensuse/leap:latest")
-
 TAG1 = "local/foobar/bazbarf"
 
+
 LEAP_WITH_TAG = DerivedContainer(
-    base=LEAP.url, add_build_tags=[TAG1, "localhost/opensuse/leap/man:latest"]
+    base=LEAP_URL,
+    add_build_tags=[TAG1, "localhost/opensuse/leap/man:latest"],
 )
 
-LEAP_WITH_MAN = DerivedContainer(
-    base=LEAP,
-    containerfile="RUN zypper -n in man",
-)
 
 LEAP_WITH_MAN_AND_LUA = DerivedContainer(
     base=LEAP_WITH_MAN, containerfile="RUN zypper -n in lua"
@@ -32,7 +32,7 @@ LEAP_WITH_MAN_AND_LUA = DerivedContainer(
 
 
 BUSYBOX_WITH_ENTRYPOINT = Container(
-    url="registry.opensuse.org/opensuse/busybox:latest",
+    url=OPENSUSE_BUSYBOX_URL,
     custom_entry_point="/bin/sh",
 )
 #: This is just a busybox container with 4MB of random data in there
@@ -43,7 +43,7 @@ BUSYBOX_WITH_GARBAGE = DerivedContainer(
 )
 
 SLEEP_CONTAINER = DerivedContainer(
-    base="registry.opensuse.org/opensuse/leap:latest",
+    base=LEAP_URL,
     containerfile="""ENTRYPOINT ["/usr/bin/sleep", "3600"]""",
     default_entry_point=True,
 )

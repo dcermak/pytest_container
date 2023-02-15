@@ -3,6 +3,7 @@ from pathlib import Path
 
 import pytest
 
+from . import images
 from pytest_container import Container
 from pytest_container import DerivedContainer
 from pytest_container.container import ImageFormat
@@ -68,7 +69,7 @@ def test_lockfile_path(pytestconfig: pytest.Config) -> None:
     :py:attr:`~pytest_container.ContainerBase.container_id` set.
 
     """
-    cont = DerivedContainer(base="docker.io/library/busybox", containerfile="")
+    cont = DerivedContainer(base=images.BUSYBOX_URL, containerfile="")
     original_lock_fname = cont.filelock_filename
 
     cont.prepare_container(pytestconfig.rootpath)
@@ -77,10 +78,8 @@ def test_lockfile_path(pytestconfig: pytest.Config) -> None:
 
 
 def test_lockfile_unique() -> None:
-    cont1 = DerivedContainer(
-        base="docker.io/library/busybox", containerfile=""
-    )
+    cont1 = DerivedContainer(base=images.BUSYBOX_URL, containerfile="")
     cont2 = DerivedContainer(
-        base="docker.io/library/busybox", containerfile="ENV foobar=1"
+        base=images.BUSYBOX_URL, containerfile="ENV foobar=1"
     )
     assert cont1.filelock_filename != cont2.filelock_filename

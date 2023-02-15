@@ -5,7 +5,8 @@ from typing import Union
 import pytest
 from _pytest.mark import ParameterSet
 
-from .test_container_build import LEAP
+from .images import LEAP
+from .images import TEST_POD
 from pytest_container import container_from_pytest_param
 from pytest_container import container_to_pytest_param
 from pytest_container import DerivedContainer
@@ -15,7 +16,6 @@ from pytest_container import OciRuntimeBase
 from pytest_container.container import ContainerData
 from pytest_container.pod import Pod
 from pytest_container.pod import pod_from_pytest_param
-from tests.test_pod import TEST_POD
 
 
 LEAP_PARAM = pytest.param(LEAP)
@@ -125,3 +125,10 @@ def test_pod_from_pytest_param(
     param: Union[Pod, ParameterSet], expected_pod: Pod
 ) -> None:
     assert pod_from_pytest_param(param) == expected_pod
+
+
+def test_invalid_pod_from_pytest_param() -> None:
+    with pytest.raises(ValueError) as val_err_ctx:
+        pod_from_pytest_param(pytest.param([1, 2]))
+
+    assert "Invalid pytest.param" in str(val_err_ctx.value)

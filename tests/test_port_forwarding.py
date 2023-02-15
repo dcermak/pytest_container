@@ -3,26 +3,14 @@
 # pylint: disable=missing-function-docstring
 import pytest
 
-from .test_container_build import LEAP
+from .images import NGINX_URL
+from .images import WEB_SERVER
 from pytest_container.container import ContainerData
 from pytest_container.container import DerivedContainer
 from pytest_container.container import NetworkProtocol
 from pytest_container.container import PortForwarding
 from pytest_container.runtime import LOCALHOST
 from pytest_container.runtime import Version
-
-
-WEB_SERVER = DerivedContainer(
-    base=LEAP,
-    containerfile="""
-RUN zypper -n in python3 && echo "Hello Green World!" > index.html
-ENTRYPOINT ["/usr/bin/python3", "-m", "http.server"]
-HEALTHCHECK --interval=5s --timeout=1s CMD curl --fail http://0.0.0.0:8000
-EXPOSE 8000
-""",
-    forwarded_ports=[PortForwarding(container_port=8000)],
-    default_entry_point=True,
-)
 
 
 def _create_nginx_container(number: int) -> DerivedContainer:
@@ -41,7 +29,7 @@ def _create_nginx_container(number: int) -> DerivedContainer:
 
     """
     return DerivedContainer(
-        base="docker.io/library/nginx:latest",
+        base=NGINX_URL,
         containerfile=f"""COPY tests/files/nginx.default.conf /etc/nginx/conf.d/default.conf
 COPY tests/files/mk_certs.sh /bin/mk_certs.sh
 COPY tests/files/index.html /usr/share/nginx/html/

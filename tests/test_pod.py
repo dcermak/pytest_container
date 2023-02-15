@@ -4,8 +4,13 @@ from pathlib import Path
 
 import pytest
 
-from . import images
-from pytest_container.container import Container
+from .images import ALPINE
+from .images import CONTAINER_THAT_FAILS_TO_LAUNCH
+from .images import LEAP
+from .images import LEAP_WITH_MAN
+from .images import NGINX_URL
+from .images import TEST_POD
+from .images import WEB_SERVER
 from pytest_container.container import DerivedContainer
 from pytest_container.container import PortForwarding
 from pytest_container.pod import Pod
@@ -13,25 +18,13 @@ from pytest_container.pod import PodData
 from pytest_container.pod import PodLauncher
 from pytest_container.runtime import OciRuntimeBase
 from pytest_container.runtime import PodmanRuntime
-from tests.test_container_build import LEAP
-from tests.test_container_build import LEAP_WITH_MAN
-from tests.test_launcher import CONTAINER_THAT_FAILS_TO_LAUNCH
-from tests.test_port_forwarding import WEB_SERVER
 
-ALPINE = Container(
-    url=images.ALPINE, custom_entry_point="/bin/sh"
-)
-
-TEST_POD = Pod(
-    containers=[LEAP, LEAP_WITH_MAN, ALPINE],
-    forwarded_ports=[PortForwarding(80), PortForwarding(22)],
-)
 
 TEST_POD_WITHOUT_PORTS = Pod(containers=[LEAP, LEAP_WITH_MAN, ALPINE])
 
 
 NGINX_PROXY = DerivedContainer(
-    base="docker.io/library/nginx",
+    base=NGINX_URL,
     containerfile=r"""RUN echo 'server { \n\
     listen 80; \n\
     server_name  localhost; \n\
@@ -67,7 +60,8 @@ def test_pod_launcher(
             and pod_data.forwarded_ports[1].container_port == 22
         )
         assert (
-            len(pod_data.containers) == 3 and len(pod_data.container_data) == 3
+            len(pod_data.pod.containers) == 3
+            and len(pod_data.container_data) == 3
         )
 
 
