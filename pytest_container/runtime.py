@@ -3,14 +3,12 @@ implementation details of container runtimes like :command:`docker` or
 :command:`podman`.
 
 """
-import enum
 import json
 import re
 from abc import ABC
 from abc import abstractmethod
 from dataclasses import dataclass
 from dataclasses import field
-from datetime import timedelta
 from os import getenv
 from subprocess import check_output
 from typing import Any
@@ -18,17 +16,25 @@ from typing import Callable
 from typing import List
 from typing import Optional
 from typing import TYPE_CHECKING
+from typing import Union
 
 import pytest
 import testinfra
 from _pytest.mark.structures import ParameterSet
 
+from pytest_container.inspect import _DockerImageInspect
+from pytest_container.inspect import _PodmanImageInspect
+from pytest_container.inspect import BindMount
+from pytest_container.inspect import Config
+from pytest_container.inspect import ContainerHealth
+from pytest_container.inspect import ContainerInspect
+from pytest_container.inspect import ContainerNetworkSettings
+from pytest_container.inspect import ContainerState
+from pytest_container.inspect import HealthCheck
+from pytest_container.inspect import NetworkProtocol
+from pytest_container.inspect import PortForwarding
+from pytest_container.inspect import VolumeMount
 
-try:
-    from typing import TypedDict
-except ImportError:
-    from typing_extensions import TypedDict
-from typing import Union
 
 # mypy will try to import cached_property but fail to find its types
 # since we run mypy with the most recent python version, we can simply import
@@ -179,117 +185,6 @@ class _OciRuntimeBase:
     _runtime_functional: bool = False
 
 
-@enum.unique
-class ContainerHealth(enum.Enum):
-    """Possible states of a container's health using the `HEALTHCHECK
-    <https://docs.docker.com/engine/reference/builder/#healthcheck>`_ property
-    of a container image.
-
-    """
-
-    #: the container has no health check defined
-    NO_HEALTH_CHECK = enum.auto()
-    #: the container is healthy
-    HEALTHY = enum.auto()
-    #: the health check did not complete yet or did not fail often enough
-    STARTING = enum.auto()
-    #: the healthcheck failed
-    UNHEALTHY = enum.auto()
-
-
-class ContainerInspectHealthCheck(TypedDict, total=False):
-    """Dictionary created by loading the json output of :command:`podman inspect
-    $img_id | jq '.[0]["Healthcheck]` or :command:`docker inspect $img_id | jq
-    '.[0]["Config"]["Healthcheck]`.
-
-    """
-
-    Test: List[str]
-    Interval: int
-    Timeout: int
-    StartPeriod: int
-    Retries: int
-
-
-_DEFAULT_START_PERIOD = timedelta(seconds=0)
-_DEFAULT_INTERVAL = timedelta(seconds=30)
-_DEFAULT_TIMEOUT = timedelta(seconds=30)
-_DEFAULT_RETRIES = 3
-
-
-@dataclass(frozen=True)
-class HealthCheck:
-    """The HEALTCHECK of a container image."""
-
-    #: startup period of the container during which healthcheck failures will
-    #: not count towards the failure count
-    start_period: timedelta = field(default=_DEFAULT_START_PERIOD)
-
-    #: healthcheck command is run every interval
-    interval: timedelta = field(default=_DEFAULT_INTERVAL)
-
-    #: timeout of the healthcheck command after which it is considered unsuccessful
-    timeout: timedelta = field(default=_DEFAULT_TIMEOUT)
-
-    #: how often the healthcheck command is retried
-    retries: int = _DEFAULT_RETRIES
-
-    @property
-    def max_wait_time(self) -> timedelta:
-        """The maximum time to wait until a container can become healthy"""
-        return self.start_period + self.retries * self.interval + self.timeout
-
-    @staticmethod
-    def from_container_inspect(
-        inspect_json: ContainerInspectHealthCheck,
-    ) -> "HealthCheck":
-        """Convert the json-loaded output of :command:`podman inspect $ctr` or
-        :command:`docker inspect $ctr` into a :py:class:`HealthCheck`.
-
-        """
-        return HealthCheck(
-            start_period=timedelta(
-                microseconds=inspect_json["StartPeriod"] / 1000
-            )
-            if "StartPeriod" in inspect_json
-            else _DEFAULT_START_PERIOD,
-            interval=timedelta(microseconds=inspect_json["Interval"] / 1000)
-            if "Interval" in inspect_json
-            else _DEFAULT_INTERVAL,
-            timeout=timedelta(microseconds=inspect_json["Timeout"] / 1000)
-            if "Timeout" in inspect_json
-            else _DEFAULT_TIMEOUT,
-            retries=inspect_json.get("Retries", _DEFAULT_RETRIES),
-        )
-
-
-class _PodmanImageInspect(TypedDict, total=False):
-    """Object created by json loading the output of :command:`podman inspect
-    $img_id`.
-
-    """
-
-    Healthcheck: ContainerInspectHealthCheck
-
-
-class _DockerInspectConfig(TypedDict, total=False):
-    """Object created by json loading the output of :command:`docker inspect
-    $img_id | jq '.[0]["Config"]'`.
-
-    """
-
-    Healthcheck: ContainerInspectHealthCheck
-
-
-class _DockerImageInspect(TypedDict, total=False):
-    """Object created by json loading the output of :command:`docker inspect
-    $img_id`.
-
-    """
-
-    Config: _DockerInspectConfig
-
-
 class OciRuntimeABC(ABC):
     """The abstract base class defining the interface of a container runtime."""
 
@@ -305,12 +200,12 @@ class OciRuntimeABC(ABC):
     def get_image_id_from_stdout(self, stdout: str) -> str:
         """Returns the image id/hash from the stdout of a build command."""
 
-    @abstractmethod
     def get_container_health(self, container_id: str) -> ContainerHealth:
         """Inspects the running container with the supplied id and returns its current
         health.
 
         """
+        return self.inspect_container(container_id).state.health
 
     @property
     @abstractmethod
@@ -323,6 +218,14 @@ class OciRuntimeABC(ABC):
     ) -> Optional[HealthCheck]:
         """Obtain the container image's ``HEALTCHECK`` if defined by the
         container image or ``None`` otherwise.
+
+        """
+
+    @abstractmethod
+    def inspect_container(self, container_id: str) -> ContainerInspect:
+        """Inspect the container with the provided ``container_id`` and return
+        the parsed output from the container runtime as an instance of
+        :py:class:`~pytest_container.inspect.ContainerInspect`.
 
         """
 
@@ -374,6 +277,83 @@ class OciRuntimeBase(_OciRuntimeBase, OciRuntimeABC, ToParamMixin):
             .strip()
             .replace('"', "")
         )
+
+    def _get_container_inspect(self, container_id: str) -> Any:
+        inspect = json.loads(
+            check_output([self.runner_binary, "inspect", container_id])
+        )
+        if len(inspect) != 1:
+            raise RuntimeError(
+                f"Got {len(inspect)} results back, but expected exactly one container to match {container_id}"
+            )
+
+        return inspect[0]
+
+    @staticmethod
+    def _state_from_inspect(container_inspect: Any) -> ContainerState:
+        State = container_inspect["State"]
+        return ContainerState(
+            status=State["Status"],
+            running=State["Running"],
+            paused=State["Paused"],
+            restarting=State["Restarting"],
+            oom_killed=State["OOMKilled"],
+            dead=State["Dead"],
+            pid=State["Pid"],
+            # depending on the podman version, this property is called either
+            # Health or Healthcheck
+            health=ContainerHealth(
+                (State.get("Health", {}) or State.get("Healthcheck", {})).get(
+                    "Status", ""
+                )
+            ),
+        )
+
+    @staticmethod
+    def _network_settings_from_inspect(
+        container_inspect: Any,
+    ) -> ContainerNetworkSettings:
+        net_settings = container_inspect["NetworkSettings"]
+        ports = []
+        if "Ports" in net_settings and net_settings["Ports"]:
+            for container_port, bindings in net_settings["Ports"].items():
+                if not bindings:
+                    continue
+
+                port, proto = container_port.split("/")
+                # FIXME: handle multiple entries here
+                ports.append(
+                    PortForwarding(
+                        container_port=int(port),
+                        protocol=NetworkProtocol(proto),
+                        host_port=int(bindings[0]["HostPort"]),
+                    )
+                )
+        return ContainerNetworkSettings(ports=ports)
+
+    @staticmethod
+    def _mounts_from_inspect(
+        container_inspect: Any,
+    ) -> List[Union[BindMount, VolumeMount]]:
+        mounts = container_inspect["Mounts"]
+        res = []
+        for mount in mounts:
+            kwargs = {
+                "source": mount["Source"],
+                "destination": mount["Destination"],
+                "rw": mount["RW"],
+            }
+            if mount["Type"] == "volume":
+                res.append(
+                    VolumeMount(
+                        name=mount["Name"], driver=mount["Driver"], **kwargs
+                    )
+                )
+            elif mount["Type"] == "bind":
+                res.append(BindMount(**kwargs))
+            else:
+                raise ValueError(f"Unknown mount type: {mount['Type']}")
+        return res
 
     def __str__(self) -> str:
         return self.__class__.__name__
@@ -428,21 +408,6 @@ class PodmanRuntime(OciRuntimeBase):
             filter(None, map(lambda l: l.strip(), stdout.split("\n")))
         )[-1]
 
-    def get_container_health(self, container_id: str) -> ContainerHealth:
-        res = LOCALHOST.run_expect(
-            [0],
-            'podman inspect -f "{{ .State.Healthcheck.Status }}" '
-            + container_id,
-        )
-        stdout = res.stdout.strip()
-        if stdout == "":
-            return ContainerHealth.NO_HEALTH_CHECK
-        if stdout == "healthy":
-            return ContainerHealth.HEALTHY
-        if stdout == "starting":
-            return ContainerHealth.STARTING
-        return ContainerHealth.UNHEALTHY
-
     # pragma pylint: disable=used-before-assignment
     @cached_property
     def version(self) -> Version:
@@ -467,6 +432,40 @@ class PodmanRuntime(OciRuntimeBase):
         if "Healthcheck" not in img_inspect:
             return None
         return HealthCheck.from_container_inspect(img_inspect["Healthcheck"])
+
+    def inspect_container(self, container_id: str) -> ContainerInspect:
+        inspect = self._get_container_inspect(container_id)
+
+        Conf = inspect["Config"]
+        healthcheck = None
+        if "Healthcheck" in Conf:
+            healthcheck = HealthCheck.from_container_inspect(
+                Conf["Healthcheck"]
+            )
+
+        conf = Config(
+            user=Conf["User"],
+            tty=Conf["Tty"],
+            cmd=Conf["Cmd"],
+            image=Conf["Image"],
+            entrypoint=Conf["Entrypoint"].split(),
+            labels=Conf["Labels"],
+            env=dict([env.split("=") for env in Conf["Env"]]),
+            healthcheck=healthcheck,
+        )
+
+        state = self._state_from_inspect(inspect)
+
+        return ContainerInspect(
+            config=conf,
+            state=state,
+            id=inspect["Id"],
+            path=inspect["Path"],
+            args=inspect["Args"],
+            image_hash=inspect["Image"],
+            network=self._network_settings_from_inspect(inspect),
+            mounts=self._mounts_from_inspect(inspect),
+        )
 
 
 def _get_docker_version(version_stdout: str) -> Version:
@@ -510,23 +509,6 @@ class DockerRuntime(OciRuntimeBase):
         )[-1]
         return last_line.split()[-1]
 
-    def get_container_health(self, container_id: str) -> ContainerHealth:
-        res = LOCALHOST.run_expect(
-            [0, 1],
-            'docker inspect -f "{{ .State.Health.Status }}" ' + container_id,
-        )
-        if (
-            res.rc == 1
-            and 'map has no entry for key "Health"' in res.stderr.strip()
-        ):
-            return ContainerHealth.NO_HEALTH_CHECK
-        stdout = res.stdout.strip()
-        if stdout == "healthy":
-            return ContainerHealth.HEALTHY
-        if stdout == "starting":
-            return ContainerHealth.STARTING
-        return ContainerHealth.UNHEALTHY
-
     @cached_property
     def version(self) -> Version:
         """Returns the version of docker installed on this system"""
@@ -553,6 +535,44 @@ class DockerRuntime(OciRuntimeBase):
             return None
         return HealthCheck.from_container_inspect(
             img_inspect["Config"]["Healthcheck"]
+        )
+
+    def inspect_container(self, container_id: str) -> ContainerInspect:
+        inspect = self._get_container_inspect(container_id)
+
+        Conf = inspect["Config"]
+        if Conf.get("Env"):
+            env = dict([env.split("=") for env in Conf["Env"]])
+        else:
+            env = {}
+        healthcheck = None
+        if "Healthcheck" in Conf:
+            healthcheck = HealthCheck.from_container_inspect(
+                Conf["Healthcheck"]
+            )
+
+        conf = Config(
+            user=Conf["User"],
+            tty=Conf["Tty"],
+            cmd=Conf["Cmd"],
+            image=Conf["Image"],
+            entrypoint=Conf["Entrypoint"],
+            labels=Conf["Labels"],
+            env=env,
+            healthcheck=healthcheck,
+        )
+
+        state = self._state_from_inspect(inspect)
+
+        return ContainerInspect(
+            config=conf,
+            state=state,
+            id=inspect["Id"],
+            path=inspect["Path"],
+            args=inspect["Args"],
+            image_hash=inspect["Image"],
+            network=self._network_settings_from_inspect(inspect),
+            mounts=self._mounts_from_inspect(inspect),
         )
 
 

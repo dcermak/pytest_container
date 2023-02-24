@@ -14,6 +14,9 @@ Breaking changes:
 
 Improvements and new features:
 
+- Allow to inspect containers via a pythonic interface via
+  :py:attr:`~pytest_container.container.ContainerData.inspect`
+
 - Add support for creating podman pods for testing via the
   :py:class:`~pytest_container.pod.Pod` class.
 

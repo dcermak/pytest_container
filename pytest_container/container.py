@@ -38,8 +38,10 @@ from _pytest.mark.structures import MarkDecorator
 from _pytest.mark.structures import ParameterSet
 from filelock import FileLock
 
+from pytest_container.inspect import ContainerHealth
+from pytest_container.inspect import ContainerInspect
+from pytest_container.inspect import PortForwarding
 from pytest_container.logging import _logger
-from pytest_container.runtime import ContainerHealth
 from pytest_container.runtime import get_selected_runtime
 from pytest_container.runtime import OciRuntimeBase
 
@@ -59,76 +61,13 @@ class ImageFormat(enum.Enum):
         return "oci" if self == ImageFormat.OCIv1 else "docker"
 
 
-@enum.unique
-class NetworkProtocol(enum.Enum):
-    """Network protocols supporting port forwarding."""
-
-    #: Transmission Control Protocol
-    TCP = "tcp"
-    #: User Datagram Protocol
-    UDP = "udp"
-
-    def __str__(self) -> str:
-        return self.value
-
-    @property
-    def SOCK_CONST(self) -> int:
-        """Returns the appropriate socket type constant (``SOCK_STREAM`` or
-        ``SOCK_DGRAM``) for the current protocol.
-
-        """
-        return {
-            NetworkProtocol.TCP.value: socket.SOCK_STREAM,
-            NetworkProtocol.UDP.value: socket.SOCK_DGRAM,
-        }[self.value]
-
-
-@dataclass(frozen=True)
-class PortForwarding:
-    """Representation of a port forward from a container to the host.
-
-    To expose a port of a container automatically, create an instance of this
-    class, set the attribute :py:attr:`container_port` and optionally
-    :py:attr:`protocol` as well and pass it via the parameter
-    :py:attr:`ContainerBase.forwarded_ports` to either the :py:class:`Container`
-    or :py:class:`DerivedContainer`:
-
-    >>> Container(url="my-webserver", forwarded_ports=[PortForwarding(container_port=8000)])
-
-    """
-
-    #: The port which shall be exposed by the container.
-    container_port: int
-
-    #: The protocol which the exposed port is using. Defaults to TCP.
-    protocol: NetworkProtocol = NetworkProtocol.TCP
-
-    #: The port as which the port from :py:attr:`container_port` is exposed on
-    #: the host. This value is automatically set by the `*container_*` fixtures,
-    #: so there's no need for the user to modify it
-    host_port: int = -1
-
-    @property
-    def forward_cli_args(self) -> List[str]:
-        """Returns a list of command line arguments for the container launch
-        command to automatically expose this port forwarding.
-
-        """
-        return [
-            "-p",
-            f"{self.host_port}:{self.container_port}/{self.protocol}",
-        ]
-
-    def __str__(self) -> str:
-        return str(self.forward_cli_args)
-
-
 def create_host_port_port_forward(
     port_forwards: List[PortForwarding],
 ) -> List[PortForwarding]:
     """Given a list of port_forwards, this function finds random free ports on
     the host system to which the container ports can be bound and returns a new
-    list of appropriately configured :py:class:`PortForwarding` instances.
+    list of appropriately configured
+    :py:class:`~pytest_container.inspect.PortForwarding` instances.
 
     """
     finished_forwards: List[PortForwarding] = []
@@ -140,14 +79,20 @@ def create_host_port_port_forward(
     sockets: List[socket.socket] = []
 
     for port in port_forwards:
-        sock = socket.socket(type=port.protocol.SOCK_CONST)
+
+        sock = socket.socket(
+            family=socket.AF_INET6 if socket.has_ipv6 else socket.AF_INET,
+            type=port.protocol.SOCK_CONST,
+        )
         sock.bind(("", 0))
+
+        port_num: int = sock.getsockname()[1]
 
         finished_forwards.append(
             PortForwarding(
                 container_port=port.container_port,
                 protocol=port.protocol,
-                host_port=sock.getsockname()[1],
+                host_port=port_num,
             )
         )
         sockets.append(sock)
@@ -763,6 +708,12 @@ class ContainerData:
     #: any ports that are exposed by this container
     forwarded_ports: List[PortForwarding]
 
+    _container_runtime: OciRuntimeBase
+
+    @property
+    def inspect(self) -> ContainerInspect:
+        return self._container_runtime.inspect_container(self.container_id)
+
 
 def container_to_pytest_param(
     container: ContainerBase,
@@ -928,6 +879,7 @@ class ContainerLauncher:
             ),
             container=self.container,
             forwarded_ports=self._new_port_forwards,
+            _container_runtime=self.container_runtime,
         )
 
     def _wait_for_container_to_become_healthy(self) -> None:
@@ -940,9 +892,9 @@ class ContainerLauncher:
         )
 
         if timeout is None:
-            healthcheck = self.container_runtime.get_container_healthcheck(
-                self.container
-            )
+            healthcheck = self.container_runtime.inspect_container(
+                self._container_id
+            ).config.healthcheck
             if healthcheck is not None:
                 timeout = healthcheck.max_wait_time
 

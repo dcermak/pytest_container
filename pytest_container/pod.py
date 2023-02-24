@@ -18,7 +18,7 @@ from pytest_container.container import ContainerData
 from pytest_container.container import ContainerLauncher
 from pytest_container.container import create_host_port_port_forward
 from pytest_container.container import DerivedContainer
-from pytest_container.container import PortForwarding
+from pytest_container.inspect import PortForwarding
 from pytest_container.logging import _logger
 from pytest_container.runtime import get_selected_runtime
 from pytest_container.runtime import PodmanRuntime

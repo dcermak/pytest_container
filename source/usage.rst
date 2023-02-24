@@ -233,8 +233,8 @@ attribute as follows:
 When such a container image is requested via any of the ``container_*``
 fixtures, then the resulting data passed into the test function will have the
 attribute ``forwarded_ports`` set as well. This is a list of
-:py:class:`~pytest_container.container.PortForwarding` instances that have the
-property :py:attr:`~pytest_container.container.PortForwarding.host_port` set to
+:py:class:`~pytest_container.inspect.PortForwarding` instances that have the
+property :py:attr:`~pytest_container.inspect.PortForwarding.host_port` set to
 the port that ``pytest_container`` used to expose the container's port:
 
 .. code-block:: python
