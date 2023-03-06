@@ -337,7 +337,7 @@ class OciRuntimeBase(_OciRuntimeBase, OciRuntimeABC, ToParamMixin):
         container_inspect: Any,
     ) -> List[Union[BindMount, VolumeMount]]:
         mounts = container_inspect["Mounts"]
-        res = []
+        res: List[Union[BindMount, VolumeMount]] = []
         for mount in mounts:
             kwargs = {
                 "source": mount["Source"],

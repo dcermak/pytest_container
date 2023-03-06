@@ -14,6 +14,9 @@ Breaking changes:
 
 Improvements and new features:
 
+- Cleanup automatically created volumes from ``VOLUME`` directives in
+  :file:`Dockerfile`.
+
 - Allow to inspect containers via a pythonic interface via
   :py:attr:`~pytest_container.container.ContainerData.inspect`
 

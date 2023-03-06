@@ -10,6 +10,7 @@ from .images import LEAP
 from .test_volumes import LEAP_WITH_BIND_MOUNT_AND_VOLUME
 from .test_volumes import LEAP_WITH_CONTAINER_VOLUMES
 from .test_volumes import LEAP_WITH_VOLUMES
+from pytest_container import inspect
 from pytest_container.container import BindMount
 from pytest_container.container import ContainerData
 from pytest_container.container import ContainerLauncher
@@ -75,6 +76,41 @@ def test_launcher_creates_and_cleanes_up_volumes(
             assert not vol.volume_id
         else:
             assert False, f"invalid volume type {type(vol)}"
+
+
+LEAP_WITH_VOLUME_IN_DOCKERFILE = DerivedContainer(
+    base=LEAP, containerfile="VOLUME /foo"
+)
+
+
+@pytest.mark.parametrize("cont", [LEAP_WITH_VOLUME_IN_DOCKERFILE])
+def test_launcher_cleanes_up_volumes_from_image(
+    cont: DerivedContainer,
+    pytestconfig: pytest.Config,
+    container_runtime: OciRuntimeBase,
+    host: Any,
+) -> None:
+    with ContainerLauncher(
+        cont, container_runtime, pytestconfig.rootpath
+    ) as launcher:
+        container = launcher.container_data.container
+        assert not container.volume_mounts
+
+        mounts = launcher.container_data.inspect.mounts
+        assert (
+            len(mounts) == 1
+            and isinstance(mounts[0], inspect.VolumeMount)
+            and mounts[0].destination == "/foo"
+        )
+
+        vol_name = mounts[0].name
+    assert (
+        "Error:"
+        in host.run_expect(
+            [1, 125],
+            f"{container_runtime.runner_binary} volume inspect {vol_name}",
+        ).stderr
+    )
 
 
 def test_launcher_container_data_not_available_after_exit(

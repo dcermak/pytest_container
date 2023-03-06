@@ -21,6 +21,7 @@ from datetime import datetime
 from datetime import timedelta
 from hashlib import md5
 from pathlib import Path
+from subprocess import call
 from subprocess import check_output
 from types import TracebackType
 from typing import Any
@@ -41,6 +42,7 @@ from filelock import FileLock
 from pytest_container.inspect import ContainerHealth
 from pytest_container.inspect import ContainerInspect
 from pytest_container.inspect import PortForwarding
+from pytest_container.inspect import VolumeMount
 from pytest_container.logging import _logger
 from pytest_container.runtime import get_selected_runtime
 from pytest_container.runtime import OciRuntimeBase
@@ -275,6 +277,12 @@ class VolumeCreator:
     ) -> None:
         """Cleans up the container volume."""
         assert self.volume.volume_id
+
+        _logger.debug(
+            "cleaning up volume %s via %s",
+            self.volume.volume_id,
+            self.container_runtime.runner_binary,
+        )
 
         # Clean up container volume
         check_output(
@@ -929,7 +937,11 @@ class ContainerLauncher:
         __exc_value: Optional[BaseException],
         __traceback: Optional[TracebackType],
     ) -> None:
+        mounts = []
         if self._container_id is not None:
+            mounts = self.container_runtime.inspect_container(
+                self._container_id
+            ).mounts
             _logger.debug(
                 "Removing container %s via %s",
                 self._container_id,
@@ -945,3 +957,19 @@ class ContainerLauncher:
             )
         self._stack.close()
         self._container_id = None
+
+        # cleanup automatically created volumes by VOLUME directives in the
+        # Dockerfile:
+        # just force remove them and ignore the returncode in case docker/podman
+        # complain that the volume doesn't exist
+        for mount in mounts:
+            if isinstance(mount, VolumeMount):
+                call(
+                    [
+                        self.container_runtime.runner_binary,
+                        "volume",
+                        "rm",
+                        "-f",
+                        mount.name,
+                    ]
+                )
