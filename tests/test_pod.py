@@ -162,6 +162,6 @@ def test_pod_fixture(pod: PodData) -> None:
 
 def test_launcher_pod_data_uninitialized() -> None:
     with pytest.raises(RuntimeError) as rt_ctx:
-        PodLauncher(TEST_POD, Path("/")).pod_data
+        _ = PodLauncher(TEST_POD, Path("/")).pod_data
 
     assert "Pod has not been created" in str(rt_ctx.value)

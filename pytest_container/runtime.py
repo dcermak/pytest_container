@@ -284,7 +284,8 @@ class OciRuntimeBase(_OciRuntimeBase, OciRuntimeABC, ToParamMixin):
         )
         if len(inspect) != 1:
             raise RuntimeError(
-                f"Got {len(inspect)} results back, but expected exactly one container to match {container_id}"
+                f"Got {len(inspect)} results back, "
+                f"but expected exactly one container to match {container_id}"
             )
 
         return inspect[0]

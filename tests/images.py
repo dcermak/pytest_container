@@ -1,3 +1,4 @@
+"""Module that defines all commonly used container images for testing."""
 from pytest_container.container import Container
 from pytest_container.container import DerivedContainer
 from pytest_container.container import ImageFormat
