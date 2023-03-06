@@ -830,9 +830,10 @@ class ContainerLauncher:
 
         forwarded_ports = self.container.forwarded_ports
 
-        container_name_args = (
-            ["--name", self.container_name] if self.container_name else []
-        )
+        extra_run_args = self.extra_run_args
+
+        if self.container_name:
+            extra_run_args.extend(["--name", self.container_name])
 
         # We must perform the launches in separate branches, as containers with
         # port forwards must be launched while the lock is being held. Otherwise
@@ -842,16 +843,13 @@ class ContainerLauncher:
                 self._new_port_forwards = create_host_port_port_forward(
                     forwarded_ports
                 )
-                port_forward_args = []
                 for new_forward in self._new_port_forwards:
-                    port_forward_args += new_forward.forward_cli_args
+                    extra_run_args += new_forward.forward_cli_args
 
                 launch_cmd = [
                     self.container_runtime.runner_binary
                 ] + self.container.get_launch_cmd(
-                    extra_run_args=(self.extra_run_args or [])
-                    + port_forward_args
-                    + container_name_args
+                    extra_run_args=extra_run_args
                 )
 
                 _logger.debug("Launching container via: %s", launch_cmd)
@@ -859,9 +857,7 @@ class ContainerLauncher:
         else:
             launch_cmd = [
                 self.container_runtime.runner_binary
-            ] + self.container.get_launch_cmd(
-                extra_run_args=self.extra_run_args + container_name_args
-            )
+            ] + self.container.get_launch_cmd(extra_run_args=extra_run_args)
 
             _logger.debug("Launching container via: %s", launch_cmd)
             self._container_id = check_output(launch_cmd).decode().strip()
