@@ -291,6 +291,16 @@ class OciRuntimeBase(_OciRuntimeBase, OciRuntimeABC, ToParamMixin):
         return inspect[0]
 
     @staticmethod
+    def _stop_signal_from_inspect_conf(inspect_conf: Any) -> Union[int, str]:
+        if "StopSignal" in inspect_conf:
+            raw_stop_signal = inspect_conf["StopSignal"]
+            try:
+                return int(raw_stop_signal)
+            except ValueError:
+                return str(raw_stop_signal)
+        return "SIGTERM"
+
+    @staticmethod
     def _state_from_inspect(container_inspect: Any) -> ContainerState:
         State = container_inspect["State"]
         return ContainerState(
@@ -452,6 +462,7 @@ class PodmanRuntime(OciRuntimeBase):
             entrypoint=Conf["Entrypoint"].split(),
             labels=Conf["Labels"],
             env=dict([env.split("=") for env in Conf["Env"]]),
+            stop_signal=self._stop_signal_from_inspect_conf(Conf),
             healthcheck=healthcheck,
         )
 
@@ -559,6 +570,7 @@ class DockerRuntime(OciRuntimeBase):
             image=Conf["Image"],
             entrypoint=Conf["Entrypoint"],
             labels=Conf["Labels"],
+            stop_signal=self._stop_signal_from_inspect_conf(Conf),
             env=env,
             healthcheck=healthcheck,
         )

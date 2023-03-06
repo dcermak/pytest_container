@@ -234,6 +234,11 @@ class Config:
     #: labels of the container
     labels: Dict[str, str]
 
+    #: Signal that will be sent to the container when it is stopped. If the
+    #: container does not terminate, ``SIGKILL`` will be used afterwards.
+    #:
+    stop_signal: Union[int, str]
+
     #: optional healthcheck defined for the underlying container image
     healthcheck: Optional[HealthCheck] = None
 
@@ -263,8 +268,6 @@ class Mount:
 @dataclass(frozen=True)
 class BindMount(Mount):
     """A bind mounted directory"""
-
-    pass
 
 
 @dataclass(frozen=True)
