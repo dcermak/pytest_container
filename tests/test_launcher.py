@@ -20,6 +20,19 @@ from pytest_container.runtime import LOCALHOST
 from pytest_container.runtime import OciRuntimeBase
 
 
+LEAP_WITH_STOPSIGNAL_SIGKILL = DerivedContainer(
+    base=LEAP, containerfile="STOPSIGNAL SIGKILL"
+)
+
+LEAP_WITH_STOPSIGNAL_SIGKILL_AND_ENTRYPOINT = DerivedContainer(
+    base=LEAP, containerfile="STOPSIGNAL SIGKILL", default_entry_point=True
+)
+
+LEAP_WITH_STOPSIGNAL_SIGKILL_AND_CUSTOM_ENTRYPOINT = DerivedContainer(
+    base=LEAP, containerfile="STOPSIGNAL SIGKILL", custom_entry_point="/bin/sh"
+)
+
+
 def _test_func(con: Any) -> None:
     sleep(5)
     assert "Leap" in con.run_expect([0], "cat /etc/os-release").stdout
@@ -147,3 +160,33 @@ def test_launcher_fails_on_failing_healthcheck(
     )
 
     assert "did not become healthy within" in str(runtime_err_ctx.value)
+
+
+@pytest.mark.parametrize(
+    "container", [LEAP_WITH_STOPSIGNAL_SIGKILL], indirect=True
+)
+def test_launcher_overrides_stopsignal(container: ContainerData) -> None:
+    """Verify that we override the stop signal by default to ``SIGTERM`` as we
+    launch containers with :file:`/bin/bash` as the entrypoint.
+
+    """
+    assert container.inspect.config.stop_signal in (15, "SIGTERM")
+
+
+@pytest.mark.parametrize(
+    "container",
+    [
+        LEAP_WITH_STOPSIGNAL_SIGKILL_AND_ENTRYPOINT,
+        LEAP_WITH_STOPSIGNAL_SIGKILL_AND_CUSTOM_ENTRYPOINT,
+    ],
+    indirect=True,
+)
+def test_launcher_does_not_override_stopsignal_for_entrypoint(
+    container: ContainerData,
+) -> None:
+    """Check that the stop signal is **not** modified when the attribute
+    `default_entry_point` is ``True`` (then we assume that the stop signal has
+    been set to the appropriate value by the author of the image).
+
+    """
+    assert container.inspect.config.stop_signal in (9, "SIGKILL")

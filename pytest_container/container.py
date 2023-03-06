@@ -390,6 +390,9 @@ def get_volume_creator(
     assert False, f"invalid volume type {type(volume)}"  # pragma: no cover
 
 
+_CONTAINER_ENTRYPOINT = "/bin/bash"
+
+
 @dataclass
 class ContainerBase:
     """Base class for defining containers to be tested. Not to be used directly,
@@ -479,7 +482,7 @@ class ContainerBase:
             return self.custom_entry_point
         if self.default_entry_point:
             return None
-        return "/bin/bash"
+        return _CONTAINER_ENTRYPOINT
 
     def get_launch_cmd(
         self, extra_run_args: Optional[List[str]] = None
@@ -834,6 +837,9 @@ class ContainerLauncher:
 
         if self.container_name:
             extra_run_args.extend(["--name", self.container_name])
+
+        if self.container.entry_point == _CONTAINER_ENTRYPOINT:
+            extra_run_args.extend(["--stop-signal", "SIGTERM"])
 
         # We must perform the launches in separate branches, as containers with
         # port forwards must be launched while the lock is being held. Otherwise

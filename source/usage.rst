@@ -394,3 +394,31 @@ follows:
    :py:func:`~pytest_container.plugin.pod_per_test` fixtures will therefore
    automatically skip the tests if the selected container runtime is not
    :command:`podman`.
+
+
+Entrypoint and stop signal handling
+-----------------------------------
+
+``pytest_container`` launches containers with :file:`/bin/bash` as the
+entrypoint by default. This ensures that commands can be executed without issues
+in the container via ``testinfra``.
+
+Some containers define a custom entrypoint, e.g. they do not ship
+:file:`/bin/bash` or they provide a service that should be launched in the
+container. In such a case, set the property
+:py:attr:`~pytest_container.container.ContainerBase.default_entry_point` to
+``True`` and ``pytest_container`` will use the image's default.
+
+To use a completely different entrypoint, set
+:py:attr:`~pytest_container.container.ContainerBase.custom_entry_point` to the
+desired value. It will take precedence over the images' default.
+
+Changing the container entrypoint can have a catch with respect to the
+``STOPSIGNAL`` defined by a container image. Container images that have
+non-shell entry points sometimes use a different signal for stopping the main
+process. However, a shell might not react to such a signal at all. This is not a
+problem, as the container runtime will eventually resort to sending ``SIGKILL``
+to the container if it does not stop. But it slows the tests needlessly down, as
+the container runtime waits for 10 seconds before sending
+``SIGKILL``. Therefore, ``pytest_container`` sets the stop signal by default to
+``SIGTERM``, unless a different entry point than :file:`/bin/bash` will be used.
