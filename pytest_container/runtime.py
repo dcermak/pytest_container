@@ -490,7 +490,7 @@ class PodmanRuntime(OciRuntimeBase):
             image=Conf["Image"],
             entrypoint=Conf["Entrypoint"].split(),
             labels=Conf["Labels"],
-            env=dict([env.split("=") for env in Conf["Env"]]),
+            env=dict([env.split("=", maxsplit=1) for env in Conf["Env"]]),
             stop_signal=self._stop_signal_from_inspect_conf(Conf),
             healthcheck=healthcheck,
         )
@@ -583,7 +583,7 @@ class DockerRuntime(OciRuntimeBase):
 
         Conf = inspect["Config"]
         if Conf.get("Env"):
-            env = dict([env.split("=") for env in Conf["Env"]])
+            env = dict([env.split("=", maxsplit=1) for env in Conf["Env"]])
         else:
             env = {}
         healthcheck = None

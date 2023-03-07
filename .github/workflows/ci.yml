@@ -64,8 +64,8 @@ jobs:
           mkdir ./tmp/
           chmod 1777 ./tmp
           export TMPDIR="$(pwd)/tmp"
-          nox -s "test-${{ matrix.python_version }}(${{ matrix.container_runtime }})" -- -n auto --reruns 3 --pytest-container-log-level DEBUG
-          nox -s "test-${{ matrix.python_version }}(${{ matrix.container_runtime }})" -- --reruns 3 --pytest-container-log-level DEBUG
+          nox -s "test-${{ matrix.python_version }}(${{ matrix.container_runtime }})" -- -x -n auto --reruns 3 --pytest-container-log-level DEBUG
+          nox -s "test-${{ matrix.python_version }}(${{ matrix.container_runtime }})" -- -x --reruns 3 --pytest-container-log-level DEBUG
           nox -s coverage
 
       - name: verify that no stray containers are left

@@ -150,7 +150,7 @@ def test_container_without_containerfile_but_with_tags_is_rebuild(
 @pytest.mark.parametrize(
     "container", [LEAP_WITH_MAN_AND_LUA], indirect=["container"]
 )
-def test_leap_with_man_and_info(container: ContainerData):
+def test_leap_with_man_and_lua(container: ContainerData):
     assert container.connection.exists("man")
     assert container.connection.exists("lua")
 
