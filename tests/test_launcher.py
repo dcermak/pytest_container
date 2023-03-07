@@ -1,5 +1,6 @@
 # pylint: disable=missing-function-docstring,missing-module-docstring
 import os
+from pathlib import Path
 from time import sleep
 from typing import Any
 
@@ -206,3 +207,20 @@ def test_launcher_does_not_override_stopsignal_for_entrypoint(
 
     """
     assert container.inspect.config.stop_signal in (9, "SIGKILL")
+
+
+def test_derived_container_pulls_base(
+    container_runtime: OciRuntimeBase, host: Any, pytestconfig: pytest.Config
+) -> None:
+    registry_url = "registry.opensuse.org/opensuse/registry:latest"
+
+    # remove the container image so that the preparation in the launcher must
+    # pull the image
+    host.run(f"{container_runtime.runner_binary} rmi {registry_url}")
+
+    reg = DerivedContainer(base=registry_url)
+    with ContainerLauncher(
+        reg, container_runtime, pytestconfig.rootpath
+    ) as launcher:
+        launcher.launch_container()
+        assert launcher.container_data.container_id

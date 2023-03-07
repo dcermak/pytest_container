@@ -646,6 +646,11 @@ class DerivedContainer(ContainerBase, ContainerBaseABC):
         )
 
     def get_base(self) -> Container:
+        """Return the recursive base of this derived container (i.e. if the base
+        if this container is a derived one, then it takes the base of the
+        base).
+
+        """
         if isinstance(self.base, str):
             return Container(url=self.base)
         return self.base.get_base()
@@ -654,8 +659,14 @@ class DerivedContainer(ContainerBase, ContainerBaseABC):
         self, rootdir: Path, extra_build_args: Optional[List[str]] = None
     ) -> None:
         _logger.debug("Preparing derived container based on %s", self.base)
-        if not isinstance(self.base, str):
-            self.base.prepare_container(rootdir)
+        if isinstance(self.base, str):
+            # we need to pull the container so that the inspect in the launcher
+            # doesn't fail
+            Container(url=self.base).prepare_container(
+                rootdir, extra_build_args
+            )
+        else:
+            self.base.prepare_container(rootdir, extra_build_args)
 
         runtime = get_selected_runtime()
 
