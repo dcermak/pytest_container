@@ -235,8 +235,8 @@ attribute as follows:</p>
 <p>When such a container image is requested via any of the <code class="docutils literal notranslate"><span class="pre">container_*</span></code>
 fixtures, then the resulting data passed into the test function will have the
 attribute <code class="docutils literal notranslate"><span class="pre">forwarded_ports</span></code> set as well. This is a list of
-<a class="reference internal" href="api.html#pytest_container.container.PortForwarding" title="pytest_container.container.PortForwarding"><code class="xref py py-class docutils literal notranslate"><span class="pre">PortForwarding</span></code></a> instances that have the
-property <a class="reference internal" href="api.html#pytest_container.container.PortForwarding.host_port" title="pytest_container.container.PortForwarding.host_port"><code class="xref py py-attr docutils literal notranslate"><span class="pre">host_port</span></code></a> set to
+<a class="reference internal" href="api.html#pytest_container.inspect.PortForwarding" title="pytest_container.inspect.PortForwarding"><code class="xref py py-class docutils literal notranslate"><span class="pre">PortForwarding</span></code></a> instances that have the
+property <a class="reference internal" href="api.html#pytest_container.inspect.PortForwarding.host_port" title="pytest_container.inspect.PortForwarding.host_port"><code class="xref py py-attr docutils literal notranslate"><span class="pre">host_port</span></code></a> set to
 the port that <code class="docutils literal notranslate"><span class="pre">pytest_container</span></code> used to expose the container’s port:</p>
 <div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="k">def</span> <span class="nf">test_port_forward_set_up</span><span class="p">(</span><span class="n">auto_container</span><span class="p">:</span> <span class="n">ContainerData</span><span class="p">,</span> <span class="n">host</span><span class="p">):</span>
     <span class="n">res</span> <span class="o">=</span> <span class="n">host</span><span class="o">.</span><span class="n">run_expect</span><span class="p">(</span>
@@ -352,7 +352,6 @@ follows:</p>
 <span class="s2">    } \n\</span>
 <span class="s2">}&#39; &gt; /etc/nginx/conf.d/default.conf</span>
 <span class="s2">&quot;&quot;&quot;</span><span class="p">,</span>
-    <span class="n">default_entry_point</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
 <span class="p">)</span>
 
 <span class="n">WEB_SERVER</span> <span class="o">=</span> <span class="n">DerivedContainer</span><span class="p">(</span>
@@ -361,7 +360,6 @@ follows:</p>
 <span class="s2">RUN zypper -n in python3 &amp;&amp; echo &quot;Hello Green World!&quot; &gt; index.html</span>
 <span class="s2">ENTRYPOINT [&quot;/usr/bin/python3&quot;, &quot;-m&quot;, &quot;http.server&quot;]</span>
 <span class="s2">&quot;&quot;&quot;</span><span class="p">,</span>
-    <span class="n">default_entry_point</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
 <span class="p">)</span>
 
 <span class="n">PROXY_POD</span> <span class="o">=</span> <span class="n">Pod</span><span class="p">(</span>
@@ -376,6 +374,35 @@ follows:</p>
     <span class="n">port_80_on_host</span> <span class="o">=</span> <span class="n">pod_per_test</span><span class="o">.</span><span class="n">forwarded_ports</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">host_port</span>
 </pre></div>
 </div>
+</section>
+<section id="entrypoint-and-stop-signal-handling">
+<h2>Entrypoint and stop signal handling<a class="headerlink" href="#entrypoint-and-stop-signal-handling" title="Permalink to this heading">¶</a></h2>
+<p><code class="docutils literal notranslate"><span class="pre">pytest_container</span></code> will by default (when
+<a class="reference internal" href="api.html#pytest_container.container.ContainerBase.entry_point" title="pytest_container.container.ContainerBase.entry_point"><code class="xref py py-attr docutils literal notranslate"><span class="pre">entry_point</span></code></a> is set to
+<a class="reference internal" href="api.html#pytest_container.container.EntrypointSelection.AUTO" title="pytest_container.container.EntrypointSelection.AUTO"><code class="xref py py-attr docutils literal notranslate"><span class="pre">AUTO</span></code></a>) try to
+automatically pick the correct entrypoint for your container:</p>
+<ol class="arabic simple">
+<li><p>If <a class="reference internal" href="api.html#pytest_container.container.ContainerBase.custom_entry_point" title="pytest_container.container.ContainerBase.custom_entry_point"><code class="xref py py-attr docutils literal notranslate"><span class="pre">custom_entry_point</span></code></a> is
+set, then that binary will be used.</p></li>
+<li><p>If the container image defines a <code class="docutils literal notranslate"><span class="pre">CMD</span></code> or an <code class="docutils literal notranslate"><span class="pre">ENTRYPOINT</span></code>, then it will
+be launched without specifying an entrypoint.</p></li>
+<li><p>Use <code class="file docutils literal notranslate"><span class="pre">/bin/bash</span></code> otherwise.</p></li>
+</ol>
+<p>This behavior can be customized via the attribute
+<a class="reference internal" href="api.html#pytest_container.container.ContainerBase.entry_point" title="pytest_container.container.ContainerBase.entry_point"><code class="xref py py-attr docutils literal notranslate"><span class="pre">entry_point</span></code></a> to either force
+the entrypoint to <code class="file docutils literal notranslate"><span class="pre">/bin/bash</span></code>
+(<a class="reference internal" href="api.html#pytest_container.container.EntrypointSelection.BASH" title="pytest_container.container.EntrypointSelection.BASH"><code class="xref py py-attr docutils literal notranslate"><span class="pre">BASH</span></code></a>) or launch the
+image without specifying one
+(<a class="reference internal" href="api.html#pytest_container.container.EntrypointSelection.IMAGE" title="pytest_container.container.EntrypointSelection.IMAGE"><code class="xref py py-attr docutils literal notranslate"><span class="pre">IMAGE</span></code></a>).</p>
+<p>Changing the container entrypoint can have a catch with respect to the
+<code class="docutils literal notranslate"><span class="pre">STOPSIGNAL</span></code> defined by a container image. Container images that have
+non-shell entry points sometimes use a different signal for stopping the main
+process. However, a shell might not react to such a signal at all. This is not a
+problem, as the container runtime will eventually resort to sending <code class="docutils literal notranslate"><span class="pre">SIGKILL</span></code>
+to the container if it does not stop. But it slows the tests needlessly down, as
+the container runtime waits for 10 seconds before sending
+<code class="docutils literal notranslate"><span class="pre">SIGKILL</span></code>. Therefore, <code class="docutils literal notranslate"><span class="pre">pytest_container</span></code> sets the stop signal to
+<code class="docutils literal notranslate"><span class="pre">SIGTERM</span></code>, if used <code class="file docutils literal notranslate"><span class="pre">/bin/bash</span></code> as the entrypoint.</p>
 </section>
 </section>
 
@@ -410,6 +437,7 @@ follows:</p>
 <li class="toctree-l2"><a class="reference internal" href="#exposing-ports-from-containers">Exposing ports from containers</a></li>
 <li class="toctree-l2"><a class="reference internal" href="#setting-up-bind-mounts-or-container-volumes">Setting up bind mounts or container volumes</a></li>
 <li class="toctree-l2"><a class="reference internal" href="#create-and-manage-pods">Create and manage pods</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#entrypoint-and-stop-signal-handling">Entrypoint and stop signal handling</a></li>
 </ul>
 </li>
 <li class="toctree-l1"><a class="reference internal" href="changelog.html">Changelog</a></li>

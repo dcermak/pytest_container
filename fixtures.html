@@ -49,12 +49,12 @@ completely.</p>
 with a <code class="docutils literal notranslate"><span class="pre">HEALTHCHECK</span></code>, the container will become available once it is healthy.</p>
 <p>In certain cases it makes sense to not wait for the healthcheck or to
 explicitly ignore it. In that case set the attribute
-<a class="reference internal" href="api.html#pytest_container.container.ContainerBase.healthcheck_timeout" title="pytest_container.container.ContainerBase.healthcheck_timeout"><code class="xref py py-attr docutils literal notranslate"><span class="pre">pytest_container.container.ContainerBase.healthcheck_timeout</span></code></a> to a
+<a class="reference internal" href="api.html#pytest_container.container.ContainerBase.healthcheck_timeout" title="pytest_container.container.ContainerBase.healthcheck_timeout"><code class="xref py py-attr docutils literal notranslate"><span class="pre">healthcheck_timeout</span></code></a> to a
 negative timedelta. The container launch fixtures will then treat this container
 as if it had no <code class="docutils literal notranslate"><span class="pre">HEALTHCHECK</span></code> attribute at all.</p>
 <p>It is also possible to check the container health via the container runtime
 using the function
-<a class="reference internal" href="api.html#pytest_container.runtime.OciRuntimeABC.get_container_health" title="pytest_container.runtime.OciRuntimeABC.get_container_health"><code class="xref py py-meth docutils literal notranslate"><span class="pre">pytest_container.runtime.OciRuntimeABC.get_container_health()</span></code></a>:</p>
+<a class="reference internal" href="api.html#pytest_container.runtime.OciRuntimeABC.get_container_health" title="pytest_container.runtime.OciRuntimeABC.get_container_health"><code class="xref py py-meth docutils literal notranslate"><span class="pre">get_container_health()</span></code></a>:</p>
 <div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">CONTAINER_WITH_HEALTHCHECK</span> <span class="o">=</span> <span class="n">DerivedContainer</span><span class="p">(</span>
     <span class="n">base</span><span class="o">=</span><span class="s2">&quot;registry.opensuse.org/opensuse/leap:latest&quot;</span><span class="p">,</span>
     <span class="n">containerfile</span><span class="o">=</span><span class="s2">&quot;HEALTHCHECK CMD true&quot;</span><span class="p">,</span>
@@ -74,8 +74,8 @@ directive is only supported for docker images. While this is the default with
 <strong class="command">docker</strong>, <strong class="command">buildah</strong> will by default build images in the
 <code class="docutils literal notranslate"><span class="pre">OCIv1</span></code> format which does <strong>not</strong> support <code class="docutils literal notranslate"><span class="pre">HEALTHCHECK</span></code>. To ensure that your
 created container includes the <code class="docutils literal notranslate"><span class="pre">HEALTHCHECK</span></code>, set the attribute
-<a class="reference internal" href="api.html#pytest_container.container.DerivedContainer.image_format" title="pytest_container.container.DerivedContainer.image_format"><code class="xref py py-attr docutils literal notranslate"><span class="pre">pytest_container.container.DerivedContainer.image_format</span></code></a> to
-<a class="reference internal" href="api.html#pytest_container.container.ImageFormat.DOCKER" title="pytest_container.container.ImageFormat.DOCKER"><code class="xref py py-attr docutils literal notranslate"><span class="pre">pytest_container.container.ImageFormat.DOCKER</span></code></a>.</p>
+<a class="reference internal" href="api.html#pytest_container.container.DerivedContainer.image_format" title="pytest_container.container.DerivedContainer.image_format"><code class="xref py py-attr docutils literal notranslate"><span class="pre">image_format</span></code></a> to
+<a class="reference internal" href="api.html#pytest_container.container.ImageFormat.DOCKER" title="pytest_container.container.ImageFormat.DOCKER"><code class="xref py py-attr docutils literal notranslate"><span class="pre">DOCKER</span></code></a>.</p>
 </section>
 </section>
 

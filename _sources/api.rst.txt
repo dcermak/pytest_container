@@ -34,6 +34,14 @@ The runtime module
    :undoc-members:
 
 
+The inspect module
+------------------
+
+.. automodule:: pytest_container.inspect
+   :members:
+   :undoc-members:
+
+
 The helpers module
 ------------------
 

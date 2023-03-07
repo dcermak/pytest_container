@@ -233,8 +233,8 @@ attribute as follows:
 When such a container image is requested via any of the ``container_*``
 fixtures, then the resulting data passed into the test function will have the
 attribute ``forwarded_ports`` set as well. This is a list of
-:py:class:`~pytest_container.container.PortForwarding` instances that have the
-property :py:attr:`~pytest_container.container.PortForwarding.host_port` set to
+:py:class:`~pytest_container.inspect.PortForwarding` instances that have the
+property :py:attr:`~pytest_container.inspect.PortForwarding.host_port` set to
 the port that ``pytest_container`` used to expose the container's port:
 
 .. code-block:: python
@@ -364,7 +364,6 @@ follows:
        } \n\
    }' > /etc/nginx/conf.d/default.conf
    """,
-       default_entry_point=True,
    )
 
    WEB_SERVER = DerivedContainer(
@@ -373,7 +372,6 @@ follows:
    RUN zypper -n in python3 && echo "Hello Green World!" > index.html
    ENTRYPOINT ["/usr/bin/python3", "-m", "http.server"]
    """,
-       default_entry_point=True,
    )
 
    PROXY_POD = Pod(
@@ -394,3 +392,39 @@ follows:
    :py:func:`~pytest_container.plugin.pod_per_test` fixtures will therefore
    automatically skip the tests if the selected container runtime is not
    :command:`podman`.
+
+
+Entrypoint and stop signal handling
+-----------------------------------
+
+``pytest_container`` will by default (when
+:py:attr:`~pytest_container.container.ContainerBase.entry_point` is set to
+:py:attr:`~pytest_container.container.EntrypointSelection.AUTO`) try to
+automatically pick the correct entrypoint for your container:
+
+1. If :py:attr:`~pytest_container.container.ContainerBase.custom_entry_point` is
+   set, then that binary will be used.
+
+2. If the container image defines a ``CMD`` or an ``ENTRYPOINT``, then it will
+   be launched without specifying an entrypoint.
+
+3. Use :file:`/bin/bash` otherwise.
+
+
+This behavior can be customized via the attribute
+:py:attr:`~pytest_container.container.ContainerBase.entry_point` to either force
+the entrypoint to :file:`/bin/bash`
+(:py:attr:`~pytest_container.container.EntrypointSelection.BASH`) or launch the
+image without specifying one
+(:py:attr:`~pytest_container.container.EntrypointSelection.IMAGE`).
+
+
+Changing the container entrypoint can have a catch with respect to the
+``STOPSIGNAL`` defined by a container image. Container images that have
+non-shell entry points sometimes use a different signal for stopping the main
+process. However, a shell might not react to such a signal at all. This is not a
+problem, as the container runtime will eventually resort to sending ``SIGKILL``
+to the container if it does not stop. But it slows the tests needlessly down, as
+the container runtime waits for 10 seconds before sending
+``SIGKILL``. Therefore, ``pytest_container`` sets the stop signal to
+``SIGTERM``, if used :file:`/bin/bash` as the entrypoint.
