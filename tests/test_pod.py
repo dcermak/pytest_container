@@ -3,7 +3,7 @@ from pathlib import Path
 
 import pytest
 
-from .images import ALPINE
+from .images import BUSYBOX
 from .images import CONTAINER_THAT_FAILS_TO_LAUNCH
 from .images import LEAP
 from .images import LEAP_WITH_MAN
@@ -19,7 +19,7 @@ from pytest_container.runtime import OciRuntimeBase
 from pytest_container.runtime import PodmanRuntime
 
 
-TEST_POD_WITHOUT_PORTS = Pod(containers=[LEAP, LEAP_WITH_MAN, ALPINE])
+TEST_POD_WITHOUT_PORTS = Pod(containers=[LEAP, LEAP_WITH_MAN, BUSYBOX])
 
 
 NGINX_PROXY = DerivedContainer(
@@ -34,7 +34,6 @@ NGINX_PROXY = DerivedContainer(
 
 HEALTHCHECK --interval=5s --timeout=1s CMD curl --fail http://localhost:80
 """,
-    default_entry_point=True,
 )
 
 PROXY_POD = Pod(
@@ -144,21 +143,18 @@ def test_proxy_pod(pod_per_test: PodData, host) -> None:
 def test_pod_fixture(pod: PodData) -> None:
     assert pod.pod_id
 
-    for cont_data in pod.container_data[:2]:
-        assert (
-            "leap"
-            in cont_data.connection.run_expect([0], "cat /etc/os-release")
-            .stdout.strip()
-            .lower()
-        )
-
-    assert (
-        "alpine"
-        in pod.container_data[-1]
-        .connection.run_expect([0], "cat /etc/os-release")
-        .stdout.strip()
-        .lower()
-    )
+    for cont_data in pod.container_data:
+        # leap has /etc/os-release
+        if cont_data.connection.file("/etc/os-release").exists:
+            assert (
+                "leap"
+                in cont_data.connection.run_expect([0], "cat /etc/os-release")
+                .stdout.strip()
+                .lower()
+            )
+        # busybox doesn't, but it has /bin/busybox ;-)
+        else:
+            assert cont_data.connection.file("/bin/busybox").exists
 
 
 def test_launcher_pod_data_uninitialized() -> None:

@@ -51,7 +51,6 @@ RUN sed -i 's|PLACEHOLDER|Test page {number}|' /usr/share/nginx/html/index.html
             PortForwarding(container_port=n, protocol=NetworkProtocol.UDP)
             for n in range(200, 700)
         ],
-        default_entry_point=True,
     )
 
 

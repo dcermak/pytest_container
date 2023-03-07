@@ -45,7 +45,6 @@ BUSYBOX_WITH_GARBAGE = DerivedContainer(
 SLEEP_CONTAINER = DerivedContainer(
     base=LEAP_URL,
     containerfile="""ENTRYPOINT ["/usr/bin/sleep", "3600"]""",
-    default_entry_point=True,
 )
 
 LEAP2 = DerivedContainer(base=LEAP)

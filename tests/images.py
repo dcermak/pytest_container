@@ -6,7 +6,6 @@ from pytest_container.container import PortForwarding
 from pytest_container.pod import Pod
 
 
-BUSYBOX_URL = "docker.io/library/busybox"
 LEAP_URL = "registry.opensuse.org/opensuse/leap:latest"
 OPENSUSE_BUSYBOX_URL = "registry.opensuse.org/opensuse/busybox:latest"
 NGINX_URL = "docker.io/library/nginx"
@@ -23,7 +22,6 @@ HEALTHCHECK --interval=5s --timeout=1s CMD curl --fail http://0.0.0.0:8000
 EXPOSE 8000
 """,
     forwarded_ports=[PortForwarding(container_port=8000)],
-    default_entry_point=True,
 )
 
 CONTAINER_THAT_FAILS_TO_LAUNCH = DerivedContainer(
@@ -40,9 +38,9 @@ LEAP_WITH_MAN = DerivedContainer(
     containerfile="RUN zypper -n in man",
 )
 
-ALPINE = Container(url=ALPINE_URL, custom_entry_point="/bin/sh")
+BUSYBOX = Container(url=OPENSUSE_BUSYBOX_URL)
 
 TEST_POD = Pod(
-    containers=[LEAP, LEAP_WITH_MAN, ALPINE],
+    containers=[LEAP, LEAP_WITH_MAN, BUSYBOX],
     forwarded_ports=[PortForwarding(80), PortForwarding(22)],
 )

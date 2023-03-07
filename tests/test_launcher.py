@@ -16,20 +16,27 @@ from pytest_container.container import ContainerData
 from pytest_container.container import ContainerLauncher
 from pytest_container.container import ContainerVolume
 from pytest_container.container import DerivedContainer
+from pytest_container.container import EntrypointSelection
 from pytest_container.runtime import LOCALHOST
 from pytest_container.runtime import OciRuntimeBase
 
 
 LEAP_WITH_STOPSIGNAL_SIGKILL = DerivedContainer(
-    base=LEAP, containerfile="STOPSIGNAL SIGKILL"
+    base=LEAP,
+    containerfile="STOPSIGNAL SIGKILL",
+    entry_point=EntrypointSelection.BASH,
 )
 
 LEAP_WITH_STOPSIGNAL_SIGKILL_AND_ENTRYPOINT = DerivedContainer(
-    base=LEAP, containerfile="STOPSIGNAL SIGKILL", default_entry_point=True
+    base=LEAP,
+    containerfile="STOPSIGNAL SIGKILL",
+    entry_point=EntrypointSelection.IMAGE,
 )
 
 LEAP_WITH_STOPSIGNAL_SIGKILL_AND_CUSTOM_ENTRYPOINT = DerivedContainer(
-    base=LEAP, containerfile="STOPSIGNAL SIGKILL", custom_entry_point="/bin/sh"
+    base=LEAP,
+    containerfile="STOPSIGNAL SIGKILL",
+    custom_entry_point="/bin/sh",
 )
 
 

@@ -391,6 +391,23 @@ def get_volume_creator(
 
 
 _CONTAINER_ENTRYPOINT = "/bin/bash"
+_CONTAINER_STOPSIGNAL = ["--stop-signal", "SIGTERM"]
+
+
+@enum.unique
+class EntrypointSelection(enum.Enum):
+    """Choices how the entrypoint of a container is picked."""
+
+    #: If :py:attr:`~ContainerBase.custom_entry_point` is set, then that value
+    #: is used. Otherwise the container images entrypoint or cmd is used if it
+    #: defines one, or else :file:`/bin/bash` is used.
+    AUTO = enum.auto()
+
+    #: :file:`/bin/bash` is used as the entry point
+    BASH = enum.auto()
+
+    #: The images' entrypoint or the default from the container runtime is used
+    IMAGE = enum.auto()
 
 
 @dataclass
@@ -409,12 +426,14 @@ class ContainerBase:
     #: id of the container if it is not available via a registry URL
     container_id: str = ""
 
-    #: flag whether the image should be launched using its own defined entry
-    #: point. If False, then ``/bin/bash`` is used.
-    default_entry_point: bool = False
+    #: Defines which entrypoint of the container is used.
+    #: By default either :py:attr:`custom_entry_point` will be used (if defined)
+    #: or the container's entrypoint or cmd. If neither of the two is set, then
+    #: :file:`/bin/bash` will be used.
+    entry_point: EntrypointSelection = EntrypointSelection.AUTO
 
     #: custom entry point for this container (i.e. neither its default, nor
-    #: `/bin/bash`)
+    #: :file:`/bin/bash`)
     custom_entry_point: Optional[str] = None
 
     #: List of additional flags that will be inserted after
@@ -448,13 +467,6 @@ class ContainerBase:
     _is_local: bool = False
 
     def __post_init__(self) -> None:
-        if self.default_entry_point and self.custom_entry_point:
-            raise ValueError(
-                "A custom entry point has been provided "
-                + self.custom_entry_point
-                + "with default_entry_point being set to True"
-            )
-
         if self.url.split(":", maxsplit=1)[0] == "containers-storage":
             self._is_local = True
             self.url = self.url.replace("containers-storage:", "")
@@ -470,25 +482,12 @@ class ContainerBase:
         """
         return self._is_local
 
-    @property
-    def entry_point(self) -> Optional[str]:
-        """The entry point of this container, either its default, bash or a
-        custom one depending on the set values. A custom entry point is
-        preferred, otherwise bash is used unless :py:attr:`default_entry_point`
-        is ``True``.
-
-        """
-        if self.custom_entry_point:
-            return self.custom_entry_point
-        if self.default_entry_point:
-            return None
-        return _CONTAINER_ENTRYPOINT
-
     def get_launch_cmd(
-        self, extra_run_args: Optional[List[str]] = None
+        self,
+        container_runtime: OciRuntimeBase,
+        extra_run_args: Optional[List[str]] = None,
     ) -> List[str]:
-        """Returns the command to launch this container image (excluding the
-        leading podman or docker binary name).
+        """Returns the command to launch this container image.
 
         Args:
             extra_run_args: optional list of arguments that are added to the
@@ -500,7 +499,7 @@ class ContainerBase:
             :py:class:`subprocess.Popen` as the ``args`` parameter.
         """
         cmd = (
-            ["run", "-d"]
+            [container_runtime.runner_binary, "run", "-d"]
             + (extra_run_args or [])
             + self.extra_launch_args
             + (
@@ -518,10 +517,27 @@ class ContainerBase:
             + [vol.cli_arg for vol in self.volume_mounts]
         )
 
-        if self.entry_point is None:
-            cmd.append(self.container_id or self.url)
-        else:
-            cmd += ["-it", self.container_id or self.url, self.entry_point]
+        id_or_url = self.container_id or self.url
+        bash_launch_end = _CONTAINER_STOPSIGNAL + [
+            "-it",
+            id_or_url,
+            _CONTAINER_ENTRYPOINT,
+        ]
+        if self.entry_point == EntrypointSelection.IMAGE:
+            cmd.extend(["-it", id_or_url])
+        elif self.entry_point == EntrypointSelection.BASH:
+            cmd.extend(bash_launch_end)
+        elif self.entry_point == EntrypointSelection.AUTO:
+            if self.custom_entry_point:
+                cmd.extend(["-it", id_or_url, self.custom_entry_point])
+            elif container_runtime._get_image_entrypoint_cmd(
+                id_or_url, "Entrypoint"
+            ) or container_runtime._get_image_entrypoint_cmd(id_or_url, "Cmd"):
+                cmd.extend(["-it", id_or_url])
+            else:
+                cmd.extend(bash_launch_end)
+        else:  # pragma: no cover
+            assert False, "This branch must be unreachable"  # pragma: no cover
 
         return cmd
 
@@ -845,9 +861,6 @@ class ContainerLauncher:
         if self.container_name:
             extra_run_args.extend(["--name", self.container_name])
 
-        if self.container.entry_point == _CONTAINER_ENTRYPOINT:
-            extra_run_args.extend(["--stop-signal", "SIGTERM"])
-
         # We must perform the launches in separate branches, as containers with
         # port forwards must be launched while the lock is being held. Otherwise
         # another container could pick the same ports before this one launches.
@@ -859,18 +872,16 @@ class ContainerLauncher:
                 for new_forward in self._new_port_forwards:
                     extra_run_args += new_forward.forward_cli_args
 
-                launch_cmd = [
-                    self.container_runtime.runner_binary
-                ] + self.container.get_launch_cmd(
-                    extra_run_args=extra_run_args
+                launch_cmd = self.container.get_launch_cmd(
+                    self.container_runtime, extra_run_args=extra_run_args
                 )
 
                 _logger.debug("Launching container via: %s", launch_cmd)
                 self._container_id = check_output(launch_cmd).decode().strip()
         else:
-            launch_cmd = [
-                self.container_runtime.runner_binary
-            ] + self.container.get_launch_cmd(extra_run_args=extra_run_args)
+            launch_cmd = self.container.get_launch_cmd(
+                self.container_runtime, extra_run_args=extra_run_args
+            )
 
             _logger.debug("Launching container via: %s", launch_cmd)
             self._container_id = check_output(launch_cmd).decode().strip()

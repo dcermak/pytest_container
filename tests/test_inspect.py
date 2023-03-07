@@ -17,7 +17,6 @@ ENV HOME=/src/
 ENV MY_VAR=
 CMD ["/bin/sh"]
 """,
-    default_entry_point=True,
 )
 
 

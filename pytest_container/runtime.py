@@ -5,6 +5,7 @@ implementation details of container runtimes like :command:`docker` or
 """
 import json
 import re
+import sys
 from abc import ABC
 from abc import abstractmethod
 from dataclasses import dataclass
@@ -35,6 +36,11 @@ from pytest_container.inspect import NetworkProtocol
 from pytest_container.inspect import PortForwarding
 from pytest_container.inspect import VolumeMount
 
+
+if sys.version_info >= (3, 8):
+    from typing import Literal
+else:
+    from typing_extensions import Literal
 
 # mypy will try to import cached_property but fail to find its types
 # since we run mypy with the most recent python version, we can simply import
@@ -289,6 +295,29 @@ class OciRuntimeBase(_OciRuntimeBase, OciRuntimeABC, ToParamMixin):
             )
 
         return inspect[0]
+
+    def _get_image_entrypoint_cmd(
+        self, image_url_or_id: str, query_type: Literal["Entrypoint", "Cmd"]
+    ) -> Optional[str]:
+        """Inspect the container image with the given url or id and return its
+        ``ENTRYPOINT`` or ``CMD`` or ``None`` if no entrypoint or cmd has been
+        defined.
+
+        """
+        entrypoint = (
+            check_output(
+                [
+                    self.runner_binary,
+                    "inspect",
+                    "-f",
+                    f"{{{{.Config.{query_type}}}}}",
+                    image_url_or_id,
+                ]
+            )
+            .decode("utf-8")
+            .strip()
+        )
+        return None if entrypoint == "[]" else entrypoint
 
     @staticmethod
     def _stop_signal_from_inspect_conf(inspect_conf: Any) -> Union[int, str]:

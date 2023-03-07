@@ -364,7 +364,6 @@ follows:
        } \n\
    }' > /etc/nginx/conf.d/default.conf
    """,
-       default_entry_point=True,
    )
 
    WEB_SERVER = DerivedContainer(
@@ -373,7 +372,6 @@ follows:
    RUN zypper -n in python3 && echo "Hello Green World!" > index.html
    ENTRYPOINT ["/usr/bin/python3", "-m", "http.server"]
    """,
-       default_entry_point=True,
    )
 
    PROXY_POD = Pod(
@@ -399,19 +397,27 @@ follows:
 Entrypoint and stop signal handling
 -----------------------------------
 
-``pytest_container`` launches containers with :file:`/bin/bash` as the
-entrypoint by default. This ensures that commands can be executed without issues
-in the container via ``testinfra``.
+``pytest_container`` will by default (when
+:py:attr:`~pytest_container.container.ContainerBase.entry_point` is set to
+:py:attr:`~pytest_container.container.EntrypointSelection.AUTO`) try to
+automatically pick the correct entrypoint for your container:
 
-Some containers define a custom entrypoint, e.g. they do not ship
-:file:`/bin/bash` or they provide a service that should be launched in the
-container. In such a case, set the property
-:py:attr:`~pytest_container.container.ContainerBase.default_entry_point` to
-``True`` and ``pytest_container`` will use the image's default.
+1. If :py:attr:`~pytest_container.container.ContainerBase.custom_entry_point` is
+   set, then that binary will be used.
 
-To use a completely different entrypoint, set
-:py:attr:`~pytest_container.container.ContainerBase.custom_entry_point` to the
-desired value. It will take precedence over the images' default.
+2. If the container image defines a ``CMD`` or an ``ENTRYPOINT``, then it will
+   be launched without specifying an entrypoint.
+
+3. Use :file:`/bin/bash` otherwise.
+
+
+This behavior can be customized via the attribute
+:py:attr:`~pytest_container.container.ContainerBase.entry_point` to either force
+the entrypoint to :file:`/bin/bash`
+(:py:attr:`~pytest_container.container.EntrypointSelection.BASH`) or launch the
+image without specifying one
+(:py:attr:`~pytest_container.container.EntrypointSelection.IMAGE`).
+
 
 Changing the container entrypoint can have a catch with respect to the
 ``STOPSIGNAL`` defined by a container image. Container images that have
@@ -420,5 +426,5 @@ process. However, a shell might not react to such a signal at all. This is not a
 problem, as the container runtime will eventually resort to sending ``SIGKILL``
 to the container if it does not stop. But it slows the tests needlessly down, as
 the container runtime waits for 10 seconds before sending
-``SIGKILL``. Therefore, ``pytest_container`` sets the stop signal by default to
-``SIGTERM``, unless a different entry point than :file:`/bin/bash` will be used.
+``SIGKILL``. Therefore, ``pytest_container`` sets the stop signal to
+``SIGTERM``, if used :file:`/bin/bash` as the entrypoint.
