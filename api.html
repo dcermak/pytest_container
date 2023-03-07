@@ -417,8 +417,9 @@ from <a class="reference internal" href="#pytest_container.container.DerivedCont
 <dl class="py method">
 <dt class="sig sig-object py" id="pytest_container.container.DerivedContainer.get_base">
 <span class="sig-name descname"><span class="pre">get_base</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference internal" href="#pytest_container.container.Container" title="pytest_container.container.Container"><span class="pre">Container</span></a></span></span><a class="headerlink" href="#pytest_container.container.DerivedContainer.get_base" title="Permalink to this definition">¶</a></dt>
-<dd><p>Returns the Base of this Container Image. If the container has no
-base, then <code class="docutils literal notranslate"><span class="pre">self</span></code> is returned.</p>
+<dd><p>Return the recursive base of this derived container (i.e. if the base
+if this container is a derived one, then it takes the base of the
+base).</p>
 </dd></dl>
 
 <dl class="py attribute">
