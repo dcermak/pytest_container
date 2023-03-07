@@ -15,6 +15,7 @@ USER opensuse
 ENTRYPOINT /bin/false
 ENV HOME=/src/
 ENV MY_VAR=
+ENV SUFFIX_NAME=dc=example,dc=com
 CMD ["/bin/sh"]
 """,
 )
