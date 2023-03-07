@@ -1,4 +1,4 @@
-.tox/*
+.nox/*
 .git*
 build/*
 dist/*

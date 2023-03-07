@@ -1,14 +1,16 @@
 """Module containing tests of the automated port exposure via
 :py:attr:`~pytest_container.container.ContainerBase.forwarded_ports`."""
 # pylint: disable=missing-function-docstring
+from typing import List
+
 import pytest
 
 from .images import NGINX_URL
 from .images import WEB_SERVER
 from pytest_container.container import ContainerData
 from pytest_container.container import DerivedContainer
-from pytest_container.container import NetworkProtocol
 from pytest_container.container import PortForwarding
+from pytest_container.inspect import NetworkProtocol
 from pytest_container.runtime import LOCALHOST
 from pytest_container.runtime import Version
 
@@ -49,7 +51,6 @@ RUN sed -i 's|PLACEHOLDER|Test page {number}|' /usr/share/nginx/html/index.html
             PortForwarding(container_port=n, protocol=NetworkProtocol.UDP)
             for n in range(200, 700)
         ],
-        default_entry_point=True,
     )
 
 
@@ -69,13 +70,26 @@ if _curl_version >= Version(major=7, minor=71, patch=0):
     _CURL = f"{_CURL} --retry-all-errors"
 
 
-def test_forward_cli_args_with_valid_port() -> None:
-    assert PortForwarding(
-        container_port=80, host_port=8080
-    ).forward_cli_args == ["-p", "8080:80/tcp"]
-    assert PortForwarding(
-        container_port=53, host_port=5053, protocol=NetworkProtocol.UDP
-    ).forward_cli_args == ["-p", "5053:53/udp"]
+@pytest.mark.parametrize(
+    "port_forwarding,expected_cli_args",
+    [
+        (
+            PortForwarding(container_port=80, host_port=8080),
+            ["-p", "8080:80/tcp"],
+        ),
+        (
+            PortForwarding(
+                container_port=53, host_port=5053, protocol=NetworkProtocol.UDP
+            ),
+            ["-p", "5053:53/udp"],
+        ),
+        (PortForwarding(container_port=6060), ["-p", "6060/tcp"]),
+    ],
+)
+def test_forward_cli_args_with_valid_port(
+    port_forwarding: PortForwarding, expected_cli_args: List[str]
+) -> None:
+    assert port_forwarding.forward_cli_args == expected_cli_args
 
 
 def test_port_forward_set_up(auto_container: ContainerData, host):

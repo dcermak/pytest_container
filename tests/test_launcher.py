@@ -10,13 +10,34 @@ from .images import LEAP
 from .test_volumes import LEAP_WITH_BIND_MOUNT_AND_VOLUME
 from .test_volumes import LEAP_WITH_CONTAINER_VOLUMES
 from .test_volumes import LEAP_WITH_VOLUMES
+from pytest_container import inspect
 from pytest_container.container import BindMount
 from pytest_container.container import ContainerData
 from pytest_container.container import ContainerLauncher
 from pytest_container.container import ContainerVolume
 from pytest_container.container import DerivedContainer
+from pytest_container.container import EntrypointSelection
 from pytest_container.runtime import LOCALHOST
 from pytest_container.runtime import OciRuntimeBase
+
+
+LEAP_WITH_STOPSIGNAL_SIGKILL = DerivedContainer(
+    base=LEAP,
+    containerfile="STOPSIGNAL SIGKILL",
+    entry_point=EntrypointSelection.BASH,
+)
+
+LEAP_WITH_STOPSIGNAL_SIGKILL_AND_ENTRYPOINT = DerivedContainer(
+    base=LEAP,
+    containerfile="STOPSIGNAL SIGKILL",
+    entry_point=EntrypointSelection.IMAGE,
+)
+
+LEAP_WITH_STOPSIGNAL_SIGKILL_AND_CUSTOM_ENTRYPOINT = DerivedContainer(
+    base=LEAP,
+    containerfile="STOPSIGNAL SIGKILL",
+    custom_entry_point="/bin/sh",
+)
 
 
 def _test_func(con: Any) -> None:
@@ -52,6 +73,8 @@ def test_launcher_creates_and_cleanes_up_volumes(
     with ContainerLauncher(
         cont, container_runtime, pytestconfig.rootpath
     ) as launcher:
+        launcher.launch_container()
+
         container = launcher.container_data.container
         assert container.volume_mounts
 
@@ -77,12 +100,50 @@ def test_launcher_creates_and_cleanes_up_volumes(
             assert False, f"invalid volume type {type(vol)}"
 
 
+LEAP_WITH_VOLUME_IN_DOCKERFILE = DerivedContainer(
+    base=LEAP, containerfile="VOLUME /foo"
+)
+
+
+@pytest.mark.parametrize("cont", [LEAP_WITH_VOLUME_IN_DOCKERFILE])
+def test_launcher_cleanes_up_volumes_from_image(
+    cont: DerivedContainer,
+    pytestconfig: pytest.Config,
+    container_runtime: OciRuntimeBase,
+    host: Any,
+) -> None:
+    with ContainerLauncher(
+        cont, container_runtime, pytestconfig.rootpath
+    ) as launcher:
+        launcher.launch_container()
+
+        container = launcher.container_data.container
+        assert not container.volume_mounts
+
+        mounts = launcher.container_data.inspect.mounts
+        assert (
+            len(mounts) == 1
+            and isinstance(mounts[0], inspect.VolumeMount)
+            and mounts[0].destination == "/foo"
+        )
+
+        vol_name = mounts[0].name
+    assert (
+        "Error:"
+        in host.run_expect(
+            [1, 125],
+            f"{container_runtime.runner_binary} volume inspect {vol_name}",
+        ).stderr
+    )
+
+
 def test_launcher_container_data_not_available_after_exit(
     container_runtime: OciRuntimeBase, pytestconfig: pytest.Config
 ) -> None:
     with ContainerLauncher(
         LEAP, container_runtime, pytestconfig.rootpath
     ) as launcher:
+        launcher.launch_container()
         assert launcher.container_data
 
     with pytest.raises(RuntimeError) as runtime_err_ctx:
@@ -101,13 +162,47 @@ def test_launcher_fails_on_failing_healthcheck(
             container_runtime=container_runtime,
             rootdir=pytestconfig.rootpath,
             container_name=container_name,
-        ) as _:
-            pass
-
-    # manually delete the container as pytest prevents the __exit__() block from
-    # running
-    host.run_expect(
-        [0], f"{container_runtime.runner_binary} rm -f {container_name}"
-    )
+        ) as launcher:
+            launcher.launch_container()
+            assert False, "This code must be unreachable"
 
     assert "did not become healthy within" in str(runtime_err_ctx.value)
+
+    # the container must not exist anymore
+    assert (
+        "no such object"
+        in host.run_expect(
+            [1, 125],
+            f"{container_runtime.runner_binary} inspect {container_name}",
+        ).stderr.lower()
+    )
+
+
+@pytest.mark.parametrize(
+    "container", [LEAP_WITH_STOPSIGNAL_SIGKILL], indirect=True
+)
+def test_launcher_overrides_stopsignal(container: ContainerData) -> None:
+    """Verify that we override the stop signal by default to ``SIGTERM`` as we
+    launch containers with :file:`/bin/bash` as the entrypoint.
+
+    """
+    assert container.inspect.config.stop_signal in (15, "SIGTERM")
+
+
+@pytest.mark.parametrize(
+    "container",
+    [
+        LEAP_WITH_STOPSIGNAL_SIGKILL_AND_ENTRYPOINT,
+        LEAP_WITH_STOPSIGNAL_SIGKILL_AND_CUSTOM_ENTRYPOINT,
+    ],
+    indirect=True,
+)
+def test_launcher_does_not_override_stopsignal_for_entrypoint(
+    container: ContainerData,
+) -> None:
+    """Check that the stop signal is **not** modified when the attribute
+    `default_entry_point` is ``True`` (then we assume that the stop signal has
+    been set to the appropriate value by the author of the image).
+
+    """
+    assert container.inspect.config.stop_signal in (9, "SIGKILL")

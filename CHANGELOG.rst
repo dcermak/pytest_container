@@ -11,8 +11,22 @@ Breaking changes:
   timeout is used instead of the inferred default and if it is negative, then no
   timeout is applied.
 
+- :py:attr:`~pytest_container.container.ContainerBase.entry_point` is no longer
+  a property. It is instead a setting how the entry point for a container image
+  is picked. Consequently, the attribute ``ContainerBase.default_entry_point``
+  was removed.
+
 
 Improvements and new features:
+
+- The Entrypoint is now picked automatically from the image, removing the need
+  for setting `default_entry_point=True`.
+
+- Cleanup automatically created volumes from ``VOLUME`` directives in
+  :file:`Dockerfile`.
+
+- Allow to inspect containers via a pythonic interface via
+  :py:attr:`~pytest_container.container.ContainerData.inspect`
 
 - Add support for creating podman pods for testing via the
   :py:class:`~pytest_container.pod.Pod` class.

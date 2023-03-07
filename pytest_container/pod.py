@@ -18,7 +18,7 @@ from pytest_container.container import ContainerData
 from pytest_container.container import ContainerLauncher
 from pytest_container.container import create_host_port_port_forward
 from pytest_container.container import DerivedContainer
-from pytest_container.container import PortForwarding
+from pytest_container.inspect import PortForwarding
 from pytest_container.logging import _logger
 from pytest_container.runtime import get_selected_runtime
 from pytest_container.runtime import PodmanRuntime
@@ -109,7 +109,14 @@ class PodLauncher:
             raise RuntimeError(
                 f"pods can only be created with podman, but got {runtime}"
             )
+        return self
 
+    def launch_pod(self) -> None:
+        """Creates the actual pod, establishes the port bindings and launches
+        all containers in the pod.
+
+        """
+        runtime = get_selected_runtime()
         create_cmd = [runtime.runner_binary, "pod", "create"] + (
             ["--name", self.pod_name] if self.pod_name else []
         )
@@ -170,10 +177,9 @@ class PodLauncher:
                     )
                 )
             )
+            self._launchers[-1].launch_container()
 
         assert len(self.pod.containers) == len(self._launchers)
-
-        return self
 
     def __exit__(
         self,

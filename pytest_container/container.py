@@ -21,6 +21,7 @@ from datetime import datetime
 from datetime import timedelta
 from hashlib import md5
 from pathlib import Path
+from subprocess import call
 from subprocess import check_output
 from types import TracebackType
 from typing import Any
@@ -38,8 +39,11 @@ from _pytest.mark.structures import MarkDecorator
 from _pytest.mark.structures import ParameterSet
 from filelock import FileLock
 
+from pytest_container.inspect import ContainerHealth
+from pytest_container.inspect import ContainerInspect
+from pytest_container.inspect import PortForwarding
+from pytest_container.inspect import VolumeMount
 from pytest_container.logging import _logger
-from pytest_container.runtime import ContainerHealth
 from pytest_container.runtime import get_selected_runtime
 from pytest_container.runtime import OciRuntimeBase
 
@@ -59,76 +63,13 @@ class ImageFormat(enum.Enum):
         return "oci" if self == ImageFormat.OCIv1 else "docker"
 
 
-@enum.unique
-class NetworkProtocol(enum.Enum):
-    """Network protocols supporting port forwarding."""
-
-    #: Transmission Control Protocol
-    TCP = "tcp"
-    #: User Datagram Protocol
-    UDP = "udp"
-
-    def __str__(self) -> str:
-        return self.value
-
-    @property
-    def SOCK_CONST(self) -> int:
-        """Returns the appropriate socket type constant (``SOCK_STREAM`` or
-        ``SOCK_DGRAM``) for the current protocol.
-
-        """
-        return {
-            NetworkProtocol.TCP.value: socket.SOCK_STREAM,
-            NetworkProtocol.UDP.value: socket.SOCK_DGRAM,
-        }[self.value]
-
-
-@dataclass(frozen=True)
-class PortForwarding:
-    """Representation of a port forward from a container to the host.
-
-    To expose a port of a container automatically, create an instance of this
-    class, set the attribute :py:attr:`container_port` and optionally
-    :py:attr:`protocol` as well and pass it via the parameter
-    :py:attr:`ContainerBase.forwarded_ports` to either the :py:class:`Container`
-    or :py:class:`DerivedContainer`:
-
-    >>> Container(url="my-webserver", forwarded_ports=[PortForwarding(container_port=8000)])
-
-    """
-
-    #: The port which shall be exposed by the container.
-    container_port: int
-
-    #: The protocol which the exposed port is using. Defaults to TCP.
-    protocol: NetworkProtocol = NetworkProtocol.TCP
-
-    #: The port as which the port from :py:attr:`container_port` is exposed on
-    #: the host. This value is automatically set by the `*container_*` fixtures,
-    #: so there's no need for the user to modify it
-    host_port: int = -1
-
-    @property
-    def forward_cli_args(self) -> List[str]:
-        """Returns a list of command line arguments for the container launch
-        command to automatically expose this port forwarding.
-
-        """
-        return [
-            "-p",
-            f"{self.host_port}:{self.container_port}/{self.protocol}",
-        ]
-
-    def __str__(self) -> str:
-        return str(self.forward_cli_args)
-
-
 def create_host_port_port_forward(
     port_forwards: List[PortForwarding],
 ) -> List[PortForwarding]:
     """Given a list of port_forwards, this function finds random free ports on
     the host system to which the container ports can be bound and returns a new
-    list of appropriately configured :py:class:`PortForwarding` instances.
+    list of appropriately configured
+    :py:class:`~pytest_container.inspect.PortForwarding` instances.
 
     """
     finished_forwards: List[PortForwarding] = []
@@ -140,14 +81,20 @@ def create_host_port_port_forward(
     sockets: List[socket.socket] = []
 
     for port in port_forwards:
-        sock = socket.socket(type=port.protocol.SOCK_CONST)
+
+        sock = socket.socket(
+            family=socket.AF_INET6 if socket.has_ipv6 else socket.AF_INET,
+            type=port.protocol.SOCK_CONST,
+        )
         sock.bind(("", 0))
+
+        port_num: int = sock.getsockname()[1]
 
         finished_forwards.append(
             PortForwarding(
                 container_port=port.container_port,
                 protocol=port.protocol,
-                host_port=sock.getsockname()[1],
+                host_port=port_num,
             )
         )
         sockets.append(sock)
@@ -331,6 +278,12 @@ class VolumeCreator:
         """Cleans up the container volume."""
         assert self.volume.volume_id
 
+        _logger.debug(
+            "cleaning up volume %s via %s",
+            self.volume.volume_id,
+            self.container_runtime.runner_binary,
+        )
+
         # Clean up container volume
         check_output(
             [
@@ -437,6 +390,26 @@ def get_volume_creator(
     assert False, f"invalid volume type {type(volume)}"  # pragma: no cover
 
 
+_CONTAINER_ENTRYPOINT = "/bin/bash"
+_CONTAINER_STOPSIGNAL = ["--stop-signal", "SIGTERM"]
+
+
+@enum.unique
+class EntrypointSelection(enum.Enum):
+    """Choices how the entrypoint of a container is picked."""
+
+    #: If :py:attr:`~ContainerBase.custom_entry_point` is set, then that value
+    #: is used. Otherwise the container images entrypoint or cmd is used if it
+    #: defines one, or else :file:`/bin/bash` is used.
+    AUTO = enum.auto()
+
+    #: :file:`/bin/bash` is used as the entry point
+    BASH = enum.auto()
+
+    #: The images' entrypoint or the default from the container runtime is used
+    IMAGE = enum.auto()
+
+
 @dataclass
 class ContainerBase:
     """Base class for defining containers to be tested. Not to be used directly,
@@ -453,12 +426,14 @@ class ContainerBase:
     #: id of the container if it is not available via a registry URL
     container_id: str = ""
 
-    #: flag whether the image should be launched using its own defined entry
-    #: point. If False, then ``/bin/bash`` is used.
-    default_entry_point: bool = False
+    #: Defines which entrypoint of the container is used.
+    #: By default either :py:attr:`custom_entry_point` will be used (if defined)
+    #: or the container's entrypoint or cmd. If neither of the two is set, then
+    #: :file:`/bin/bash` will be used.
+    entry_point: EntrypointSelection = EntrypointSelection.AUTO
 
     #: custom entry point for this container (i.e. neither its default, nor
-    #: `/bin/bash`)
+    #: :file:`/bin/bash`)
     custom_entry_point: Optional[str] = None
 
     #: List of additional flags that will be inserted after
@@ -492,13 +467,6 @@ class ContainerBase:
     _is_local: bool = False
 
     def __post_init__(self) -> None:
-        if self.default_entry_point and self.custom_entry_point:
-            raise ValueError(
-                "A custom entry point has been provided "
-                + self.custom_entry_point
-                + "with default_entry_point being set to True"
-            )
-
         if self.url.split(":", maxsplit=1)[0] == "containers-storage":
             self._is_local = True
             self.url = self.url.replace("containers-storage:", "")
@@ -514,25 +482,12 @@ class ContainerBase:
         """
         return self._is_local
 
-    @property
-    def entry_point(self) -> Optional[str]:
-        """The entry point of this container, either its default, bash or a
-        custom one depending on the set values. A custom entry point is
-        preferred, otherwise bash is used unless :py:attr:`default_entry_point`
-        is ``True``.
-
-        """
-        if self.custom_entry_point:
-            return self.custom_entry_point
-        if self.default_entry_point:
-            return None
-        return "/bin/bash"
-
     def get_launch_cmd(
-        self, extra_run_args: Optional[List[str]] = None
+        self,
+        container_runtime: OciRuntimeBase,
+        extra_run_args: Optional[List[str]] = None,
     ) -> List[str]:
-        """Returns the command to launch this container image (excluding the
-        leading podman or docker binary name).
+        """Returns the command to launch this container image.
 
         Args:
             extra_run_args: optional list of arguments that are added to the
@@ -544,7 +499,7 @@ class ContainerBase:
             :py:class:`subprocess.Popen` as the ``args`` parameter.
         """
         cmd = (
-            ["run", "-d"]
+            [container_runtime.runner_binary, "run", "-d"]
             + (extra_run_args or [])
             + self.extra_launch_args
             + (
@@ -562,10 +517,27 @@ class ContainerBase:
             + [vol.cli_arg for vol in self.volume_mounts]
         )
 
-        if self.entry_point is None:
-            cmd.append(self.container_id or self.url)
-        else:
-            cmd += ["-it", self.container_id or self.url, self.entry_point]
+        id_or_url = self.container_id or self.url
+        bash_launch_end = _CONTAINER_STOPSIGNAL + [
+            "-it",
+            id_or_url,
+            _CONTAINER_ENTRYPOINT,
+        ]
+        if self.entry_point == EntrypointSelection.IMAGE:
+            cmd.extend(["-it", id_or_url])
+        elif self.entry_point == EntrypointSelection.BASH:
+            cmd.extend(bash_launch_end)
+        elif self.entry_point == EntrypointSelection.AUTO:
+            if self.custom_entry_point:
+                cmd.extend(["-it", id_or_url, self.custom_entry_point])
+            elif container_runtime._get_image_entrypoint_cmd(
+                id_or_url, "Entrypoint"
+            ) or container_runtime._get_image_entrypoint_cmd(id_or_url, "Cmd"):
+                cmd.extend(["-it", id_or_url])
+            else:
+                cmd.extend(bash_launch_end)
+        else:  # pragma: no cover
+            assert False, "This branch must be unreachable"  # pragma: no cover
 
         return cmd
 
@@ -763,6 +735,12 @@ class ContainerData:
     #: any ports that are exposed by this container
     forwarded_ports: List[PortForwarding]
 
+    _container_runtime: OciRuntimeBase
+
+    @property
+    def inspect(self) -> ContainerInspect:
+        return self._container_runtime.inspect_container(self.container_id)
+
 
 def container_to_pytest_param(
     container: ContainerBase,
@@ -838,6 +816,13 @@ class ContainerLauncher:
     _stack: contextlib.ExitStack = field(default_factory=contextlib.ExitStack)
 
     def __enter__(self) -> "ContainerLauncher":
+        return self
+
+    def launch_container(self) -> None:
+        """This function performs the actual heavy lifting of launching the
+        container, creating all the volumes, port bindings, etc.pp.
+
+        """
         # Lock guarding the container preparation, so that only one process
         # tries to pull/build it at the same time.
         # If this container is a singleton, then we use it as a lock until
@@ -871,9 +856,10 @@ class ContainerLauncher:
 
         forwarded_ports = self.container.forwarded_ports
 
-        container_name_args = (
-            ["--name", self.container_name] if self.container_name else []
-        )
+        extra_run_args = self.extra_run_args
+
+        if self.container_name:
+            extra_run_args.extend(["--name", self.container_name])
 
         # We must perform the launches in separate branches, as containers with
         # port forwards must be launched while the lock is being held. Otherwise
@@ -883,33 +869,24 @@ class ContainerLauncher:
                 self._new_port_forwards = create_host_port_port_forward(
                     forwarded_ports
                 )
-                port_forward_args = []
                 for new_forward in self._new_port_forwards:
-                    port_forward_args += new_forward.forward_cli_args
+                    extra_run_args += new_forward.forward_cli_args
 
-                launch_cmd = [
-                    self.container_runtime.runner_binary
-                ] + self.container.get_launch_cmd(
-                    extra_run_args=(self.extra_run_args or [])
-                    + port_forward_args
-                    + container_name_args
+                launch_cmd = self.container.get_launch_cmd(
+                    self.container_runtime, extra_run_args=extra_run_args
                 )
 
                 _logger.debug("Launching container via: %s", launch_cmd)
                 self._container_id = check_output(launch_cmd).decode().strip()
         else:
-            launch_cmd = [
-                self.container_runtime.runner_binary
-            ] + self.container.get_launch_cmd(
-                extra_run_args=self.extra_run_args + container_name_args
+            launch_cmd = self.container.get_launch_cmd(
+                self.container_runtime, extra_run_args=extra_run_args
             )
 
             _logger.debug("Launching container via: %s", launch_cmd)
             self._container_id = check_output(launch_cmd).decode().strip()
 
         self._wait_for_container_to_become_healthy()
-
-        return self
 
     @property
     def container_data(self) -> ContainerData:
@@ -928,6 +905,7 @@ class ContainerLauncher:
             ),
             container=self.container,
             forwarded_ports=self._new_port_forwards,
+            _container_runtime=self.container_runtime,
         )
 
     def _wait_for_container_to_become_healthy(self) -> None:
@@ -940,9 +918,9 @@ class ContainerLauncher:
         )
 
         if timeout is None:
-            healthcheck = self.container_runtime.get_container_healthcheck(
-                self.container
-            )
+            healthcheck = self.container_runtime.inspect_container(
+                self._container_id
+            ).config.healthcheck
             if healthcheck is not None:
                 timeout = healthcheck.max_wait_time
 
@@ -977,7 +955,11 @@ class ContainerLauncher:
         __exc_value: Optional[BaseException],
         __traceback: Optional[TracebackType],
     ) -> None:
+        mounts = []
         if self._container_id is not None:
+            mounts = self.container_runtime.inspect_container(
+                self._container_id
+            ).mounts
             _logger.debug(
                 "Removing container %s via %s",
                 self._container_id,
@@ -993,3 +975,19 @@ class ContainerLauncher:
             )
         self._stack.close()
         self._container_id = None
+
+        # cleanup automatically created volumes by VOLUME directives in the
+        # Dockerfile:
+        # just force remove them and ignore the returncode in case docker/podman
+        # complain that the volume doesn't exist
+        for mount in mounts:
+            if isinstance(mount, VolumeMount):
+                call(
+                    [
+                        self.container_runtime.runner_binary,
+                        "volume",
+                        "rm",
+                        "-f",
+                        mount.name,
+                    ]
+                )

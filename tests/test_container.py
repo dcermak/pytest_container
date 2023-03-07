@@ -9,24 +9,6 @@ from pytest_container import DerivedContainer
 from pytest_container.container import ImageFormat
 
 
-def test_container_default_entry_point_and_custom_one_set() -> None:
-    with pytest.raises(ValueError) as val_err_ctx:
-        Container(
-            url="ignore", default_entry_point=True, custom_entry_point="foobar"
-        )
-    assert "A custom entry point has been provided" in str(val_err_ctx.value)
-
-
-def test_derived_container_default_entry_point_and_custom_one_set() -> None:
-    with pytest.raises(ValueError) as val_err_ctx:
-        DerivedContainer(
-            base="foobar",
-            default_entry_point=True,
-            custom_entry_point="foobar",
-        )
-    assert "A custom entry point has been provided" in str(val_err_ctx.value)
-
-
 def test_derived_container_fails_without_base() -> None:
     """Ensure that a DerivedContainer cannot be instantiated without providing
     the base parameter.
@@ -69,7 +51,7 @@ def test_lockfile_path(pytestconfig: pytest.Config) -> None:
     :py:attr:`~pytest_container.ContainerBase.container_id` set.
 
     """
-    cont = DerivedContainer(base=images.BUSYBOX_URL, containerfile="")
+    cont = DerivedContainer(base=images.OPENSUSE_BUSYBOX_URL, containerfile="")
     original_lock_fname = cont.filelock_filename
 
     cont.prepare_container(pytestconfig.rootpath)
@@ -78,8 +60,10 @@ def test_lockfile_path(pytestconfig: pytest.Config) -> None:
 
 
 def test_lockfile_unique() -> None:
-    cont1 = DerivedContainer(base=images.BUSYBOX_URL, containerfile="")
+    cont1 = DerivedContainer(
+        base=images.OPENSUSE_BUSYBOX_URL, containerfile=""
+    )
     cont2 = DerivedContainer(
-        base=images.BUSYBOX_URL, containerfile="ENV foobar=1"
+        base=images.OPENSUSE_BUSYBOX_URL, containerfile="ENV foobar=1"
     )
     assert cont1.filelock_filename != cont2.filelock_filename

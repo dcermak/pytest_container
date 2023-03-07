@@ -17,7 +17,6 @@ from pytest_container.runtime import OciRuntimeBase
 
 CONTAINER_WITH_HEALTHCHECK = DerivedContainer(
     base=LEAP_URL,
-    default_entry_point=True,
     image_format=ImageFormat.DOCKER,
     # iproute2 is needed for checking the socket connection
     containerfile="""RUN zypper -n in python3 curl iproute2

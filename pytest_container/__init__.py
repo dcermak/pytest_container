@@ -14,6 +14,7 @@ from .helpers import auto_container_parametrize
 from .helpers import get_extra_build_args
 from .helpers import get_extra_run_args
 from .helpers import set_logging_level_from_cli_args
+from .inspect import PortForwarding
 from .runtime import DockerRuntime
 from .runtime import get_selected_runtime
 from .runtime import OciRuntimeBase

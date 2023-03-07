@@ -86,6 +86,7 @@ def _create_auto_container_fixture(
             extra_build_args=get_extra_build_args(pytestconfig),
             extra_run_args=get_extra_run_args(pytestconfig) + add_labels,
         ) as launcher:
+            launcher.launch_container()
             yield launcher.container_data
 
     return pytest.fixture(scope=scope)(fixture)
@@ -115,6 +116,7 @@ def _create_auto_pod_fixture(
             extra_run_args=get_extra_run_args(pytestconfig),
             extra_pod_create_args=get_extra_pod_create_args(pytestconfig),
         ) as launcher:
+            launcher.launch_pod()
             yield launcher.pod_data
 
     return pytest.fixture(scope=scope)(fixture)

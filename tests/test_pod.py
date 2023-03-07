@@ -1,10 +1,9 @@
 # pylint: disable=missing-function-docstring,missing-module-docstring
-import json
 from pathlib import Path
 
 import pytest
 
-from .images import ALPINE
+from .images import BUSYBOX
 from .images import CONTAINER_THAT_FAILS_TO_LAUNCH
 from .images import LEAP
 from .images import LEAP_WITH_MAN
@@ -20,7 +19,7 @@ from pytest_container.runtime import OciRuntimeBase
 from pytest_container.runtime import PodmanRuntime
 
 
-TEST_POD_WITHOUT_PORTS = Pod(containers=[LEAP, LEAP_WITH_MAN, ALPINE])
+TEST_POD_WITHOUT_PORTS = Pod(containers=[LEAP, LEAP_WITH_MAN, BUSYBOX])
 
 
 NGINX_PROXY = DerivedContainer(
@@ -35,7 +34,6 @@ NGINX_PROXY = DerivedContainer(
 
 HEALTHCHECK --interval=5s --timeout=1s CMD curl --fail http://localhost:80
 """,
-    default_entry_point=True,
 )
 
 PROXY_POD = Pod(
@@ -51,6 +49,7 @@ def test_pod_launcher(
         pytest.skip("pods only work with podman")
 
     with PodLauncher(pod=TEST_POD, rootdir=pytestconfig.rootpath) as launcher:
+        launcher.launch_pod()
         pod_data = launcher.pod_data
         assert pod_data.pod_id and pod_data.infra_container_id
 
@@ -65,6 +64,22 @@ def test_pod_launcher(
         )
 
 
+def test_pod_launcher_pod_data_not_ready(
+    container_runtime: OciRuntimeBase, pytestconfig: pytest.Config
+) -> None:
+    if container_runtime != PodmanRuntime():
+        pytest.skip("pods only work with podman")
+
+    with PodLauncher(pod=TEST_POD, rootdir=pytestconfig.rootpath) as launcher:
+        with pytest.raises(RuntimeError) as rt_err_ctx:
+            _ = launcher.pod_data
+
+        assert "Pod has not been created" in str(rt_err_ctx.value)
+
+        launcher.launch_pod()
+        assert launcher.pod_data
+
+
 def test_pod_launcher_cleanup(
     container_runtime: OciRuntimeBase, pytestconfig: pytest.Config, host
 ) -> None:
@@ -72,38 +87,23 @@ def test_pod_launcher_cleanup(
         pytest.skip("pods only work with podman")
 
     name = "i_will_fail_to_launch"
-    launcher = PodLauncher(
-        pod=Pod(containers=[LEAP, CONTAINER_THAT_FAILS_TO_LAUNCH]),
-        rootdir=pytestconfig.rootpath,
-        pod_name=name,
-    )
 
     with pytest.raises(RuntimeError) as rt_err_ctx:
-        launcher.__enter__()
+        with PodLauncher(
+            pod=Pod(containers=[LEAP, CONTAINER_THAT_FAILS_TO_LAUNCH]),
+            rootdir=pytestconfig.rootpath,
+            pod_name=name,
+        ) as launcher:
+            launcher.launch_pod()
+            assert False, "This code must be unreachable"
 
     assert "did not become healthy" in str(rt_err_ctx.value)
 
-    # the pod is still there as __exit__() did not run
-    pod_inspect = json.loads(
-        host.run_expect([0], f"podman pod inspect {name}").stdout.strip()
-    )
-    assert name == pod_inspect["Name"]
-    assert len(pod_inspect["Containers"]) == 3
-
-    launcher.__exit__(None, None, None)
-
-    # now the pod should be gone
+    # the pod should be gone
     assert (
         name
         in host.run_expect([125], f"podman pod inspect {name}").stderr.strip()
     )
-
-    # all containers in it should be gone as well
-    for cont in pod_inspect["Containers"]:
-        stderr = host.run_expect(
-            [125], f"podman inspect {cont['Id']}"
-        ).stderr.strip()
-        assert cont["Id"] in stderr
 
 
 def test_pod_launcher_fails_with_non_podman(
@@ -143,25 +143,22 @@ def test_proxy_pod(pod_per_test: PodData, host) -> None:
 def test_pod_fixture(pod: PodData) -> None:
     assert pod.pod_id
 
-    for cont_data in pod.container_data[:2]:
-        assert (
-            "leap"
-            in cont_data.connection.run_expect([0], "cat /etc/os-release")
-            .stdout.strip()
-            .lower()
-        )
-
-    assert (
-        "alpine"
-        in pod.container_data[-1]
-        .connection.run_expect([0], "cat /etc/os-release")
-        .stdout.strip()
-        .lower()
-    )
+    for cont_data in pod.container_data:
+        # leap has /etc/os-release
+        if cont_data.connection.file("/etc/os-release").exists:
+            assert (
+                "leap"
+                in cont_data.connection.run_expect([0], "cat /etc/os-release")
+                .stdout.strip()
+                .lower()
+            )
+        # busybox doesn't, but it has /bin/busybox ;-)
+        else:
+            assert cont_data.connection.file("/bin/busybox").exists
 
 
 def test_launcher_pod_data_uninitialized() -> None:
     with pytest.raises(RuntimeError) as rt_ctx:
-        PodLauncher(TEST_POD, Path("/")).pod_data
+        _ = PodLauncher(TEST_POD, Path("/")).pod_data
 
     assert "Pod has not been created" in str(rt_ctx.value)
