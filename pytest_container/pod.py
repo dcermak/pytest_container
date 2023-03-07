@@ -109,7 +109,14 @@ class PodLauncher:
             raise RuntimeError(
                 f"pods can only be created with podman, but got {runtime}"
             )
+        return self
 
+    def launch_pod(self) -> None:
+        """Creates the actual pod, establishes the port bindings and launches
+        all containers in the pod.
+
+        """
+        runtime = get_selected_runtime()
         create_cmd = [runtime.runner_binary, "pod", "create"] + (
             ["--name", self.pod_name] if self.pod_name else []
         )
@@ -170,10 +177,9 @@ class PodLauncher:
                     )
                 )
             )
+            self._launchers[-1].launch_container()
 
         assert len(self.pod.containers) == len(self._launchers)
-
-        return self
 
     def __exit__(
         self,

@@ -100,6 +100,7 @@ def test_local_container_image_ref(
     with ContainerLauncher(
         local_container, container_runtime, pytestconfig.rootpath
     ) as launcher:
+        launcher.launch_container()
         connection = launcher.container_data.connection
         assert connection.file("/etc/os-release").exists
         assert (

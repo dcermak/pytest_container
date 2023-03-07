@@ -66,6 +66,8 @@ def test_launcher_creates_and_cleanes_up_volumes(
     with ContainerLauncher(
         cont, container_runtime, pytestconfig.rootpath
     ) as launcher:
+        launcher.launch_container()
+
         container = launcher.container_data.container
         assert container.volume_mounts
 
@@ -106,6 +108,8 @@ def test_launcher_cleanes_up_volumes_from_image(
     with ContainerLauncher(
         cont, container_runtime, pytestconfig.rootpath
     ) as launcher:
+        launcher.launch_container()
+
         container = launcher.container_data.container
         assert not container.volume_mounts
 
@@ -132,6 +136,7 @@ def test_launcher_container_data_not_available_after_exit(
     with ContainerLauncher(
         LEAP, container_runtime, pytestconfig.rootpath
     ) as launcher:
+        launcher.launch_container()
         assert launcher.container_data
 
     with pytest.raises(RuntimeError) as runtime_err_ctx:
@@ -150,16 +155,20 @@ def test_launcher_fails_on_failing_healthcheck(
             container_runtime=container_runtime,
             rootdir=pytestconfig.rootpath,
             container_name=container_name,
-        ) as _:
-            pass
-
-    # manually delete the container as pytest prevents the __exit__() block from
-    # running
-    host.run_expect(
-        [0], f"{container_runtime.runner_binary} rm -f {container_name}"
-    )
+        ) as launcher:
+            launcher.launch_container()
+            assert False, "This code must be unreachable"
 
     assert "did not become healthy within" in str(runtime_err_ctx.value)
+
+    # the container must not exist anymore
+    assert (
+        "no such object"
+        in host.run_expect(
+            [1, 125],
+            f"{container_runtime.runner_binary} inspect {container_name}",
+        ).stderr.lower()
+    )
 
 
 @pytest.mark.parametrize(

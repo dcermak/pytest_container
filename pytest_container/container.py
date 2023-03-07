@@ -800,6 +800,13 @@ class ContainerLauncher:
     _stack: contextlib.ExitStack = field(default_factory=contextlib.ExitStack)
 
     def __enter__(self) -> "ContainerLauncher":
+        return self
+
+    def launch_container(self) -> None:
+        """This function performs the actual heavy lifting of launching the
+        container, creating all the volumes, port bindings, etc.pp.
+
+        """
         # Lock guarding the container preparation, so that only one process
         # tries to pull/build it at the same time.
         # If this container is a singleton, then we use it as a lock until
@@ -869,8 +876,6 @@ class ContainerLauncher:
             self._container_id = check_output(launch_cmd).decode().strip()
 
         self._wait_for_container_to_become_healthy()
-
-        return self
 
     @property
     def container_data(self) -> ContainerData:
