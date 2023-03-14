@@ -1,6 +1,5 @@
 # pylint: disable=missing-function-docstring,missing-module-docstring
 import os
-from pathlib import Path
 from time import sleep
 from typing import Any
 
