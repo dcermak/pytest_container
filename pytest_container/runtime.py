@@ -353,10 +353,17 @@ class OciRuntimeBase(_OciRuntimeBase, OciRuntimeABC, ToParamMixin):
     def _network_settings_from_inspect(
         container_inspect: Any,
     ) -> ContainerNetworkSettings:
-        net_settings = container_inspect["NetworkSettings"]
+        # we don't use the NetworkSettings object, but HostConfig as
+        # NetworkSettings.Ports changed its structure at some point between
+        # podman 1 and 4 from a dictionary into a list. However
+        # HostConfig.PortBindings has always been a dictionary, so let's use
+        # that for stability.
+        host_config = container_inspect["HostConfig"]
         ports = []
-        if "Ports" in net_settings and net_settings["Ports"]:
-            for container_port, bindings in net_settings["Ports"].items():
+        if "PortBindings" in host_config and host_config["PortBindings"]:
+            for container_port, bindings in host_config[
+                "PortBindings"
+            ].items():
                 if not bindings:
                     continue
 
