@@ -128,11 +128,6 @@ def test_container_with_failing_healthcheck(
     indirect=["container"],
 )
 def test_healthcheck_timeout(
-    container: ContainerData,
-    container_runtime: OciRuntimeBase,
-    healthcheck: Optional[HealthCheck],
-):
-    assert (
-        container_runtime.get_container_healthcheck(container.container)
-        == healthcheck
-    )
+    container: ContainerData, healthcheck: Optional[HealthCheck]
+) -> None:
+    assert container.inspect.config.healthcheck == healthcheck

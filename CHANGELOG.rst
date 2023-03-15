@@ -16,6 +16,8 @@ Breaking changes:
   is picked. Consequently, the attribute ``ContainerBase.default_entry_point``
   was removed.
 
+- ``OciRuntimeABC.get_container_healthcheck`` was removed, use
+  :py:attr:`~pytest_container.container.ContainerData.inspect` instead.
 
 Improvements and new features:
 
