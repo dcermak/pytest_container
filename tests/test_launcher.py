@@ -1,6 +1,5 @@
 # pylint: disable=missing-function-docstring,missing-module-docstring
 import os
-from pathlib import Path
 from time import sleep
 from typing import Any
 
@@ -170,12 +169,12 @@ def test_launcher_fails_on_failing_healthcheck(
     assert "did not become healthy within" in str(runtime_err_ctx.value)
 
     # the container must not exist anymore
-    assert (
-        "no such object"
-        in host.run_expect(
-            [1, 125],
-            f"{container_runtime.runner_binary} inspect {container_name}",
-        ).stderr.lower()
+    err_msg = host.run_expect(
+        [1, 125],
+        f"{container_runtime.runner_binary} inspect {container_name}",
+    ).stderr
+    assert ("no such object" in err_msg.lower()) or (
+        "error getting image" in err_msg
     )
 
 

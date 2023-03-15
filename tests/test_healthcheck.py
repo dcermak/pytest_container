@@ -48,7 +48,7 @@ CONTAINER_WITH_FAILING_HEALTHCHECK = _failing_healthcheck_container(
 )
 def test_container_healthcheck(
     container: ContainerData, container_runtime: OciRuntimeBase
-):
+) -> None:
     assert (
         container_runtime.get_container_health(container.container_id)
         == ContainerHealth.HEALTHY
@@ -59,7 +59,7 @@ def test_container_healthcheck(
 @pytest.mark.parametrize("container", [LEAP], indirect=True)
 def test_container_without_healthcheck(
     container: ContainerData, container_runtime: OciRuntimeBase
-):
+) -> None:
     assert (
         container_runtime.get_container_health(container.container_id)
         == ContainerHealth.NO_HEALTH_CHECK
@@ -71,7 +71,7 @@ def test_container_without_healthcheck(
 )
 def test_container_with_failing_healthcheck(
     container: ContainerData, container_runtime: OciRuntimeBase
-):
+) -> None:
     # the container must be in starting state at first
     assert (
         container_runtime.get_container_health(container.container_id)
@@ -128,11 +128,6 @@ def test_container_with_failing_healthcheck(
     indirect=["container"],
 )
 def test_healthcheck_timeout(
-    container: ContainerData,
-    container_runtime: OciRuntimeBase,
-    healthcheck: Optional[HealthCheck],
-):
-    assert (
-        container_runtime.get_container_healthcheck(container.container)
-        == healthcheck
-    )
+    container: ContainerData, healthcheck: Optional[HealthCheck]
+) -> None:
+    assert container.inspect.config.healthcheck == healthcheck

@@ -23,8 +23,6 @@ import pytest
 import testinfra
 from _pytest.mark.structures import ParameterSet
 
-from pytest_container.inspect import _DockerImageInspect
-from pytest_container.inspect import _PodmanImageInspect
 from pytest_container.inspect import BindMount
 from pytest_container.inspect import Config
 from pytest_container.inspect import ContainerHealth
@@ -219,15 +217,6 @@ class OciRuntimeABC(ABC):
         """The version of the container runtime."""
 
     @abstractmethod
-    def get_container_healthcheck(
-        self, container_image: Union[str, "ContainerBase"]
-    ) -> Optional[HealthCheck]:
-        """Obtain the container image's ``HEALTCHECK`` if defined by the
-        container image or ``None`` otherwise.
-
-        """
-
-    @abstractmethod
     def inspect_container(self, container_id: str) -> ContainerInspect:
         """Inspect the container with the provided ``container_id`` and return
         the parsed output from the container runtime as an instance of
@@ -343,7 +332,7 @@ class OciRuntimeBase(_OciRuntimeBase, OciRuntimeABC, ToParamMixin):
             # depending on the podman version, this property is called either
             # Health or Healthcheck
             health=ContainerHealth(
-                (State.get("Health", {}) or State.get("Healthcheck", {})).get(
+                (State.get("Health") or State.get("Healthcheck", {})).get(
                     "Status", ""
                 )
             ),
@@ -353,10 +342,17 @@ class OciRuntimeBase(_OciRuntimeBase, OciRuntimeABC, ToParamMixin):
     def _network_settings_from_inspect(
         container_inspect: Any,
     ) -> ContainerNetworkSettings:
-        net_settings = container_inspect["NetworkSettings"]
+        # we don't use the NetworkSettings object, but HostConfig as
+        # NetworkSettings.Ports changed its structure at some point between
+        # podman 1 and 4 from a dictionary into a list. However
+        # HostConfig.PortBindings has always been a dictionary, so let's use
+        # that for stability.
+        host_config = container_inspect["HostConfig"]
         ports = []
-        if "Ports" in net_settings and net_settings["Ports"]:
-            for container_port, bindings in net_settings["Ports"].items():
+        if "PortBindings" in host_config and host_config["PortBindings"]:
+            for container_port, bindings in host_config[
+                "PortBindings"
+            ].items():
                 if not bindings:
                     continue
 
@@ -456,23 +452,6 @@ class PodmanRuntime(OciRuntimeBase):
             LOCALHOST.run_expect([0], "podman --version").stdout
         )
 
-    def get_container_healthcheck(
-        self, container_image: Union[str, "ContainerBase"]
-    ) -> Optional[HealthCheck]:
-        img_inspect_list: List[_PodmanImageInspect] = json.loads(
-            LOCALHOST.run_expect(
-                [0], f"podman inspect {container_image}"
-            ).stdout
-        )
-        if len(img_inspect_list) != 1:
-            raise RuntimeError(
-                f"Inspecting {container_image} resulted in {len(img_inspect_list)} images"
-            )
-        img_inspect = img_inspect_list[0]
-        if "Healthcheck" not in img_inspect:
-            return None
-        return HealthCheck.from_container_inspect(img_inspect["Healthcheck"])
-
     def inspect_container(self, container_id: str) -> ContainerInspect:
         inspect = self._get_container_inspect(container_id)
 
@@ -555,27 +534,6 @@ class DockerRuntime(OciRuntimeBase):
         """Returns the version of docker installed on this system"""
         return _get_docker_version(
             LOCALHOST.run_expect([0], "docker --version").stdout
-        )
-
-    def get_container_healthcheck(
-        self, container_image: Union[str, "ContainerBase"]
-    ) -> Optional[HealthCheck]:
-        img_inspect_list: List[_DockerImageInspect] = json.loads(
-            LOCALHOST.run_expect(
-                [0], f"docker inspect {str(container_image)}"
-            ).stdout
-        )
-        if len(img_inspect_list) != 1:
-            raise RuntimeError(
-                f"Inspecting {container_image} resulted in {len(img_inspect_list)} images"
-            )
-        img_inspect = img_inspect_list[0]
-        if "Config" not in img_inspect:
-            return None
-        if "Healthcheck" not in img_inspect["Config"]:
-            return None
-        return HealthCheck.from_container_inspect(
-            img_inspect["Config"]["Healthcheck"]
         )
 
     def inspect_container(self, container_id: str) -> ContainerInspect:

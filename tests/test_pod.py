@@ -11,6 +11,7 @@ from .images import NGINX_URL
 from .images import TEST_POD
 from .images import WEB_SERVER
 from pytest_container.container import DerivedContainer
+from pytest_container.container import ImageFormat
 from pytest_container.container import PortForwarding
 from pytest_container.pod import Pod
 from pytest_container.pod import PodData
@@ -24,16 +25,11 @@ TEST_POD_WITHOUT_PORTS = Pod(containers=[LEAP, LEAP_WITH_MAN, BUSYBOX])
 
 NGINX_PROXY = DerivedContainer(
     base=NGINX_URL,
-    containerfile=r"""RUN echo 'server { \n\
-    listen 80; \n\
-    server_name  localhost; \n\
-    location / { \n\
-        proxy_pass http://localhost:8000/; \n\
-    } \n\
-}' > /etc/nginx/conf.d/default.conf
+    containerfile=r"""COPY tests/files/nginx.conf /etc/nginx/nginx.conf
 
-HEALTHCHECK --interval=5s --timeout=1s CMD curl --fail http://localhost:80
+HEALTHCHECK --interval=5s --timeout=1s CMD echo "GET /" | nc localhost 80
 """,
+    image_format=ImageFormat.DOCKER,
 )
 
 PROXY_POD = Pod(
