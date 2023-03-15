@@ -332,7 +332,7 @@ class OciRuntimeBase(_OciRuntimeBase, OciRuntimeABC, ToParamMixin):
             # depending on the podman version, this property is called either
             # Health or Healthcheck
             health=ContainerHealth(
-                (State.get("Health", {}) or State.get("Healthcheck", {})).get(
+                (State.get("Health") or State.get("Healthcheck", {})).get(
                     "Status", ""
                 )
             ),
