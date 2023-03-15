@@ -33,9 +33,9 @@ def _create_nginx_container(number: int) -> DerivedContainer:
     return DerivedContainer(
         base=NGINX_URL,
         containerfile=f"""COPY tests/files/nginx.default.conf /etc/nginx/conf.d/default.conf
-COPY tests/files/mk_certs.sh /bin/mk_certs.sh
+COPY tests/files/foobar.crt /root/certs/
+COPY tests/files/foobar.key /root/certs/
 COPY tests/files/index.html /usr/share/nginx/html/
-RUN mkdir -p /root/certs/ && cd /root/certs && mk_certs.sh foobar
 EXPOSE 80 443
 RUN sed -i 's|PLACEHOLDER|Test page {number}|' /usr/share/nginx/html/index.html
 """,
