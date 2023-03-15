@@ -9,7 +9,6 @@ from pytest_container.pod import Pod
 LEAP_URL = "registry.opensuse.org/opensuse/leap:latest"
 OPENSUSE_BUSYBOX_URL = "registry.opensuse.org/opensuse/busybox:latest"
 NGINX_URL = "docker.io/library/nginx"
-ALPINE_URL = "docker.io/library/alpine"
 
 LEAP = Container(url=LEAP_URL)
 
