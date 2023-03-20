@@ -44,9 +44,12 @@ def coverage(session: Session):
 
 @session()
 def lint(session: Session):
-    session.install("mypy", "pytest", "filelock", "pylint", "typeguard", ".")
+    session.install(
+        "mypy", "pytest", "filelock", "pylint", "typeguard", "twine", "."
+    )
     session.run("mypy", "pytest_container")
     session.run("pylint", "--fail-under", "9.0", "pytest_container", "tests/")
+    session.run("twine", "check", "dist/*.whl")
 
 
 @session()
