@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "pytest_container"
-version = "0.0.2"
+version = "0.1.0"
 description = "Pytest fixtures for writing container based tests"
 authors = ["Dan Čermák <dcermak@suse.com>"]
 homepage = "https://dcermak.github.io/pytest_container/"
@@ -8,7 +8,7 @@ repository = "https://github.com/dcermak/pytest_container/"
 readme = "README.rst"
 license = "LGPL-2.1-or-later"
 classifiers = [
-    "Development Status :: 3 - Alpha",
+    "Development Status :: 4 - Beta",
     "Framework :: Pytest",
     "Intended Audience :: Developers",
     "License :: OSI Approved",
