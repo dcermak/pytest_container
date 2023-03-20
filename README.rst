@@ -29,7 +29,7 @@ tests, and allows you to focus on implementing the actual tests.
 The plugin automates the following tasks:
 
 - pull, launch, and stop containers
-- build containers using a :file:`Dockerfile`
+- build containers using a ``Dockerfile``
 - wait for containers to become healthy before executing tests
 - bind exposed container ports to free ports on the host
 - mount volumes via temporary directories
@@ -40,8 +40,8 @@ The plugin automates the following tasks:
 
 ``pytest_container`` provides four fixtures that give you everything you need
 for testing containers. Spinning up a container image can be as simple as
-instantiating a :py:class:`~pytest_container.container.Container` and
-parametrizing a test function with the ``container`` fixture:
+instantiating a ``Container`` and parametrizing a test function with the
+``container`` fixture:
 
 .. code-block:: python
 
@@ -54,12 +54,11 @@ parametrizing a test function with the ``container`` fixture:
 
 The fixture automatically pulls and spins up the container, stops it and removes
 it after the test is completed. Your test function receives an instance of
-:py:class:`~pytest_container.container.ContainerData` with the
-:py:attr:`~pytest_container.container.ContainerData.connection` attribute. The
-:py:attr:`~pytest_container.container.ContainerData.connection` attribute is a
-`testinfra <https://testinfra.readthedocs.io/en/latest/>`_ connection object. It
-can be used to run basic tests inside the container itself. For example, you can
-check whether files are present, packages are installed, etc.
+``ContainerData`` with the ``ContainerData.connection`` attribute. The
+``ContainerData.connection`` attribute is a `testinfra
+<https://testinfra.readthedocs.io/en/latest/>`_ connection object. It can be
+used to run basic tests inside the container itself. For example, you can check
+whether files are present, packages are installed, etc.
 
 
 Use cases
