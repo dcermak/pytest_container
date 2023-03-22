@@ -844,14 +844,24 @@ class ContainerLauncher:
         _logger.debug(
             "Locking container preparation via file %s", lock.lock_file
         )
-        lock.acquire()
 
         def release_lock() -> None:
             _logger.debug("Releasing lock %s", lock.lock_file)
             lock.release()
             os.unlink(lock.lock_file)
 
-        self.container.prepare_container(self.rootdir, self.extra_build_args)
+        # Container preparation can fail, but then we would never release the
+        # lock as release_lock is not yet in self._stack. However, we do not
+        # want to add it into the exitstack for most containers either, as they
+        # should get unlocked right after preparation.
+        try:
+            lock.acquire()
+            self.container.prepare_container(
+                self.rootdir, self.extra_build_args
+            )
+        except:
+            release_lock()
+            raise
 
         # ordinary containers are only locked during the build,
         # singleton containers are unlocked after everything

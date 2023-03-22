@@ -1,5 +1,8 @@
 # pylint: disable=missing-function-docstring,missing-module-docstring
 import os
+import tempfile
+from pathlib import Path
+from subprocess import CalledProcessError
 from time import sleep
 from typing import Any
 
@@ -12,6 +15,7 @@ from .test_volumes import LEAP_WITH_CONTAINER_VOLUMES
 from .test_volumes import LEAP_WITH_VOLUMES
 from pytest_container import inspect
 from pytest_container.container import BindMount
+from pytest_container.container import Container
 from pytest_container.container import ContainerData
 from pytest_container.container import ContainerLauncher
 from pytest_container.container import ContainerVolume
@@ -223,3 +227,27 @@ def test_derived_container_pulls_base(
     ) as launcher:
         launcher.launch_container()
         assert launcher.container_data.container_id
+
+
+def test_launcher_unlocks_on_preparation_failure(
+    container_runtime: OciRuntimeBase, pytestconfig: pytest.Config
+) -> None:
+    container_with_wrong_url = Container(
+        url="registry.invalid.xyz.foobar/i/should/not/exist:42"
+    )
+
+    def try_launch():
+        with pytest.raises(CalledProcessError):
+            with ContainerLauncher(
+                container_with_wrong_url,
+                container_runtime,
+                pytestconfig.rootpath,
+            ) as launcher:
+                launcher.launch_container()
+                assert False, "The container must not have launched"
+
+    try_launch()
+    # not the best as we are testing an internal implementation detail
+    assert not Path(
+        tempfile.gettempdir(), container_with_wrong_url.filelock_filename
+    ).exists()
