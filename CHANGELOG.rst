@@ -1,3 +1,21 @@
+Next Release
+------------
+
+Breaking changes:
+
+
+Improvements and new features:
+
+- Log the the output of :command:`$runtime logs $container` using Python's
+  logging framework for easier debugging
+
+Documentation:
+
+
+Internal changes:
+
+
+
 0.1.0 (20 March 2023)
 ---------------------
 
