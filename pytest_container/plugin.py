@@ -3,6 +3,8 @@
 
 """
 import sys
+from subprocess import PIPE
+from subprocess import run
 from typing import Callable
 from typing import Generator
 
@@ -36,6 +38,22 @@ def container_runtime() -> OciRuntimeBase:
 
     """
     return get_selected_runtime()
+
+
+def _log_container_logs(
+    container_data: ContainerData, container_runtime: OciRuntimeBase
+) -> None:
+    logs_call = run(
+        [container_runtime.runner_binary, "logs", container_data.container_id],
+        stdout=PIPE,
+        stderr=PIPE,
+    )
+    if logs_call.returncode == 0:
+        _logger.debug(
+            "logs from container %s: %s",
+            container_data.container_id,
+            logs_call.stdout.decode(),
+        )
 
 
 def _create_auto_container_fixture(
@@ -87,7 +105,9 @@ def _create_auto_container_fixture(
             extra_run_args=get_extra_run_args(pytestconfig) + add_labels,
         ) as launcher:
             launcher.launch_container()
-            yield launcher.container_data
+            container_data = launcher.container_data
+            yield container_data
+            _log_container_logs(container_data, container_runtime)
 
     return pytest.fixture(scope=scope)(fixture)
 
@@ -117,7 +137,10 @@ def _create_auto_pod_fixture(
             extra_pod_create_args=get_extra_pod_create_args(pytestconfig),
         ) as launcher:
             launcher.launch_pod()
-            yield launcher.pod_data
+            pod_data = launcher.pod_data
+            yield pod_data
+            for container_data in pod_data.container_data:
+                _log_container_logs(container_data, container_runtime)
 
     return pytest.fixture(scope=scope)(fixture)
 
