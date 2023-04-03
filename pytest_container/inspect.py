@@ -147,7 +147,7 @@ _DEFAULT_RETRIES = 3
 
 @dataclass(frozen=True)
 class HealthCheck:
-    """The HEALTCHECK of a container image."""
+    """The HEALTHCHECK of a container image."""
 
     #: startup period of the container during which healthcheck failures will
     #: not count towards the failure count
