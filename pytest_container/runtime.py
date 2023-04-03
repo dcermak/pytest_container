@@ -224,6 +224,14 @@ class OciRuntimeABC(ABC):
 
         """
 
+    @property
+    @abstractmethod
+    def supports_healthcheck_inherit_from_base(self) -> bool:
+        """Indicates whether the container runtime supports that derived images
+        will inherit the healthcheck from the base image.
+
+        """
+
 
 class OciRuntimeBase(_OciRuntimeBase, OciRuntimeABC, ToParamMixin):
     """Base class of the Container Runtimes."""
@@ -401,10 +409,23 @@ LOCALHOST = testinfra.host.get_host("local://")
 def _get_podman_version(version_stdout: str) -> Version:
     if version_stdout[:15] != "podman version ":
         raise RuntimeError(
-            f"Could not decode the podman version from {version_stdout}"
+            f"Could not decode the podman version from '{version_stdout}'"
         )
 
     return Version.parse(version_stdout[15:])
+
+
+def _get_buildah_version() -> Version:
+    version_stdout = LOCALHOST.run_expect([0], "buildah --version").stdout
+    BUILD_VERSION_BEGIN = "buildah version "
+    if version_stdout[:16] != BUILD_VERSION_BEGIN:
+        raise RuntimeError(
+            f"Could not decode the buildah version from '{version_stdout}'"
+        )
+
+    return Version.parse(
+        version_stdout.replace(BUILD_VERSION_BEGIN, "").split(" ")[0]
+    )
 
 
 class PodmanRuntime(OciRuntimeBase):
@@ -451,6 +472,16 @@ class PodmanRuntime(OciRuntimeBase):
         return _get_podman_version(
             LOCALHOST.run_expect([0], "podman --version").stdout
         )
+
+    @cached_property
+    def supports_healthcheck_inherit_from_base(self) -> bool:
+        # - buildah supports inheriting HEALTHCHECK since 1.25.0
+        #   https://github.com/containers/buildah/blob/main/CHANGELOG.md#v1250-2022-03-25
+        # - podman 4.1.0 bundles buildah >= 1.25.0
+        #   https://github.com/containers/podman/blob/main/RELEASE_NOTES.md#misc-8
+        return self.version >= Version(
+            4, 1, 0
+        ) and _get_buildah_version() >= Version(1, 25, 0)
 
     def inspect_container(self, container_id: str) -> ContainerInspect:
         inspect = self._get_container_inspect(container_id)
@@ -535,6 +566,10 @@ class DockerRuntime(OciRuntimeBase):
         return _get_docker_version(
             LOCALHOST.run_expect([0], "docker --version").stdout
         )
+
+    @property
+    def supports_healthcheck_inherit_from_base(self) -> bool:
+        return True
 
     def inspect_container(self, container_id: str) -> ContainerInspect:
         inspect = self._get_container_inspect(container_id)

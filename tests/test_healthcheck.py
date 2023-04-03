@@ -11,6 +11,7 @@ from pytest_container.container import ContainerData
 from pytest_container.container import DerivedContainer
 from pytest_container.container import ImageFormat
 from pytest_container.runtime import ContainerHealth
+from pytest_container.runtime import get_selected_runtime
 from pytest_container.runtime import HealthCheck
 from pytest_container.runtime import OciRuntimeBase
 
@@ -24,6 +25,10 @@ EXPOSE 8000
 CMD /usr/bin/python3 -c "import http.server; import os; from time import sleep; sleep(5); http.server.test(HandlerClass=http.server.SimpleHTTPRequestHandler)"
 HEALTHCHECK --interval=5s --timeout=1s CMD curl --fail http://0.0.0.0:8000
 """,
+)
+
+CONTAINER_DERIVING_FROM_HEALTHCHECK = DerivedContainer(
+    base=CONTAINER_WITH_HEALTHCHECK, containerfile="ENV DUMMY=baz"
 )
 
 
@@ -131,3 +136,19 @@ def test_healthcheck_timeout(
     container: ContainerData, healthcheck: Optional[HealthCheck]
 ) -> None:
     assert container.inspect.config.healthcheck == healthcheck
+
+
+@pytest.mark.skipif(
+    not get_selected_runtime().supports_healthcheck_inherit_from_base,
+    reason="Runtime does not inheriting HEALTHCHECK from base images",
+)
+@pytest.mark.parametrize(
+    "container", [CONTAINER_DERIVING_FROM_HEALTHCHECK], indirect=True
+)
+def test_image_deriving_from_healthcheck_has_healthcheck(
+    container: ContainerData, container_runtime: OciRuntimeBase
+) -> None:
+    assert (
+        container_runtime.get_container_health(container.container_id)
+        == ContainerHealth.HEALTHY
+    )
