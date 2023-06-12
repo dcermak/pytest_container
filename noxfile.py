@@ -48,7 +48,7 @@ def lint(session: Session):
         "mypy", "pytest", "filelock", "pylint", "typeguard", "twine", "."
     )
     session.run("mypy", "pytest_container")
-    session.run("pylint", "--fail-under", "9.0", "pytest_container", "tests/")
+    session.run("pylint", "--fail-under", "9.2", "pytest_container", "tests/")
     session.run("twine", "check", "dist/*.whl")
 
 
