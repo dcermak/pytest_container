@@ -425,10 +425,13 @@ base).</p>
 <dl class="py attribute">
 <dt class="sig sig-object py" id="pytest_container.container.DerivedContainer.image_format">
 <span class="sig-name descname"><span class="pre">image_format</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Optional" title="(in Python v3.11)"><span class="pre">Optional</span></a><span class="p"><span class="pre">[</span></span><a class="reference internal" href="#pytest_container.container.ImageFormat" title="pytest_container.container.ImageFormat"><span class="pre">ImageFormat</span></a><span class="p"><span class="pre">]</span></span></em><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">None</span></em><a class="headerlink" href="#pytest_container.container.DerivedContainer.image_format" title="Permalink to this definition">¶</a></dt>
-<dd><p>An optional image format when building images with <strong class="command">buildah</strong>.
-This attribute can be used to instruct <strong class="command">buildah</strong> to build images
-in the <code class="docutils literal notranslate"><span class="pre">docker</span></code> format, instead of the default (<code class="docutils literal notranslate"><span class="pre">oci</span></code>).
-This attribute is ignored by <strong class="command">docker</strong>.</p>
+<dd><p>An optional image format when building images with <strong class="command">buildah</strong>. It
+is ignored when the container runtime is <strong class="command">docker</strong>.
+The <code class="docutils literal notranslate"><span class="pre">oci</span></code> image format is used by default. If the image format is
+<code class="docutils literal notranslate"><span class="pre">None</span></code> and the base image has a <code class="docutils literal notranslate"><span class="pre">HEALTHCHECK</span></code> defined, then the
+<code class="docutils literal notranslate"><span class="pre">docker</span></code> image format will be used instead.
+Specifying an image format disables the auto-detection and uses the
+supplied value.</p>
 </dd></dl>
 
 <dl class="py method">
@@ -934,6 +937,13 @@ the parsed output from the container runtime as an instance of
 </dd></dl>
 
 <dl class="py property">
+<dt class="sig sig-object py" id="pytest_container.runtime.DockerRuntime.supports_healthcheck_inherit_from_base">
+<em class="property"><span class="pre">property</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">supports_healthcheck_inherit_from_base</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/functions.html#bool" title="(in Python v3.11)"><span class="pre">bool</span></a></em><a class="headerlink" href="#pytest_container.runtime.DockerRuntime.supports_healthcheck_inherit_from_base" title="Permalink to this definition">¶</a></dt>
+<dd><p>Indicates whether the container runtime supports that derived images
+will inherit the healthcheck from the base image.</p>
+</dd></dl>
+
+<dl class="py property">
 <dt class="sig sig-object py" id="pytest_container.runtime.DockerRuntime.version">
 <em class="property"><span class="pre">property</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">version</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference internal" href="#pytest_container.runtime.Version" title="pytest_container.runtime.Version"><span class="pre">Version</span></a></em><a class="headerlink" href="#pytest_container.runtime.DockerRuntime.version" title="Permalink to this definition">¶</a></dt>
 <dd><p>Returns the version of docker installed on this system</p>
@@ -964,6 +974,13 @@ health.</p>
 <dd><p>Inspect the container with the provided <code class="docutils literal notranslate"><span class="pre">container_id</span></code> and return
 the parsed output from the container runtime as an instance of
 <a class="reference internal" href="#pytest_container.inspect.ContainerInspect" title="pytest_container.inspect.ContainerInspect"><code class="xref py py-class docutils literal notranslate"><span class="pre">ContainerInspect</span></code></a>.</p>
+</dd></dl>
+
+<dl class="py property">
+<dt class="sig sig-object py" id="pytest_container.runtime.OciRuntimeABC.supports_healthcheck_inherit_from_base">
+<em class="property"><span class="pre">abstract</span><span class="w"> </span><span class="pre">property</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">supports_healthcheck_inherit_from_base</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/functions.html#bool" title="(in Python v3.11)"><span class="pre">bool</span></a></em><a class="headerlink" href="#pytest_container.runtime.OciRuntimeABC.supports_healthcheck_inherit_from_base" title="Permalink to this definition">¶</a></dt>
+<dd><p>Indicates whether the container runtime supports that derived images
+will inherit the healthcheck from the base image.</p>
 </dd></dl>
 
 <dl class="py property">
@@ -1005,6 +1022,13 @@ py:class:<cite>~pytest_container.container.DerivedContainer</cite>.</p>
 <dd><p>Inspect the container with the provided <code class="docutils literal notranslate"><span class="pre">container_id</span></code> and return
 the parsed output from the container runtime as an instance of
 <a class="reference internal" href="#pytest_container.inspect.ContainerInspect" title="pytest_container.inspect.ContainerInspect"><code class="xref py py-class docutils literal notranslate"><span class="pre">ContainerInspect</span></code></a>.</p>
+</dd></dl>
+
+<dl class="py property">
+<dt class="sig sig-object py" id="pytest_container.runtime.PodmanRuntime.supports_healthcheck_inherit_from_base">
+<em class="property"><span class="pre">property</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">supports_healthcheck_inherit_from_base</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/functions.html#bool" title="(in Python v3.11)"><span class="pre">bool</span></a></em><a class="headerlink" href="#pytest_container.runtime.PodmanRuntime.supports_healthcheck_inherit_from_base" title="Permalink to this definition">¶</a></dt>
+<dd><p>Indicates whether the container runtime supports that derived images
+will inherit the healthcheck from the base image.</p>
 </dd></dl>
 
 <dl class="py property">
@@ -1364,7 +1388,7 @@ $img_id | jq '.[0][&quot;Healthcheck]</strong> or <strong class="command">docker
 <dl class="py class">
 <dt class="sig sig-object py" id="pytest_container.inspect.HealthCheck">
 <em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">pytest_container.inspect.</span></span><span class="sig-name descname"><span class="pre">HealthCheck</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">start_period</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/datetime.html#datetime.timedelta" title="(in Python v3.11)"><span class="pre">timedelta</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">datetime.timedelta(0)</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">interval</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/datetime.html#datetime.timedelta" title="(in Python v3.11)"><span class="pre">timedelta</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">datetime.timedelta(seconds=30)</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">timeout</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/datetime.html#datetime.timedelta" title="(in Python v3.11)"><span class="pre">timedelta</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">datetime.timedelta(seconds=30)</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">retries</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.11)"><span class="pre">int</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">3</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#pytest_container.inspect.HealthCheck" title="Permalink to this definition">¶</a></dt>
-<dd><p>The HEALTCHECK of a container image.</p>
+<dd><p>The HEALTHCHECK of a container image.</p>
 <dl class="py method">
 <dt class="sig sig-object py" id="pytest_container.inspect.HealthCheck.from_container_inspect">
 <em class="property"><span class="pre">static</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">from_container_inspect</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">inspect_json</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="#pytest_container.inspect.ContainerInspectHealthCheck" title="pytest_container.inspect.ContainerInspectHealthCheck"><span class="pre">ContainerInspectHealthCheck</span></a></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference internal" href="#pytest_container.inspect.HealthCheck" title="pytest_container.inspect.HealthCheck"><span class="pre">HealthCheck</span></a></span></span><a class="headerlink" href="#pytest_container.inspect.HealthCheck.from_container_inspect" title="Permalink to this definition">¶</a></dt>
