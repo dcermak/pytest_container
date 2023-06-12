@@ -21,6 +21,12 @@ Documentation:
 Internal changes:
 
 
+0.1.1 (21 March 2023)
+---------------------
+
+This release only fixes the README.rst formating. There are no functional
+changes compared to 0.1.0.
+
 
 0.1.0 (20 March 2023)
 ---------------------
