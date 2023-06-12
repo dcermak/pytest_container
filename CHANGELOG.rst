@@ -12,6 +12,8 @@ Improvements and new features:
 - Automatically set the image format to ``docker`` when using :command:`buildah`
   if the base image is using ``HEALTHCHECK``.
 
+- Add support for Python 3.11
+
 
 Documentation:
 
