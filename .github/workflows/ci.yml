@@ -35,13 +35,36 @@ jobs:
         os_version: ["ubuntu-latest"]
         python_version: ["3.7", "3.8", "3.9", "3.10"]
         container_runtime: ["podman", "docker"]
+        update_runtime: [ true, false ]
+
         include:
+          # there's no podman repo for ubuntu 20.04 in devel:kubic
           - os_version: "ubuntu-20.04"
             python_version: "3.6"
             container_runtime: "podman"
+            update_runtime: false
           - os_version: "ubuntu-20.04"
             python_version: "3.6"
             container_runtime: "docker"
+            update_runtime: false
+
+        exclude:
+          - os_version: "ubuntu-latest"
+            container_runtime: "docker"
+            python_version: "3.7"
+            update_runtime: true
+          - os_version: "ubuntu-latest"
+            container_runtime: "docker"
+            python_version: "3.8"
+            update_runtime: true
+          - os_version: "ubuntu-latest"
+            container_runtime: "docker"
+            python_version: "3.9"
+            update_runtime: true
+          - os_version: "ubuntu-latest"
+            container_runtime: "docker"
+            python_version: "3.10"
+            update_runtime: true
 
     steps:
       - uses: actions/checkout@v3
@@ -55,6 +78,20 @@ jobs:
           key: tox-${{ matrix.python_version }}-${{ hashFiles('poetry.lock') }}
 
       - run: pip install --upgrade nox poetry nox-poetry
+
+      - name: update the container runtime
+        if: ${{ matrix.update_runtime }}
+        run: |
+          sudo mkdir -p /etc/apt/keyrings
+          curl -fsSL https://download.opensuse.org/repositories/devel:kubic:libcontainers:unstable/xUbuntu_$(lsb_release -rs)/Release.key \
+            | gpg --dearmor \
+            | sudo tee /etc/apt/keyrings/devel_kubic_libcontainers_unstable.gpg > /dev/null
+          echo \
+            "deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/devel_kubic_libcontainers_unstable.gpg]\
+            https://download.opensuse.org/repositories/devel:kubic:libcontainers:unstable/xUbuntu_$(lsb_release -rs)/ /" \
+            | sudo tee /etc/apt/sources.list.d/devel:kubic:libcontainers:unstable.list > /dev/null
+          sudo apt-get update -qq
+          sudo apt-get -qq -y install podman buildah
 
       - run: |
           export CUR_USER="$(whoami)"

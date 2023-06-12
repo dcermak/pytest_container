@@ -9,6 +9,10 @@ Improvements and new features:
 - Log the the output of :command:`$runtime logs $container` using Python's
   logging framework for easier debugging
 
+- Automatically set the image format to ``docker`` when using :command:`buildah`
+  if the base image is using ``HEALTHCHECK``.
+
+
 Documentation:
 
 

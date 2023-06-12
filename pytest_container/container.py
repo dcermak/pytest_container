@@ -13,6 +13,7 @@ import socket
 import sys
 import tempfile
 import time
+import warnings
 from abc import ABC
 from abc import abstractmethod
 from dataclasses import dataclass
@@ -624,10 +625,13 @@ class DerivedContainer(ContainerBase, ContainerBaseABC):
     #: from :py:attr:`base`.
     containerfile: str = ""
 
-    #: An optional image format when building images with :command:`buildah`.
-    #: This attribute can be used to instruct :command:`buildah` to build images
-    #: in the ``docker`` format, instead of the default (``oci``).
-    #: This attribute is ignored by :command:`docker`.
+    #: An optional image format when building images with :command:`buildah`. It
+    #: is ignored when the container runtime is :command:`docker`.
+    #: The ``oci`` image format is used by default. If the image format is
+    #: ``None`` and the base image has a ``HEALTHCHECK`` defined, then the
+    #: ``docker`` image format will be used instead.
+    #: Specifying an image format disables the auto-detection and uses the
+    #: supplied value.
     image_format: Optional[ImageFormat] = None
 
     #: Additional build tags/names that should be added to the container once it
@@ -696,17 +700,45 @@ class DerivedContainer(ContainerBase, ContainerBaseABC):
                 )
                 containerfile.write(containerfile_contents)
 
-            image_format_args: List[str] = []
-            if (
-                self.image_format is not None
-                and "buildah" in runtime.build_command
-            ):
-                image_format_args = ["--format", str(self.image_format)]
+            cmd = runtime.build_command
+            if "buildah" in runtime.build_command:
+                if self.image_format is not None:
+                    cmd += ["--format", str(self.image_format)]
+                else:
+                    assert (
+                        "podman" in runtime.runner_binary
+                    ), "The runner for buildah should be podman"
 
-            cmd = (
-                runtime.build_command
-                + image_format_args
-                + (extra_build_args or [])
+                    if not runtime.supports_healthcheck_inherit_from_base:
+                        warnings.warn(
+                            UserWarning(
+                                "Runtime does not support inheriting HEALTHCHECK "
+                                "from base images, image format auto-detection "
+                                "will *not* work!"
+                            )
+                        )
+
+                    # if the parent image has a healthcheck defined, then we
+                    # have to use the docker image format, so that the
+                    # healthcheck is in newly build image as well
+                    elif (
+                        "<nil>"
+                        != check_output(
+                            [
+                                runtime.runner_binary,
+                                "inspect",
+                                "-f",
+                                "{{.HealthCheck}}",
+                                from_id,
+                            ]
+                        )
+                        .decode()
+                        .strip()
+                    ):
+                        cmd += ["--format", str(ImageFormat.DOCKER)]
+
+            cmd += (
+                (extra_build_args or [])
                 + (
                     functools.reduce(
                         operator.add,
