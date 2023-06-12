@@ -782,6 +782,10 @@ class ContainerData:
 
     @property
     def inspect(self) -> ContainerInspect:
+        """Inspect the launched container and return the result of
+        :command:`$runtime inspect $ctr_id`.
+
+        """
         return self._container_runtime.inspect_container(self.container_id)
 
 

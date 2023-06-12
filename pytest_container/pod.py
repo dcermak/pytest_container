@@ -204,6 +204,7 @@ class PodLauncher:
 
     @property
     def pod_data(self) -> PodData:
+        """Returns the :py:class:`PodData` corresponding to this podman pod."""
         if not self._pod_id or not self._infra_container_id:
             raise RuntimeError("Pod has not been created")
 
