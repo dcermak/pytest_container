@@ -10,7 +10,8 @@ Improvements and new features:
   logging framework for easier debugging
 
 - Automatically set the image format to ``docker`` when using :command:`buildah`
-  if the base image is using ``HEALTHCHECK``.
+  if the base image is using ``HEALTHCHECK`` (with :command:`buildah` version
+  1.25 and later).
 
 - Add support for Python 3.11
 
