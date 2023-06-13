@@ -275,7 +275,9 @@ if the container has been build locally</p>
 <dl class="py property">
 <dt class="sig sig-object py" id="pytest_container.container.ContainerData.inspect">
 <em class="property"><span class="pre">property</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">inspect</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference internal" href="#pytest_container.inspect.ContainerInspect" title="pytest_container.inspect.ContainerInspect"><span class="pre">ContainerInspect</span></a></em><a class="headerlink" href="#pytest_container.container.ContainerData.inspect" title="Permalink to this definition">¶</a></dt>
-<dd></dd></dl>
+<dd><p>Inspect the launched container and return the result of
+<strong class="command">$runtime inspect $ctr_id</strong>.</p>
+</dd></dl>
 
 </dd></dl>
 
@@ -703,7 +705,8 @@ containers</p>
 <dl class="py property">
 <dt class="sig sig-object py" id="pytest_container.pod.PodLauncher.pod_data">
 <em class="property"><span class="pre">property</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">pod_data</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference internal" href="#pytest_container.pod.PodData" title="pytest_container.pod.PodData"><span class="pre">PodData</span></a></em><a class="headerlink" href="#pytest_container.pod.PodLauncher.pod_data" title="Permalink to this definition">¶</a></dt>
-<dd></dd></dl>
+<dd><p>Returns the <a class="reference internal" href="#pytest_container.pod.PodData" title="pytest_container.pod.PodData"><code class="xref py py-class docutils literal notranslate"><span class="pre">PodData</span></code></a> corresponding to this podman pod.</p>
+</dd></dl>
 
 <dl class="py attribute">
 <dt class="sig sig-object py" id="pytest_container.pod.PodLauncher.pod_name">
@@ -1135,6 +1138,8 @@ the environment variable <cite>CONTAINER_RUNTIME</cite> is set to <cite>docker</
 </section>
 <section id="module-pytest_container.inspect">
 <span id="the-inspect-module"></span><h2>The inspect module<a class="headerlink" href="#module-pytest_container.inspect" title="Permalink to this heading">¶</a></h2>
+<p>This module contains the class definitions that represent the output of
+<strong class="command">$runtime inspect $ctr_id</strong>.</p>
 <dl class="py class">
 <dt class="sig sig-object py" id="pytest_container.inspect.BindMount">
 <em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">pytest_container.inspect.</span></span><span class="sig-name descname"><span class="pre">BindMount</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">source</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.11)"><span class="pre">str</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">destination</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.11)"><span class="pre">str</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">rw</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#bool" title="(in Python v3.11)"><span class="pre">bool</span></a></span></em><span class="sig-paren">)</span><a class="headerlink" href="#pytest_container.inspect.BindMount" title="Permalink to this definition">¶</a></dt>
@@ -1710,7 +1715,6 @@ The pod created by this fixture is shared by all test functions.</p>
 
 
 <h3>Navigation</h3>
-<p class="caption" role="heading"><span class="caption-text">Contents:</span></p>
 <ul class="current">
 <li class="toctree-l1"><a class="reference internal" href="prerequisites.html">Prerequisites</a></li>
 <li class="toctree-l1"><a class="reference internal" href="tutorials.html">Tutorials</a></li>
