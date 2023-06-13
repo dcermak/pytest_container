@@ -10,7 +10,10 @@ Improvements and new features:
   logging framework for easier debugging
 
 - Automatically set the image format to ``docker`` when using :command:`buildah`
-  if the base image is using ``HEALTHCHECK``.
+  if the base image is using ``HEALTHCHECK`` (with :command:`buildah` version
+  1.25 and later).
+
+- Add support for Python 3.11
 
 
 Documentation:
@@ -18,6 +21,12 @@ Documentation:
 
 Internal changes:
 
+
+0.1.1 (21 March 2023)
+---------------------
+
+This release only fixes the README.rst formating. There are no functional
+changes compared to 0.1.0.
 
 
 0.1.0 (20 March 2023)

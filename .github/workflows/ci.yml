@@ -33,7 +33,7 @@ jobs:
       fail-fast: false
       matrix:
         os_version: ["ubuntu-latest"]
-        python_version: ["3.7", "3.8", "3.9", "3.10"]
+        python_version: ["3.7", "3.8", "3.9", "3.10", "3.11"]
         container_runtime: ["podman", "docker"]
         update_runtime: [ true, false ]
 
@@ -64,6 +64,10 @@ jobs:
           - os_version: "ubuntu-latest"
             container_runtime: "docker"
             python_version: "3.10"
+            update_runtime: true
+          - os_version: "ubuntu-latest"
+            container_runtime: "docker"
+            python_version: "3.11"
             update_runtime: true
 
     steps:
@@ -152,7 +156,7 @@ jobs:
       fail-fast: false
       matrix:
         os_version: ["ubuntu-latest"]
-        python_version: ["3.7", "3.8", "3.9", "3.10"]
+        python_version: ["3.7", "3.8", "3.9", "3.10", "3.11"]
         include:
           - os_version: "ubuntu-20.04"
             python_version: "3.6"

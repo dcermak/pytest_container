@@ -5,7 +5,7 @@ from nox_poetry import Session
 from nox_poetry import session
 
 
-@session(python=["3.10", "3.9", "3.8", "3.7", "3.6"])
+@session(python=["3.11", "3.10", "3.9", "3.8", "3.7", "3.6"])
 @nox.parametrize(
     "container_runtime",
     [nox.param(runtime, id=runtime) for runtime in ("podman", "docker")],
@@ -48,7 +48,7 @@ def lint(session: Session):
         "mypy", "pytest", "filelock", "pylint", "typeguard", "twine", "."
     )
     session.run("mypy", "pytest_container")
-    session.run("pylint", "--fail-under", "9.0", "pytest_container", "tests/")
+    session.run("pylint", "--fail-under", "9.2", "pytest_container", "tests/")
     session.run("twine", "check", "dist/*.whl")
 
 

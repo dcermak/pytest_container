@@ -1,3 +1,7 @@
+"""This module contains the class definitions that represent the output of
+:command:`$runtime inspect $ctr_id`.
+
+"""
 import enum
 import socket
 from dataclasses import dataclass
