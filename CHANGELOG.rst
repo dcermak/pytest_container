@@ -15,6 +15,8 @@ Improvements and new features:
 
 - Add support for Python 3.11
 
+- Log the container's logs even if launching the container fails, e.g. due to a
+  failing ``HEALTHCHECK``.
 
 Documentation:
 
