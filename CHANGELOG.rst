@@ -15,6 +15,8 @@ Improvements and new features:
 
 - Add support for Python 3.11
 
+- Log the container's logs even if launching the container fails, e.g. due to a
+  failing ``HEALTHCHECK``.
 
 Documentation:
 
@@ -25,7 +27,7 @@ Internal changes:
 0.1.1 (21 March 2023)
 ---------------------
 
-This release only fixes the README.rst formating. There are no functional
+This release only fixes the README.rst formatting. There are no functional
 changes compared to 0.1.0.
 
 

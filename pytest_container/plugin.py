@@ -41,17 +41,19 @@ def container_runtime() -> OciRuntimeBase:
 
 
 def _log_container_logs(
-    container_data: ContainerData, container_runtime: OciRuntimeBase
+    container_id: str, ctr_runtime: OciRuntimeBase
 ) -> None:
+    # don't die if logging fails for some reason
+    # pylint: disable=subprocess-run-check
     logs_call = run(
-        [container_runtime.runner_binary, "logs", container_data.container_id],
+        [ctr_runtime.runner_binary, "logs", container_id],
         stdout=PIPE,
         stderr=PIPE,
     )
     if logs_call.returncode == 0:
         _logger.debug(
             "logs from container %s: %s",
-            container_data.container_id,
+            container_id,
             logs_call.stdout.decode(),
         )
 
@@ -104,10 +106,18 @@ def _create_auto_container_fixture(
             extra_build_args=get_extra_build_args(pytestconfig),
             extra_run_args=get_extra_run_args(pytestconfig) + add_labels,
         ) as launcher:
-            launcher.launch_container()
-            container_data = launcher.container_data
-            yield container_data
-            _log_container_logs(container_data, container_runtime)
+            # we want to ensure that the container's logs are saved at "all
+            # cost", especially when the container fails to launch for some
+            # reason
+            try:
+                launcher.launch_container()
+                container_data = launcher.container_data
+                yield container_data
+            finally:
+                if launcher._container_id:
+                    _log_container_logs(
+                        launcher._container_id, container_runtime
+                    )
 
     return pytest.fixture(scope=scope)(fixture)
 
@@ -136,11 +146,16 @@ def _create_auto_pod_fixture(
             extra_run_args=get_extra_run_args(pytestconfig),
             extra_pod_create_args=get_extra_pod_create_args(pytestconfig),
         ) as launcher:
-            launcher.launch_pod()
-            pod_data = launcher.pod_data
-            yield pod_data
-            for container_data in pod_data.container_data:
-                _log_container_logs(container_data, container_runtime)
+            try:
+                launcher.launch_pod()
+                pod_data = launcher.pod_data
+                yield pod_data
+            finally:
+                for ctr_launcher in launcher._launchers:
+                    if ctr_launcher._container_id:
+                        _log_container_logs(
+                            ctr_launcher._container_id, container_runtime
+                        )
 
     return pytest.fixture(scope=scope)(fixture)
 
