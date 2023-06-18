@@ -6,6 +6,21 @@ Breaking changes:
 
 Improvements and new features:
 
+
+Documentation:
+
+
+Internal changes:
+
+
+0.2.0 - DevConf.cz edition (14 June 2023)
+-----------------------------------------
+
+Breaking changes:
+
+
+Improvements and new features:
+
 - Log the the output of :command:`$runtime logs $container` using Python's
   logging framework for easier debugging
 

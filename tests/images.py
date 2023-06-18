@@ -15,7 +15,7 @@ LEAP = Container(url=LEAP_URL)
 WEB_SERVER = DerivedContainer(
     base=LEAP,
     containerfile="""
-RUN zypper -n in python3 && echo "Hello Green World!" > index.html
+RUN zypper -n in python3 curl && echo "Hello Green World!" > index.html
 ENTRYPOINT ["/usr/bin/python3", "-m", "http.server"]
 HEALTHCHECK --interval=5s --timeout=1s CMD curl --fail http://0.0.0.0:8000
 EXPOSE 8000
