@@ -1,6 +1,9 @@
 # pylint: disable=missing-function-docstring,missing-module-docstring
 from typeguard import typechecked
-from typeguard.importhook import install_import_hook
+try:
+    from typeguard.importhook import install_import_hook
+except ImportError:
+    from typeguard import install_import_hook
 
 from pytest_container import add_extra_run_and_build_args_options
 from pytest_container import add_logging_level_options
