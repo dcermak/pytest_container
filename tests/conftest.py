@@ -1,5 +1,6 @@
 # pylint: disable=missing-function-docstring,missing-module-docstring
 from typeguard import typechecked
+
 try:
     from typeguard.importhook import install_import_hook
 except ImportError:
