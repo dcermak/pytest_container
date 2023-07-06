@@ -68,6 +68,17 @@ class PortForwarding:
     #: so there's no need for the user to modify it
     host_port: int = -1
 
+    timeout: timedelta = field(default_factory=lambda: timedelta(-1))
+
+    def __post_init__(self) -> None:
+        if (
+            self.timeout.total_seconds() >= 0
+            and self.protocol == NetworkProtocol.UDP
+        ):
+            raise ValueError(
+                f"Cannot wait for an UDP port, but should wait for the UDP port {self.container_port}."
+            )
+
     @property
     def forward_cli_args(self) -> List[str]:
         """Returns a list of command line arguments for the container launch

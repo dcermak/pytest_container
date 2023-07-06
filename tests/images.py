@@ -4,6 +4,8 @@ from pytest_container.container import DerivedContainer
 from pytest_container.container import ImageFormat
 from pytest_container.container import PortForwarding
 from pytest_container.pod import Pod
+from pytest_container.runtime import LOCALHOST
+from pytest_container.runtime import Version
 
 
 LEAP_URL = "registry.opensuse.org/opensuse/leap:latest"
@@ -43,3 +45,17 @@ TEST_POD = Pod(
     containers=[LEAP, LEAP_WITH_MAN, BUSYBOX],
     forwarded_ports=[PortForwarding(80), PortForwarding(22)],
 )
+
+
+_curl_version = Version.parse(LOCALHOST.package("curl").version)
+
+#: curl cli with additional retries as a single curl sometimes fails with docker
+#: with ``curl: (56) Recv failure: Connection reset by peer`` for reasons…
+#: So let's just try again until it works…
+
+CURL = "curl --retry 5"
+
+# the --retry-all-errors has been added in version 7.71.0:
+# https://curl.se/docs/manpage.html#--retry-all-errors
+if _curl_version >= Version(major=7, minor=71, patch=0):
+    CURL = f"{CURL} --retry-all-errors"

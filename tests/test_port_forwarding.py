@@ -5,14 +5,13 @@ from typing import List
 
 import pytest
 
+from .images import CURL
 from .images import NGINX_URL
 from .images import WEB_SERVER
 from pytest_container.container import ContainerData
 from pytest_container.container import DerivedContainer
 from pytest_container.container import PortForwarding
 from pytest_container.inspect import NetworkProtocol
-from pytest_container.runtime import LOCALHOST
-from pytest_container.runtime import Version
 
 
 def _create_nginx_container(number: int) -> DerivedContainer:
@@ -55,19 +54,6 @@ RUN sed -i 's|PLACEHOLDER|Test page {number}|' /usr/share/nginx/html/index.html
 
 
 CONTAINER_IMAGES = [WEB_SERVER]
-
-
-_curl_version = Version.parse(LOCALHOST.package("curl").version)
-
-#: curl cli with additional retries as a single curl sometimes fails with docker
-#: with ``curl: (56) Recv failure: Connection reset by peer`` for reasons…
-#: So let's just try again until it works…
-_CURL = "curl --retry 5"
-
-# the --retry-all-errors has been added in version 7.71.0:
-# https://curl.se/docs/manpage.html#--retry-all-errors
-if _curl_version >= Version(major=7, minor=71, patch=0):
-    _CURL = f"{_CURL} --retry-all-errors"
 
 
 @pytest.mark.parametrize(
@@ -113,7 +99,7 @@ def test_port_forward_set_up(auto_container: ContainerData, host):
     assert (
         host.run_expect(
             [0],
-            f"{_CURL} localhost:{auto_container.forwarded_ports[0].host_port}",
+            f"{CURL} localhost:{auto_container.forwarded_ports[0].host_port}",
         ).stdout.strip()
         == "Hello Green World!"
     )
@@ -147,7 +133,7 @@ def test_multiple_open_ports(container: ContainerData, number: int, host):
     assert (
         f"Test page {number}"
         in host.run_expect(
-            [0], f"{_CURL} localhost:{container.forwarded_ports[0].host_port}"
+            [0], f"{CURL} localhost:{container.forwarded_ports[0].host_port}"
         ).stdout
     )
 

@@ -943,7 +943,9 @@ class ContainerLauncher:
             _logger.debug("Launching container via: %s", launch_cmd)
             self._container_id = check_output(launch_cmd).decode().strip()
 
+        launch_time = datetime.now()
         self._wait_for_container_to_become_healthy()
+        self._wait_for_ports(launch_time)
 
     @property
     def container_data(self) -> ContainerData:
@@ -1005,6 +1007,79 @@ class ContainerLauncher:
                         f"state is {str(health)}"
                     )
                 time.sleep(max(0.5, timeout.total_seconds() / 10))
+
+    def _wait_for_ports(self, container_launch_time: datetime) -> None:
+        @dataclass
+        class PortState:
+            port: PortForwarding
+            is_up: bool = False
+
+            def check_connection(self, timeout: timedelta) -> bool:
+                if timeout.total_seconds() < 0 and not self.is_up:
+                    return False
+
+                socket.socket()
+                sock = socket.socket(
+                    family=(
+                        socket.AF_INET6 if socket.has_ipv6 else socket.AF_INET
+                    ),
+                    type=socket.SOCK_STREAM,
+                )
+                sock.settimeout(timeout.total_seconds())
+                try:
+                    sock.connect(
+                        (
+                            "::1" if socket.has_ipv6 else "127.0.0.1",
+                            self.port.host_port,
+                        )
+                    )
+                    self.is_up = True
+                except (socket.timeout, socket.gaierror):
+                    self.is_up = False
+                finally:
+                    sock.close()
+
+                return self.is_up
+
+        port_states: List[PortState] = []
+
+        max_wait_delta = None
+
+        for port_forward in self._new_port_forwards:
+            if port_forward.timeout.total_seconds() > 0:
+                port_states.append(PortState(port=port_forward))
+                if (
+                    max_wait_delta is None
+                    or max_wait_delta < port_forward.timeout
+                ):
+                    max_wait_delta = port_forward.timeout
+
+        if not port_states:
+            return
+
+        assert max_wait_delta
+
+        while datetime.now() - container_launch_time < max_wait_delta:
+            if all(
+                (
+                    port_state.check_connection(
+                        port_state.port.timeout
+                        # already elapsed time:
+                        - (datetime.now() - container_launch_time)
+                    )
+                    for port_state in port_states
+                )
+            ):
+                return
+
+        raise RuntimeError(
+            "The following ports failed to accept connections in the specified timeout: "
+            ", ".join(
+                str(ps.port.container_port)
+                for ps in port_states
+                if not ps.is_up
+            )
+        )
 
     def __exit__(
         self,
