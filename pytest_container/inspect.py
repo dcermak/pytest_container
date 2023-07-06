@@ -98,33 +98,6 @@ class ContainerInspectHealthCheck(TypedDict, total=False):
     Retries: int
 
 
-class _PodmanImageInspect(TypedDict, total=False):
-    """Object created by json loading the output of :command:`podman inspect
-    $img_id`.
-
-    """
-
-    Healthcheck: ContainerInspectHealthCheck
-
-
-class _DockerInspectConfig(TypedDict, total=False):
-    """Object created by json loading the output of :command:`docker inspect
-    $img_id | jq '.[0]["Config"]'`.
-
-    """
-
-    Healthcheck: ContainerInspectHealthCheck
-
-
-class _DockerImageInspect(TypedDict, total=False):
-    """Object created by json loading the output of :command:`docker inspect
-    $img_id`.
-
-    """
-
-    Config: _DockerInspectConfig
-
-
 @enum.unique
 class ContainerHealth(enum.Enum):
     """Possible states of a container's health using the `HEALTHCHECK
