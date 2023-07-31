@@ -392,7 +392,7 @@ def get_volume_creator(
 
 
 _CONTAINER_ENTRYPOINT = "/bin/bash"
-_CONTAINER_STOPSIGNAL = ["--stop-signal", "SIGTERM"]
+_CONTAINER_STOPSIGNAL = ("--stop-signal", "SIGTERM")
 
 
 @enum.unique
@@ -519,22 +519,29 @@ class ContainerBase:
         )
 
         id_or_url = self.container_id or self.url
-        bash_launch_end = _CONTAINER_STOPSIGNAL + [
-            "-it",
-            id_or_url,
+        container_launch = ("-it", id_or_url)
+        bash_launch_end = (
+            *_CONTAINER_STOPSIGNAL,
+            *container_launch,
             _CONTAINER_ENTRYPOINT,
-        ]
+        )
         if self.entry_point == EntrypointSelection.IMAGE:
-            cmd.extend(["-it", id_or_url])
+            cmd.extend(container_launch)
         elif self.entry_point == EntrypointSelection.BASH:
             cmd.extend(bash_launch_end)
         elif self.entry_point == EntrypointSelection.AUTO:
             if self.custom_entry_point:
-                cmd.extend(["-it", id_or_url, self.custom_entry_point])
+                cmd.extend(
+                    (
+                        "--entrypoint",
+                        self.custom_entry_point,
+                        *container_launch,
+                    )
+                )
             elif container_runtime._get_image_entrypoint_cmd(
                 id_or_url, "Entrypoint"
             ) or container_runtime._get_image_entrypoint_cmd(id_or_url, "Cmd"):
-                cmd.extend(["-it", id_or_url])
+                cmd.extend(container_launch)
             else:
                 cmd.extend(bash_launch_end)
         else:  # pragma: no cover
@@ -916,7 +923,7 @@ class ContainerLauncher:
         extra_run_args = self.extra_run_args
 
         if self.container_name:
-            extra_run_args.extend(["--name", self.container_name])
+            extra_run_args.extend(("--name", self.container_name))
 
         # We must perform the launches in separate branches, as containers with
         # port forwards must be launched while the lock is being held. Otherwise
