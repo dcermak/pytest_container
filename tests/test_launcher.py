@@ -8,6 +8,7 @@ from typing import Any
 
 import pytest
 
+from .images import CMDLINE_APP_CONTAINER
 from .images import CONTAINER_THAT_FAILS_TO_LAUNCH
 from .images import LEAP
 from .test_volumes import LEAP_WITH_BIND_MOUNT_AND_VOLUME
@@ -210,6 +211,22 @@ def test_launcher_does_not_override_stopsignal_for_entrypoint(
 
     """
     assert container.inspect.config.stop_signal in (9, "SIGKILL")
+
+
+@pytest.mark.parametrize(
+    "container",
+    [
+        CMDLINE_APP_CONTAINER,
+    ],
+    indirect=True,
+)
+def test_launcher_does_can_check_binaries_with_entrypoint(
+    container: ContainerData,
+) -> None:
+    """Check that the we can check for installed binaries even if the container
+    has an entrypoint specified that is not a shell and terminates immediately.
+    """
+    assert container.connection.exists("bash")
 
 
 def test_derived_container_pulls_base(
