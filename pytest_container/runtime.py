@@ -546,7 +546,13 @@ class DockerRuntime(OciRuntimeBase):
 
     def __init__(self) -> None:
         super().__init__(
-            build_command=["docker", "build", "--force-rm"],
+            build_command=[
+                "env",
+                "DOCKER_BUILDKIT=0",
+                "docker",
+                "build",
+                "--force-rm",
+            ],
             runner_binary="docker",
             _runtime_functional=self._runtime_functional,
         )
