@@ -133,11 +133,11 @@ def test_launcher_cleanes_up_volumes_from_image(
 
         vol_name = mounts[0].name
     assert (
-        "Error:"
+        "no such volume"
         in host.run_expect(
             [1, 125],
             f"{container_runtime.runner_binary} volume inspect {vol_name}",
-        ).stderr
+        ).stderr.lower()
     )
 
 
