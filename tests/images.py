@@ -32,6 +32,15 @@ HEALTHCHECK --retries=1 --interval=1s --timeout=1s CMD false
 """,
 )
 
+CMDLINE_APP_CONTAINER = DerivedContainer(
+    base=LEAP,
+    custom_entry_point="/bin/sh",
+    containerfile="""
+ENTRYPOINT ["/usr/bin/id"]
+CMD ["--help"]
+""",
+)
+
 LEAP_WITH_MAN = DerivedContainer(
     base=LEAP_URL,
     containerfile="RUN zypper -n in man",
