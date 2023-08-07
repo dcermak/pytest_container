@@ -21,6 +21,9 @@ from dataclasses import field
 from datetime import datetime
 from datetime import timedelta
 from hashlib import md5
+from os.path import exists
+from os.path import isabs
+from os.path import join
 from pathlib import Path
 from subprocess import call
 from subprocess import check_output
@@ -33,6 +36,7 @@ from typing import Optional
 from typing import overload
 from typing import Type
 from typing import Union
+from uuid import uuid4
 
 import pytest
 import testinfra
@@ -332,9 +336,7 @@ class BindMountCreator:
 
         assert self.volume.host_path
         self.volume._vol_name = self.volume.host_path
-        if os.path.isabs(self.volume.host_path) and not os.path.exists(
-            self.volume.host_path
-        ):
+        if isabs(self.volume.host_path) and not exists(self.volume.host_path):
             raise RuntimeError(
                 f"Volume with the host path '{self.volume.host_path}' "
                 "was requested but the directory does not exist"
@@ -474,6 +476,14 @@ class ContainerBase:
 
     def __str__(self) -> str:
         return self.url or self.container_id
+
+    @property
+    def _build_tag(self) -> str:
+        """Internal build tag assigned to each immage, either the image url or
+        the container digest prefixed with ``pytest_container:``.
+
+        """
+        return self.url or f"pytest_container:{self.container_id}"
 
     @property
     def local_image(self) -> bool:
@@ -688,13 +698,13 @@ class DerivedContainer(ContainerBase, ContainerBaseABC):
             return
 
         with tempfile.TemporaryDirectory() as tmpdirname:
-            containerfile_path = os.path.join(tmpdirname, "Dockerfile")
+            containerfile_path = join(tmpdirname, "Dockerfile")
+            iidfile = join(tmpdirname, str(uuid4()))
             with open(containerfile_path, "w") as containerfile:
                 from_id = (
                     self.base
                     if isinstance(self.base, str)
-                    else getattr(self.base, "url", self.base.container_id)
-                    or self.base.container_id
+                    else (getattr(self.base, "url") or self.base._build_tag)
                 )
                 assert from_id
                 containerfile_contents = f"""FROM {from_id}
@@ -754,12 +764,28 @@ class DerivedContainer(ContainerBase, ContainerBaseABC):
                     if self.add_build_tags
                     else []
                 )
-                + ["-f", containerfile_path, str(rootdir)]
+                + [
+                    f"--iidfile={iidfile}",
+                    "-f",
+                    containerfile_path,
+                    str(rootdir),
+                ]
             )
+
             _logger.debug("Building image via: %s", cmd)
-            self.container_id = runtime.get_image_id_from_stdout(
-                check_output(cmd).decode().strip()
+            check_output(cmd)
+
+            with open(iidfile, "r") as iidfile_f:
+                img_hash_type, img_id = iidfile_f.read(-1).strip().split(":")
+                assert img_hash_type == "sha256"
+                self.container_id = img_id
+
+            assert self._build_tag.startswith("pytest_container:")
+
+            check_output(
+                (runtime.runner_binary, "tag", img_id, self._build_tag)
             )
+
             _logger.debug(
                 "Successfully build the container image %s", self.container_id
             )
@@ -869,6 +895,10 @@ class ContainerLauncher:
 
     _stack: contextlib.ExitStack = field(default_factory=contextlib.ExitStack)
 
+    _cidfile: str = field(
+        default_factory=lambda: join(tempfile.gettempdir(), str(uuid4()))
+    )
+
     def __enter__(self) -> "ContainerLauncher":
         return self
 
@@ -925,6 +955,8 @@ class ContainerLauncher:
         if self.container_name:
             extra_run_args.extend(("--name", self.container_name))
 
+        extra_run_args.append(f"--cidfile={self._cidfile}")
+
         # We must perform the launches in separate branches, as containers with
         # port forwards must be launched while the lock is being held. Otherwise
         # another container could pick the same ports before this one launches.
@@ -941,14 +973,17 @@ class ContainerLauncher:
                 )
 
                 _logger.debug("Launching container via: %s", launch_cmd)
-                self._container_id = check_output(launch_cmd).decode().strip()
+                check_output(launch_cmd)
         else:
             launch_cmd = self.container.get_launch_cmd(
                 self.container_runtime, extra_run_args=extra_run_args
             )
 
             _logger.debug("Launching container via: %s", launch_cmd)
-            self._container_id = check_output(launch_cmd).decode().strip()
+            check_output(launch_cmd)
+
+        with open(self._cidfile, "r") as cidfile:
+            self._container_id = cidfile.read(-1).strip()
 
         self._wait_for_container_to_become_healthy()
 

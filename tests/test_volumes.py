@@ -1,5 +1,7 @@
 # pylint: disable=missing-function-docstring,missing-module-docstring
 import os
+from os.path import abspath
+from os.path import join
 from typing import List
 
 import pytest
@@ -133,11 +135,11 @@ def test_container_volume_host_writing(container_per_test: ContainerData):
 
 - there is nothing to see, please carry on"""
 
-    with open(os.path.join(vol.host_path, "test"), "w") as testfile:
+    with open(join(vol.host_path, "test"), "w") as testfile:
         testfile.write(contents)
 
     testfile_in_container = container_per_test.connection.file(
-        os.path.join(vol.container_path, "test")
+        join(vol.container_path, "test")
     )
     assert (
         testfile_in_container.exists
@@ -165,7 +167,7 @@ def test_container_volumes(container_per_test: ContainerData):
     assert len(container_per_test.container.volume_mounts) == 2
     for vol in container_per_test.container.volume_mounts:
         dir_in_container = container_per_test.connection.file(
-            os.path.join("/", vol.container_path)
+            join("/", vol.container_path)
         )
         assert dir_in_container.exists and dir_in_container.is_directory
 
@@ -186,7 +188,7 @@ def test_container_volume_writeable(container_per_test: ContainerData):
     )
 
     testfile_in_container = container_per_test.connection.file(
-        os.path.join(vol.container_path, "test")
+        join(vol.container_path, "test")
     )
     assert (
         testfile_in_container.exists
@@ -234,7 +236,7 @@ LEAP_WITH_ROOTDIR_BIND_MOUNTED = DerivedContainer(
     volume_mounts=[
         BindMount(
             "/src/",
-            host_path=os.path.join(os.path.abspath(os.getcwd()), "tests"),
+            host_path=join(abspath(os.getcwd()), "tests"),
         )
     ],
 )

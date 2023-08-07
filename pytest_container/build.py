@@ -3,8 +3,10 @@ via :py:class:`GitRepositoryBuild` and to perform multistage containerfile
 builds via :py:class:`MultiStageBuild`.
 
 """
+import tempfile
 from dataclasses import dataclass
-from os import path
+from os.path import basename
+from os.path import join
 from pathlib import Path
 from string import Template
 from subprocess import check_output
@@ -12,6 +14,7 @@ from typing import Dict
 from typing import List
 from typing import Optional
 from typing import Union
+from uuid import uuid4
 
 from _pytest.config import Config
 from _pytest.mark.structures import ParameterSet
@@ -58,7 +61,7 @@ class GitRepositoryBuild(ToParamMixin):
             if repo_without_dot_git[-1] == "/"
             else repo_without_dot_git
         )
-        return path.basename(repo_without_trailing_slash)
+        return basename(repo_without_trailing_slash)
 
     @property
     def clone_command(self) -> str:
@@ -156,7 +159,7 @@ class MultiStageBuild:
             **{
                 k: v
                 if isinstance(v, str)
-                else str(container_from_pytest_param(v))
+                else str(container_from_pytest_param(v)._build_tag)
                 for k, v in self.containers.items()
             }
         )
@@ -195,7 +198,7 @@ class MultiStageBuild:
         runtime: OciRuntimeBase,
         target: Optional[str] = None,
         extra_build_args: Optional[List[str]] = None,
-    ) -> bytes:
+    ) -> str:
         """Run the multistage build in the given ``tmp_path`` using the supplied
         ``runtime``. This function requires :py:meth:`prepare_build` to be run
         beforehands.
@@ -212,14 +215,24 @@ class MultiStageBuild:
         Returns:
             Id of the final container that has been built
         """
-        cmd = (
-            runtime.build_command
-            + (extra_build_args or [])
-            + (["--target", target] if target else [])
-            + [str(tmp_path)]
-        )
-        _logger.debug("Running multistage container build: %s", cmd)
-        return check_output(cmd)
+        # This is an ugly, duplication of the launcher code
+        with tempfile.TemporaryDirectory() as tmp_dir:
+            iidfile = join(tmp_dir, str(uuid4()))
+            cmd = (
+                runtime.build_command
+                + (extra_build_args or [])
+                + [f"--iidfile={iidfile}"]
+                + (["--target", target] if target else [])
+                + [str(tmp_path)]
+            )
+            _logger.debug("Running multistage container build: %s", cmd)
+            check_output(cmd)
+            with open(iidfile, "r") as iidfile_f:
+                img_digest_type, img_digest = (
+                    iidfile_f.read(-1).strip().split(":")
+                )
+                assert img_digest_type == "sha256"
+                return img_digest
 
     def build(
         self,
@@ -265,8 +278,6 @@ class MultiStageBuild:
             root,
             extra_build_args,
         )
-        return runtime.get_image_id_from_stdout(
-            MultiStageBuild.run_build_step(
-                tmp_path, runtime, target, extra_build_args
-            ).decode()
+        return MultiStageBuild.run_build_step(
+            tmp_path, runtime, target, extra_build_args
         )
