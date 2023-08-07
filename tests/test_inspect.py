@@ -5,6 +5,8 @@ from .test_container_build import LEAP
 from pytest_container import DerivedContainer
 from pytest_container.container import ContainerData
 from pytest_container.inspect import VolumeMount
+from pytest_container.runtime import OciRuntimeBase
+
 
 IMAGE_WITH_EVERYTHING = DerivedContainer(
     base=LEAP,
@@ -22,7 +24,7 @@ CMD ["/bin/sh"]
 
 
 @pytest.mark.parametrize("container", [IMAGE_WITH_EVERYTHING], indirect=True)
-def test_inspect(container: ContainerData):
+def test_inspect(container: ContainerData, container_runtime: OciRuntimeBase):
     inspect = container.inspect
 
     assert inspect.id == container.container_id
@@ -32,7 +34,17 @@ def test_inspect(container: ContainerData):
     assert (
         "HOME" in inspect.config.env and inspect.config.env["HOME"] == "/src/"
     )
-    assert inspect.config.image == str(container.container)
+
+    # podman and docker cannot agree on what the Config.Image value is: podman
+    # prefixes it with `localhost` and the full build tag
+    # (i.e. `pytest_container:$digest`), while docker just uses the digest
+    expected_img = (
+        str(container.container)
+        if container_runtime.runner_binary == "docker"
+        else f"localhost/pytest_container:{container.container}"
+    )
+
+    assert inspect.config.image == expected_img
     assert inspect.config.cmd == ["/bin/sh"]
 
     assert (

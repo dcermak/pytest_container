@@ -478,6 +478,14 @@ class ContainerBase:
         return self.url or self.container_id
 
     @property
+    def _build_tag(self) -> str:
+        """Internal build tag assigned to each immage, either the image url or
+        the container digest prefixed with ``pytest_container:``.
+
+        """
+        return self.url or f"pytest_container:{self.container_id}"
+
+    @property
     def local_image(self) -> bool:
         """Returns true if this image has been build locally and has not been
         pulled from a registry.
@@ -696,8 +704,7 @@ class DerivedContainer(ContainerBase, ContainerBaseABC):
                 from_id = (
                     self.base
                     if isinstance(self.base, str)
-                    else getattr(self.base, "url", self.base.container_id)
-                    or self.base.container_id
+                    else (getattr(self.base, "url") or self.base._build_tag)
                 )
                 assert from_id
                 containerfile_contents = f"""FROM {from_id}
@@ -772,6 +779,12 @@ class DerivedContainer(ContainerBase, ContainerBaseABC):
                 img_hash_type, img_id = iidfile_f.read(-1).strip().split(":")
                 assert img_hash_type == "sha256"
                 self.container_id = img_id
+
+            assert self._build_tag.startswith("pytest_container:")
+
+            check_output(
+                (runtime.runner_binary, "tag", img_id, self._build_tag)
+            )
 
             _logger.debug(
                 "Successfully build the container image %s", self.container_id
