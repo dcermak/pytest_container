@@ -694,7 +694,8 @@ class DerivedContainer(ContainerBase, ContainerBaseABC):
         # do not build containers without a containerfile and where no build
         # tags are added
         if not self.containerfile and not self.add_build_tags:
-            self.container_id = str(self.get_base())
+            base = self.get_base()
+            self.container_id, self.url = base.container_id, base.url
             return
 
         with tempfile.TemporaryDirectory() as tmpdirname:
