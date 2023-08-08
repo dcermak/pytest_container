@@ -51,7 +51,9 @@ def test_lockfile_path(pytestconfig: pytest.Config) -> None:
     :py:attr:`~pytest_container.ContainerBase.container_id` set.
 
     """
-    cont = DerivedContainer(base=images.OPENSUSE_BUSYBOX_URL, containerfile="")
+    cont = DerivedContainer(
+        base=images.OPENSUSE_BUSYBOX_URL, containerfile="ENV BAZ=1"
+    )
     original_lock_fname = cont.filelock_filename
 
     cont.prepare_container(pytestconfig.rootpath)
@@ -67,3 +69,9 @@ def test_lockfile_unique() -> None:
         base=images.OPENSUSE_BUSYBOX_URL, containerfile="ENV foobar=1"
     )
     assert cont1.filelock_filename != cont2.filelock_filename
+
+
+def test_derived_container_build_tag(pytestconfig: pytest.Config) -> None:
+    cont = DerivedContainer(base=images.OPENSUSE_BUSYBOX_URL)
+    cont.prepare_container(pytestconfig.rootpath)
+    assert cont._build_tag == images.OPENSUSE_BUSYBOX_URL

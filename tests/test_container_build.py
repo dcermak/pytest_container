@@ -131,7 +131,8 @@ def test_container_without_containerfile_and_without_tags_not_rebuild(
         and not container.container.add_build_tags
     )
     assert container.container.get_base() == LEAP
-    assert container.container.container_id == LEAP.url
+    assert container.container.url == LEAP.url
+    assert container.container._build_tag == LEAP.url
 
 
 @pytest.mark.parametrize("container", [LEAP_WITH_TAG], indirect=True)
