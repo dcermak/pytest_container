@@ -14,6 +14,7 @@ from pytest_container import get_extra_build_args
 from pytest_container.build import MultiStageBuild
 from pytest_container.container import ContainerData
 from pytest_container.container import ContainerLauncher
+from pytest_container.container import EntrypointSelection
 from pytest_container.runtime import LOCALHOST
 from pytest_container.runtime import OciRuntimeBase
 
@@ -71,6 +72,14 @@ FROM $runner2 as runner2
 WORKDIR /bin
 COPY --from=builder /src/test.sh .
 """,
+)
+
+# This container would just stop if we would launch it with -d and use the
+# default entrypoint. If we set the entrypoint to bash, then it should stay up.
+CONTAINER_THAT_STOPS = DerivedContainer(
+    base=LEAP,
+    containerfile="""ENTRYPOINT ["/bin/echo", "hello world"]""",
+    entry_point=EntrypointSelection.BASH,
 )
 
 
@@ -179,6 +188,12 @@ def test_default_entry_point(container: ContainerData):
     sleep = container.connection.process.filter(comm="sleep")
     assert len(sleep) == 1
     assert "/usr/bin/sleep 3600" == sleep[0].args
+
+
+@pytest.mark.parametrize("container", [CONTAINER_THAT_STOPS], indirect=True)
+def test_container_that_stops(container: ContainerData) -> None:
+    # it should just be alive
+    container.connection.run_expect([0], "true")
 
 
 def test_container_size(

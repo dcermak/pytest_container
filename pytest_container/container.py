@@ -538,7 +538,14 @@ class ContainerBase:
         if self.entry_point == EntrypointSelection.IMAGE:
             cmd.extend(container_launch)
         elif self.entry_point == EntrypointSelection.BASH:
-            cmd.extend(bash_launch_end)
+            cmd.extend(
+                (
+                    "--entrypoint",
+                    _CONTAINER_ENTRYPOINT,
+                    *_CONTAINER_STOPSIGNAL,
+                    *container_launch,
+                )
+            )
         elif self.entry_point == EntrypointSelection.AUTO:
             if self.custom_entry_point:
                 cmd.extend(
