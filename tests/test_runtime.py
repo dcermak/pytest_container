@@ -58,29 +58,4 @@ IMG_ID = "ff6613b5320b83dfcef7bc54e224fd6696d89c6bd5df79d8b5df520a13fa4918"
 
 
 @pytest.mark.parametrize(
-    "runtime,stdout",
-    [
-        (
-            PodmanRuntime(),
-            f"""--> 4f64f1922f6
-STEP 3/3: ENTRYPOINT [ "/usr/bin/gem2rpm" ]
-COMMIT tumbleweed-gem2rpm
---> ff6613b5320
-Successfully tagged localhost/tumbleweed-gem2rpm:latest
-{IMG_ID}
-
-""",
-        ),
-        (
-            DockerRuntime(),
-            f"""Step 3/3 : ENTRYPOINT [ "/usr/bin/gem2rpm" ]
- ---> Using cache
- ---> e0216d275900
-Successfully built {IMG_ID}
-
-""",
-        ),
-    ],
 )
-def test_get_image_id(runtime: OciRuntimeBase, stdout: str):
-    assert runtime.get_image_id_from_stdout(stdout) == IMG_ID
