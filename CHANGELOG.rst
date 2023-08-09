@@ -16,6 +16,9 @@ Documentation:
 
 Internal changes:
 
+- use ``--cidfile`` and ``--iidfile`` flags to get the container and image
+  hashes from files instead of stdout.
+
 
 0.2.0 - DevConf.cz edition (14 June 2023)
 -----------------------------------------
