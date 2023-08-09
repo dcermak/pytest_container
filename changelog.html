@@ -40,9 +40,18 @@
 <section id="next-release">
 <h2>Next Release<a class="headerlink" href="#next-release" title="Permalink to this heading">¶</a></h2>
 <p>Breaking changes:</p>
+<ul class="simple">
+<li><p>Removed the function <code class="docutils literal notranslate"><span class="pre">OciRuntimeABC.get_image_id_from_stdout</span></code> as Docker v24+
+stopped printing the image digest to stdout when invoking <strong class="command">docker
+build</strong>.</p></li>
+</ul>
 <p>Improvements and new features:</p>
 <p>Documentation:</p>
 <p>Internal changes:</p>
+<ul class="simple">
+<li><p>use <code class="docutils literal notranslate"><span class="pre">--cidfile</span></code> and <code class="docutils literal notranslate"><span class="pre">--iidfile</span></code> flags to get the container and image
+hashes from files instead of stdout.</p></li>
+</ul>
 </section>
 <section id="devconf-cz-edition-14-june-2023">
 <h2>0.2.0 - DevConf.cz edition (14 June 2023)<a class="headerlink" href="#devconf-cz-edition-14-june-2023" title="Permalink to this heading">¶</a></h2>
