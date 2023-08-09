@@ -3,6 +3,10 @@ Next Release
 
 Breaking changes:
 
+- Removed the function ``OciRuntimeABC.get_image_id_from_stdout`` as Docker v24+
+  stopped printing the image digest to stdout when invoking :command:`docker
+  build`.
+
 
 Improvements and new features:
 
@@ -11,6 +15,9 @@ Documentation:
 
 
 Internal changes:
+
+- use ``--cidfile`` and ``--iidfile`` flags to get the container and image
+  hashes from files instead of stdout.
 
 
 0.2.0 - DevConf.cz edition (14 June 2023)

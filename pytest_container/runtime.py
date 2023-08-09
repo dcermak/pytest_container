@@ -200,10 +200,6 @@ class OciRuntimeABC(ABC):
 
         """
 
-    @abstractmethod
-    def get_image_id_from_stdout(self, stdout: str) -> str:
-        """Returns the image id/hash from the stdout of a build command."""
-
     def get_container_health(self, container_id: str) -> ContainerHealth:
         """Inspects the running container with the supplied id and returns its current
         health.
@@ -247,6 +243,24 @@ class OciRuntimeBase(_OciRuntimeBase, OciRuntimeABC, ToParamMixin):
                 f"The runtime {self.__class__.__name__} is not functional: "
                 + self._runtime_error_message()
             )
+
+    @staticmethod
+    def get_image_id_from_iidfile(iidfile_path: str) -> str:
+        """Returns the image id/hash from the iidfile that has been created by
+        the container runtime to store the image id after a build.
+
+        """
+        with open(iidfile_path, "r", encoding="utf-8") as iidfile:
+            line = iidfile.read(-1).strip().split(":")
+            if len(line) == 2:
+                digest_hash, digest = line
+                if digest_hash != "sha256":
+                    raise ValueError(f"Invalid digest hash: {digest_hash}")
+                return digest
+            if len(line) == 1:
+                return line[0]
+
+            raise ValueError(f"Invalid iidfile contents: {':'.join(line)}")
 
     def get_image_size(
         self,
@@ -459,12 +473,6 @@ class PodmanRuntime(OciRuntimeBase):
             _runtime_functional=self._runtime_functional,
         )
 
-    def get_image_id_from_stdout(self, stdout: str) -> str:
-        # buildah prints the full image hash to the last non-empty line
-        return list(
-            filter(None, map(lambda l: l.strip(), stdout.split("\n")))
-        )[-1]
-
     # pragma pylint: disable=used-before-assignment
     @cached_property
     def version(self) -> Version:
@@ -550,15 +558,6 @@ class DockerRuntime(OciRuntimeBase):
             runner_binary="docker",
             _runtime_functional=self._runtime_functional,
         )
-
-    def get_image_id_from_stdout(self, stdout: str) -> str:
-        # docker build prints this into the last non-empty line:
-        # Successfully built 1e3c746e8069
-        # -> grab the last line (see podman) & the last entry
-        last_line = list(
-            filter(None, map(lambda l: l.strip(), stdout.split("\n")))
-        )[-1]
-        return last_line.split()[-1]
 
     @cached_property
     def version(self) -> Version:
