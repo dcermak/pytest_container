@@ -244,6 +244,24 @@ class OciRuntimeBase(_OciRuntimeBase, OciRuntimeABC, ToParamMixin):
                 + self._runtime_error_message()
             )
 
+    @staticmethod
+    def get_image_id_from_iidfile(iidfile_path: str) -> str:
+        """Returns the image id/hash from the iidfile that has been created by
+        the container runtime to store the image id after a build.
+
+        """
+        with open(iidfile_path, "r", encoding="utf-8") as iidfile:
+            line = iidfile.read(-1).strip().split(":")
+            if len(line) == 2:
+                digest_hash, digest = line
+                if digest_hash != "sha256":
+                    raise ValueError(f"Invalid digest hash: {digest_hash}")
+                return digest
+            if len(line) == 1:
+                return line[0]
+
+            raise ValueError(f"Invalid iidfile contents: {':'.join(line)}")
+
     def get_image_size(
         self,
         image_or_id_or_container: Union[

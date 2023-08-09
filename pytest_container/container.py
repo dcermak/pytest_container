@@ -783,19 +783,23 @@ class DerivedContainer(ContainerBase, ContainerBaseABC):
             _logger.debug("Building image via: %s", cmd)
             check_output(cmd)
 
-            with open(iidfile, "r") as iidfile_f:
-                img_hash_type, img_id = iidfile_f.read(-1).strip().split(":")
-                assert img_hash_type == "sha256"
-                self.container_id = img_id
+            self.container_id = runtime.get_image_id_from_iidfile(iidfile)
 
             assert self._build_tag.startswith("pytest_container:")
 
             check_output(
-                (runtime.runner_binary, "tag", img_id, self._build_tag)
+                (
+                    runtime.runner_binary,
+                    "tag",
+                    self.container_id,
+                    self._build_tag,
+                )
             )
 
             _logger.debug(
-                "Successfully build the container image %s", self.container_id
+                "Successfully build the container image %s and tagged it as %s",
+                self.container_id,
+                self._build_tag,
             )
 
 

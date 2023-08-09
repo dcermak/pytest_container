@@ -227,12 +227,7 @@ class MultiStageBuild:
             )
             _logger.debug("Running multistage container build: %s", cmd)
             check_output(cmd)
-            with open(iidfile, "r") as iidfile_f:
-                img_digest_type, img_digest = (
-                    iidfile_f.read(-1).strip().split(":")
-                )
-                assert img_digest_type == "sha256"
-                return img_digest
+            return runtime.get_image_id_from_iidfile(iidfile)
 
     def build(
         self,

@@ -1,5 +1,6 @@
 # pylint: disable=missing-function-docstring,missing-module-docstring
 import os
+from pathlib import Path
 from unittest.mock import patch
 
 import pytest
@@ -57,5 +58,27 @@ def test_errors_out_when_invalid_runtime_selected(
 IMG_ID = "ff6613b5320b83dfcef7bc54e224fd6696d89c6bd5df79d8b5df520a13fa4918"
 
 
+@pytest.mark.parametrize("iidfile_contents", [IMG_ID, f"sha256:{IMG_ID}"])
+def test_get_image_id_from_iidfile(
+    iidfile_contents: str, tmp_path: Path
+) -> None:
+    iidfile_path = str(tmp_path / "iidfile")
+    with open(iidfile_path, "w", encoding="utf-8") as iidfile:
+        iidfile.write(iidfile_contents)
+    assert OciRuntimeBase.get_image_id_from_iidfile(iidfile_path) == IMG_ID
+
+
 @pytest.mark.parametrize(
+    "invalid_digest", [f"md5:{IMG_ID}", f"md4:sha256:{IMG_ID}"]
 )
+def test_get_image_id_from_iidfile_with_invalid_format(
+    invalid_digest: str, tmp_path: Path
+) -> None:
+    iidfile_path = str(tmp_path / "iidfile")
+    with open(iidfile_path, "w", encoding="utf-8") as iidfile:
+        iidfile.write(invalid_digest)
+
+    with pytest.raises(ValueError) as val_err_ctx:
+        OciRuntimeBase.get_image_id_from_iidfile(iidfile_path)
+
+    assert "Invalid" in str(val_err_ctx.value)
