@@ -1,5 +1,6 @@
 # pylint: disable=missing-function-docstring,missing-module-docstring
 from pathlib import Path
+from string import Template
 
 import pytest
 from pytest import Config
@@ -15,6 +16,7 @@ from pytest_container.build import MultiStageBuild
 from pytest_container.container import ContainerData
 from pytest_container.container import ContainerLauncher
 from pytest_container.container import EntrypointSelection
+from pytest_container.container import MultiStageContainer
 from pytest_container.runtime import LOCALHOST
 from pytest_container.runtime import OciRuntimeBase
 
@@ -52,13 +54,8 @@ LEAP2 = DerivedContainer(base=LEAP)
 
 CONTAINER_IMAGES = [LEAP, LEAP_WITH_MAN, LEAP_WITH_MAN_AND_LUA]
 
-MULTI_STAGE_BUILD = MultiStageBuild(
-    containers={
-        "builder": LEAP_WITH_MAN,
-        "runner1": LEAP,
-        "runner2": "docker.io/alpine",
-    },
-    containerfile_template=r"""FROM $builder as builder
+
+_MUILTSTAGE_CTRFILE = r"""FROM $builder as builder
 WORKDIR /src
 RUN echo $$'#!/bin/sh \n\
 echo "foobar"' > test.sh && chmod +x test.sh
@@ -71,7 +68,27 @@ ENTRYPOINT ["/bin/test.sh"]
 FROM $runner2 as runner2
 WORKDIR /bin
 COPY --from=builder /src/test.sh .
-""",
+"""
+
+_CONTAINERS = {
+    "builder": LEAP_WITH_MAN,
+    "runner1": LEAP,
+    "runner2": "docker.io/alpine",
+}
+
+MULTI_STAGE_BUILD = MultiStageBuild(
+    containers=_CONTAINERS,
+    containerfile_template=_MUILTSTAGE_CTRFILE,
+)
+
+MULTI_STAGE_CONTAINER = MultiStageContainer(
+    containerfile=Template(_MUILTSTAGE_CTRFILE), containers=_CONTAINERS
+)
+MULTI_STAGE_CONTAINER_WITH_STAGE = MultiStageContainer(
+    containerfile=Template(_MUILTSTAGE_CTRFILE),
+    containers=_CONTAINERS,
+    target_stage="runner1",
+    entry_point=EntrypointSelection.BASH,
 )
 
 # This container would just stop if we would launch it with -d and use the
@@ -274,3 +291,18 @@ def test_multistage_build_target(
                 "cat /etc/os-release",
             ).stdout.strip()
         )
+
+
+@pytest.mark.parametrize(
+    "container,distro",
+    [
+        (MULTI_STAGE_CONTAINER, "Alpine"),
+        (MULTI_STAGE_CONTAINER_WITH_STAGE, "Leap"),
+    ],
+    indirect=("container",),
+)
+def test_multistage_container(container: ContainerData, distro: str) -> None:
+    assert (
+        distro
+        in container.connection.run_expect([0], "cat /etc/os-release").stdout
+    )

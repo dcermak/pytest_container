@@ -10,6 +10,7 @@ import itertools
 import operator
 import os
 import socket
+import string
 import sys
 import tempfile
 import time
@@ -586,7 +587,7 @@ class ContainerBase:
             if isinstance(value, list):
                 all_elements.append("".join([str(elem) for elem in value]))
             elif isinstance(value, dict):
-                all_elements.append("".join(value.values()))
+                all_elements.append("".join(str(v) for v in value.values()))
             else:
                 all_elements.append(str(value))
         return f"{md5((''.join(all_elements)).encode()).hexdigest()}.lock"
@@ -603,13 +604,6 @@ class ContainerBaseABC(ABC):
         self, rootdir: Path, extra_build_args: Optional[List[str]]
     ) -> None:
         """Prepares the container so that it can be launched."""
-
-    @abstractmethod
-    def get_base(self) -> "Container":
-        """Returns the Base of this Container Image. If the container has no
-        base, then ``self`` is returned.
-
-        """
 
 
 @dataclass(unsafe_hash=True)
@@ -635,19 +629,7 @@ class Container(ContainerBase, ContainerBaseABC):
 
 
 @dataclass(unsafe_hash=True)
-class DerivedContainer(ContainerBase, ContainerBaseABC):
-    """Class for storing information about the Container Image under test, that
-    is build from a :file:`Containerfile`/:file:`Dockerfile` from a different
-    image (can be any image from a registry or an instance of
-    :py:class:`Container` or :py:class:`DerivedContainer`).
-
-    """
-
-    base: Union[Container, "DerivedContainer", str] = ""
-
-    #: The :file:`Containerfile` that is used to build this container derived
-    #: from :py:attr:`base`.
-    containerfile: str = ""
+class _ContainerWithBuild(ContainerBase):
 
     #: An optional image format when building images with :command:`buildah`. It
     #: is ignored when the container runtime is :command:`docker`.
@@ -662,105 +644,38 @@ class DerivedContainer(ContainerBase, ContainerBaseABC):
     #: has been built
     add_build_tags: List[str] = field(default_factory=list)
 
-    def __post_init__(self) -> None:
-        super().__post_init__()
-        if not self.base:
-            raise ValueError("A base container must be provided")
-
-    def __str__(self) -> str:
-        return (
-            self.container_id
-            or f"container derived from {self.base.__str__()}"
-        )
-
-    def get_base(self) -> Container:
-        """Return the recursive base of this derived container (i.e. if the base
-        if this container is a derived one, then it takes the base of the
-        base).
-
-        """
-        if isinstance(self.base, str):
-            return Container(url=self.base)
-        return self.base.get_base()
-
-    def prepare_container(
-        self, rootdir: Path, extra_build_args: Optional[List[str]] = None
+    def _build(
+        self,
+        rootdir: Path,
+        containerfile: str,
+        extra_build_args: Optional[List[str]] = None,
     ) -> None:
-        _logger.debug("Preparing derived container based on %s", self.base)
-        if isinstance(self.base, str):
-            # we need to pull the container so that the inspect in the launcher
-            # doesn't fail
-            Container(url=self.base).prepare_container(
-                rootdir, extra_build_args
-            )
-        else:
-            self.base.prepare_container(rootdir, extra_build_args)
 
         runtime = get_selected_runtime()
-
-        # do not build containers without a containerfile and where no build
-        # tags are added
-        if not self.containerfile and not self.add_build_tags:
-            base = self.get_base()
-            self.container_id, self.url = base.container_id, base.url
-            return
 
         with tempfile.TemporaryDirectory() as tmpdirname:
             containerfile_path = join(tmpdirname, "Dockerfile")
             iidfile = join(tmpdirname, str(uuid4()))
-            with open(containerfile_path, "w") as containerfile:
-                from_id = (
-                    self.base
-                    if isinstance(self.base, str)
-                    else (getattr(self.base, "url") or self.base._build_tag)
-                )
-                assert from_id
-                containerfile_contents = f"""FROM {from_id}
-{self.containerfile}
-"""
+            with open(containerfile_path, "w") as containerfile_f:
                 _logger.debug(
                     "Writing containerfile to %s: %s",
                     containerfile_path,
-                    containerfile_contents,
+                    containerfile,
                 )
-                containerfile.write(containerfile_contents)
+                containerfile_f.write(containerfile)
 
             cmd = runtime.build_command
             if "buildah" in runtime.build_command:
+                assert (
+                    "podman" in runtime.runner_binary
+                ), "The runner for buildah should be podman"
+
+                # we default to using the docker image format to automatically
+                # inherit a healthcheck from the parent image(s)
                 if self.image_format is not None:
                     cmd += ["--format", str(self.image_format)]
                 else:
-                    assert (
-                        "podman" in runtime.runner_binary
-                    ), "The runner for buildah should be podman"
-
-                    if not runtime.supports_healthcheck_inherit_from_base:
-                        warnings.warn(
-                            UserWarning(
-                                "Runtime does not support inheriting HEALTHCHECK "
-                                "from base images, image format auto-detection "
-                                "will *not* work!"
-                            )
-                        )
-
-                    # if the parent image has a healthcheck defined, then we
-                    # have to use the docker image format, so that the
-                    # healthcheck is in newly build image as well
-                    elif (
-                        "<nil>"
-                        != check_output(
-                            [
-                                runtime.runner_binary,
-                                "inspect",
-                                "-f",
-                                "{{.HealthCheck}}",
-                                from_id,
-                            ]
-                        )
-                        .decode()
-                        .strip()
-                    ):
-                        cmd += ["--format", str(ImageFormat.DOCKER)]
+                    cmd += ["--format", str(ImageFormat.DOCKER)]
 
             cmd += (
                 (extra_build_args or [])
@@ -801,6 +716,128 @@ class DerivedContainer(ContainerBase, ContainerBaseABC):
                 self.container_id,
                 self._build_tag,
             )
+
+
+@dataclass(unsafe_hash=True)
+class DerivedContainer(_ContainerWithBuild, ContainerBaseABC):
+    """Class for storing information about the Container Image under test, that
+    is build from a :file:`Containerfile`/:file:`Dockerfile` from a different
+    image (can be any image from a registry or an instance of
+    :py:class:`Container` or :py:class:`DerivedContainer`).
+
+    """
+
+    base: Union[Container, "DerivedContainer", str] = ""
+
+    #: The :file:`Containerfile` that is used to build this container derived
+    #: from :py:attr:`base`.
+    containerfile: str = ""
+
+    def __post_init__(self) -> None:
+        super().__post_init__()
+        if not self.base:
+            raise ValueError("A base container must be provided")
+
+    def __str__(self) -> str:
+        return (
+            self.container_id
+            or f"container derived from {self.base.__str__()}"
+        )
+
+    def get_base(self) -> Container:
+        """Return the recursive base of this derived container (i.e. if the base
+        if this container is a derived one, then it takes the base of the
+        base).
+
+        """
+        if isinstance(self.base, str):
+            return Container(url=self.base)
+        return self.base.get_base()
+
+    def prepare_container(
+        self, rootdir: Path, extra_build_args: Optional[List[str]] = None
+    ) -> None:
+        _logger.debug("Preparing derived container based on %s", self.base)
+        if isinstance(self.base, str):
+            # we need to pull the container so that the inspect in the launcher
+            # doesn't fail
+            Container(url=self.base).prepare_container(
+                rootdir, extra_build_args
+            )
+        else:
+            self.base.prepare_container(rootdir, extra_build_args)
+
+        # do not build containers without a containerfile and where no build
+        # tags are added
+        if not self.containerfile and not self.add_build_tags:
+            base = self.get_base()
+            self.container_id, self.url = base.container_id, base.url
+            return
+
+        from_id = (
+            self.base
+            if isinstance(self.base, str)
+            else (getattr(self.base, "url") or self.base._build_tag)
+        )
+        assert from_id
+        containerfile = f"""FROM {from_id}
+{self.containerfile}
+"""
+
+        self._build(rootdir, containerfile, extra_build_args)
+
+
+@dataclass(unsafe_hash=True)
+class MultiStageContainer(_ContainerWithBuild, ContainerBaseABC):
+    """Class for storing information about the Container Image under test, that
+    is build from a :file:`Containerfile`/:file:`Dockerfile` via multiple
+    stages.
+
+    """
+
+    containers: Dict[str, Union[Container, "DerivedContainer", str]] = field(
+        default_factory=dict
+    )
+
+    target_stage: str = ""
+
+    #: The :file:`Containerfile` that is used to build this container derived
+    #: from :py:attr:`base`.
+    containerfile: string.Template = field(
+        default_factory=lambda: string.Template("")
+    )
+
+    def __post_init__(self) -> None:
+        super().__post_init__()
+        if not self.containers:
+            raise ValueError("Containers for the stages must be provided")
+
+    def __str__(self) -> str:
+        return self.container_id or (
+            "Multi-stage container built from "
+            + ", ".join(str(ctr) for ctr in self.containers.values())
+        )
+
+    def prepare_container(
+        self, rootdir: Path, extra_build_args: Optional[List[str]] = None
+    ) -> None:
+        kwargs: Dict[str, str] = {}
+        for name, ctr in self.containers.items():
+            _logger.debug("Preparing derived container based on %s", ctr)
+            if isinstance(ctr, str):
+                # we need to pull the container so that the inspect in the launcher
+                # doesn't fail
+                Container(url=ctr).prepare_container(rootdir, extra_build_args)
+                kwargs[name] = ctr
+            else:
+                ctr.prepare_container(rootdir, extra_build_args)
+                kwargs[name] = ctr._build_tag
+
+        containerfile = self.containerfile.substitute(**kwargs)
+        build_args = (extra_build_args or []) + (
+            ["--target", self.target_stage] if self.target_stage else []
+        )
+        self._build(rootdir, containerfile, build_args)
 
 
 @dataclass(frozen=True)
@@ -854,7 +891,7 @@ def container_to_pytest_param(
 
 def container_from_pytest_param(
     param: Union[ParameterSet, Container, DerivedContainer],
-) -> Union[Container, DerivedContainer]:
+) -> Union[Container, DerivedContainer, MultiStageContainer]:
     """Extracts the :py:class:`~pytest_container.container.Container` or
     :py:class:`~pytest_container.container.DerivedContainer` from a
     `pytest.param
@@ -864,11 +901,11 @@ def container_from_pytest_param(
     :py:class:`~pytest_container.container.DerivedContainer`.
 
     """
-    if isinstance(param, (Container, DerivedContainer)):
+    if isinstance(param, (Container, DerivedContainer, MultiStageContainer)):
         return param
 
     if len(param.values) > 0 and isinstance(
-        param.values[0], (Container, DerivedContainer)
+        param.values[0], (Container, DerivedContainer, MultiStageContainer)
     ):
         return param.values[0]
 
@@ -883,7 +920,7 @@ class ContainerLauncher:
     """
 
     #: The container that will be launched
-    container: Union[Container, DerivedContainer]
+    container: Union[Container, DerivedContainer, MultiStageContainer]
 
     #: The container runtime via which the container will be launched
     container_runtime: OciRuntimeBase
