@@ -611,6 +611,14 @@ class ContainerBaseABC(ABC):
 
         """
 
+    @property
+    @abstractmethod
+    def baseurl(self) -> Optional[str]:
+        """The registry url on which this container is based on, if one
+        exists. Otherwise ``None`` is returned.
+
+        """
+
 
 @dataclass(unsafe_hash=True)
 class Container(ContainerBase, ContainerBaseABC):
@@ -632,6 +640,12 @@ class Container(ContainerBase, ContainerBaseABC):
 
     def get_base(self) -> "Container":
         return self
+
+    @property
+    def baseurl(self) -> Optional[str]:
+        if self._is_local:
+            return None
+        return self.url
 
 
 @dataclass(unsafe_hash=True)
@@ -666,6 +680,10 @@ class DerivedContainer(ContainerBase, ContainerBaseABC):
         super().__post_init__()
         if not self.base:
             raise ValueError("A base container must be provided")
+
+    @property
+    def baseurl(self) -> Optional[str]:
+        return self.url or self.get_base().baseurl
 
     def __str__(self) -> str:
         return (

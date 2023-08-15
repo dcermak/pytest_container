@@ -7,6 +7,7 @@ from pytest import Config
 from .images import LEAP
 from .images import LEAP_URL
 from .images import LEAP_WITH_MAN
+from .images import LEAP_WITH_MAN_AND_LUA
 from .images import OPENSUSE_BUSYBOX_URL
 from pytest_container import Container
 from pytest_container import DerivedContainer
@@ -24,11 +25,6 @@ TAG1 = "local/foobar/bazbarf"
 LEAP_WITH_TAG = DerivedContainer(
     base=LEAP_URL,
     add_build_tags=[TAG1, "localhost/opensuse/leap/man:latest"],
-)
-
-
-LEAP_WITH_MAN_AND_LUA = DerivedContainer(
-    base=LEAP_WITH_MAN, containerfile="RUN zypper -n in lua"
 )
 
 
