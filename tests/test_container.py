@@ -1,5 +1,7 @@
 # pylint: disable=missing-function-docstring,missing-module-docstring
 from pathlib import Path
+from typing import Optional
+from typing import Union
 
 import pytest
 
@@ -75,3 +77,22 @@ def test_derived_container_build_tag(pytestconfig: pytest.Config) -> None:
     cont = DerivedContainer(base=images.OPENSUSE_BUSYBOX_URL)
     cont.prepare_container(pytestconfig.rootpath)
     assert cont._build_tag == images.OPENSUSE_BUSYBOX_URL
+
+
+@pytest.mark.parametrize(
+    "container_instance,url",
+    [
+        (Container(url=images.LEAP_URL), images.LEAP_URL),
+        (images.LEAP_WITH_MAN, images.LEAP_URL),
+        (images.LEAP_WITH_MAN_AND_LUA, images.LEAP_URL),
+        (Container(url="containers-storage:foobar"), None),
+        (
+            DerivedContainer(base=Container(url="containers-storage:foobar")),
+            None,
+        ),
+    ],
+)
+def test_baseurl(
+    container_instance: Union[DerivedContainer, Container], url: Optional[str]
+) -> None:
+    assert container_instance.baseurl == url

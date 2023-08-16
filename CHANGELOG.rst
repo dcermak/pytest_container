@@ -10,6 +10,10 @@ Breaking changes:
 
 Improvements and new features:
 
+- Add :py:attr:`~pytest_container.container.ContainerBaseABC.baseurl` property
+  to get the registry url of the container on which any currently existing
+  container is based on.
+
 
 Documentation:
 

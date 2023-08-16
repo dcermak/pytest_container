@@ -52,3 +52,7 @@ TEST_POD = Pod(
     containers=[LEAP, LEAP_WITH_MAN, BUSYBOX],
     forwarded_ports=[PortForwarding(80), PortForwarding(22)],
 )
+
+LEAP_WITH_MAN_AND_LUA = DerivedContainer(
+    base=LEAP_WITH_MAN, containerfile="RUN zypper -n in lua"
+)
