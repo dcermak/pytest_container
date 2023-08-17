@@ -431,14 +431,14 @@ def _get_podman_version(version_stdout: str) -> Version:
 
 def _get_buildah_version() -> Version:
     version_stdout = LOCALHOST.run_expect([0], "buildah --version").stdout
-    BUILD_VERSION_BEGIN = "buildah version "
-    if version_stdout[:16] != BUILD_VERSION_BEGIN:
+    build_version_begin = "buildah version "
+    if not version_stdout.startswith(build_version_begin):
         raise RuntimeError(
             f"Could not decode the buildah version from '{version_stdout}'"
         )
 
     return Version.parse(
-        version_stdout.replace(BUILD_VERSION_BEGIN, "").split(" ")[0]
+        version_stdout.replace(build_version_begin, "").split(" ")[0]
     )
 
 
