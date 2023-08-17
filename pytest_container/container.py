@@ -837,7 +837,7 @@ class ContainerData:
     #: the testinfra connection to the running container
     connection: Any
     #: the container data class that has been used in this test
-    container: ContainerBase
+    container: Union[Container, DerivedContainer]
     #: any ports that are exposed by this container
     forwarded_ports: List[PortForwarding]
 
