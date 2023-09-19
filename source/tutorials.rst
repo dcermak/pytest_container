@@ -20,7 +20,7 @@ Start by adding ``pytest_container`` as a development dependency:
 
 .. code-block:: shell-session
 
-   ❯ poetry add --dev pytest_container
+   ❯ poetry add --group dev pytest_container
 
 
 Add `pytest-xdist
@@ -29,7 +29,7 @@ parallel:
 
 .. code-block:: shell-session
 
-   ❯ poetry add --dev pytest-xdist
+   ❯ poetry add --group dev pytest-xdist
 
 
 It is recommended to create a new directory :file:`tests` for your tests to keep
