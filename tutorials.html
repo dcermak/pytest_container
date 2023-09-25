@@ -49,12 +49,12 @@ Command-line interface.</p>
 dependencies. If the <code class="file docutils literal notranslate"><span class="pre">pyproject.toml</span></code> doesn’t already exist, create it
 using the <strong class="command">poetry init</strong> command.</p>
 <p>Start by adding <code class="docutils literal notranslate"><span class="pre">pytest_container</span></code> as a development dependency:</p>
-<div class="highlight-shell-session notranslate"><div class="highlight"><pre><span></span><span class="go">❯ poetry add --dev pytest_container</span>
+<div class="highlight-shell-session notranslate"><div class="highlight"><pre><span></span><span class="go">❯ poetry add --group dev pytest_container</span>
 </pre></div>
 </div>
 <p>Add <a class="reference external" href="https://github.com/pytest-dev/pytest-xdist">pytest-xdist</a>, so that tests can be executed in
 parallel:</p>
-<div class="highlight-shell-session notranslate"><div class="highlight"><pre><span></span><span class="go">❯ poetry add --dev pytest-xdist</span>
+<div class="highlight-shell-session notranslate"><div class="highlight"><pre><span></span><span class="go">❯ poetry add --group dev pytest-xdist</span>
 </pre></div>
 </div>
 <p>It is recommended to create a new directory <code class="file docutils literal notranslate"><span class="pre">tests</span></code> for your tests to keep
