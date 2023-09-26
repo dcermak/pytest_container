@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "pytest_container"
-version = "0.2.0"
+version = "0.3.0"
 description = "Pytest fixtures for writing container based tests"
 authors = ["Dan Čermák <dcermak@suse.com>"]
 homepage = "https://dcermak.github.io/pytest_container/"
