@@ -31,4 +31,4 @@ def pytest_addoption(parser):
 
 def pytest_configure(config):
     set_logging_level_from_cli_args(config)
-    install_import_hook("pytest_confainer")
+    install_import_hook("pytest_container")
