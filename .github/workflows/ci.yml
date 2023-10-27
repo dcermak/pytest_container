@@ -78,8 +78,8 @@ jobs:
 
       - uses: actions/cache@v3
         with:
-          path: ~/.tox
-          key: tox-${{ matrix.python_version }}-${{ hashFiles('poetry.lock') }}
+          path: ~/.nox
+          key: nox-${{ matrix.python_version }}-${{ hashFiles('poetry.lock') }}
 
       - run: pip install --upgrade nox poetry nox-poetry
 
@@ -188,8 +188,8 @@ jobs:
           python-version: '3.x'
       - uses: actions/cache@v3
         with:
-          path: ~/.tox
-          key: tox-${{ hashFiles('poetry.lock') }}
+          path: ~/.nox
+          key: nox-${{ hashFiles('poetry.lock') }}
 
       - run: pip install --upgrade nox poetry nox-poetry
 
@@ -232,8 +232,8 @@ jobs:
           python-version: '3.x'
       - uses: actions/cache@v3
         with:
-          path: ~/.tox
-          key: tox-${{ hashFiles('poetry.lock') }}
+          path: ~/.nox
+          key: nox-${{ hashFiles('poetry.lock') }}
 
       - run: pip install --upgrade nox poetry nox-poetry
 
