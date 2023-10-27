@@ -287,7 +287,10 @@ jobs:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v4
         with:
-          python-version: '3.x'
+          # FIXME: temporary fix to python 3.11 to avoid a:
+          # AttributeError: module 'pkgutil' has no attribute 'ImpImporter'. Did you mean: 'zipimporter'?
+          # when launching pylint with python 3.12
+          python-version: '3.11'
       - uses: actions/cache@v3
         with:
           path: ~/.nox
