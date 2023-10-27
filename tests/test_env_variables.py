@@ -1,7 +1,8 @@
 # pylint: disable=missing-function-docstring,missing-module-docstring
-from .images import LEAP_URL
 from pytest_container.container import Container
 from pytest_container.container import ContainerData
+
+from .images import LEAP_URL
 
 ENV = {"SOMETHING": "42", "ANOTHER": "value", "dist": "/bin/dist"}
 LEAP_WITH_ENV = Container(

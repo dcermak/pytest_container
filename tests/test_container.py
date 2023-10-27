@@ -4,11 +4,11 @@ from typing import Optional
 from typing import Union
 
 import pytest
-
-from . import images
 from pytest_container import Container
 from pytest_container import DerivedContainer
 from pytest_container.container import ImageFormat
+
+from . import images
 
 
 def test_derived_container_fails_without_base() -> None:

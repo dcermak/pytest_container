@@ -3,12 +3,6 @@ from pathlib import Path
 
 import pytest
 from pytest import Config
-
-from .images import LEAP
-from .images import LEAP_URL
-from .images import LEAP_WITH_MAN
-from .images import LEAP_WITH_MAN_AND_LUA
-from .images import OPENSUSE_BUSYBOX_URL
 from pytest_container import Container
 from pytest_container import DerivedContainer
 from pytest_container import get_extra_build_args
@@ -18,6 +12,12 @@ from pytest_container.container import ContainerLauncher
 from pytest_container.container import EntrypointSelection
 from pytest_container.runtime import LOCALHOST
 from pytest_container.runtime import OciRuntimeBase
+
+from .images import LEAP
+from .images import LEAP_URL
+from .images import LEAP_WITH_MAN
+from .images import LEAP_WITH_MAN_AND_LUA
+from .images import OPENSUSE_BUSYBOX_URL
 
 TAG1 = "local/foobar/bazbarf"
 

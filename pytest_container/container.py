@@ -43,7 +43,6 @@ import testinfra
 from _pytest.mark.structures import MarkDecorator
 from _pytest.mark.structures import ParameterSet
 from filelock import FileLock
-
 from pytest_container.inspect import ContainerHealth
 from pytest_container.inspect import ContainerInspect
 from pytest_container.inspect import PortForwarding

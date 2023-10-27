@@ -22,7 +22,6 @@ from typing import Union
 import pytest
 import testinfra
 from _pytest.mark.structures import ParameterSet
-
 from pytest_container.inspect import BindMount
 from pytest_container.inspect import Config
 from pytest_container.inspect import ContainerHealth

@@ -4,12 +4,12 @@ from time import sleep
 
 from _pytest.config import Config
 from filelock import FileLock
-
-from .images import LEAP_URL
-from .images import OPENSUSE_BUSYBOX_URL
 from pytest_container import Container
 from pytest_container import DerivedContainer
 from pytest_container.container import ContainerData
+
+from .images import LEAP_URL
+from .images import OPENSUSE_BUSYBOX_URL
 
 LEAP_WITH_LOCK = DerivedContainer(
     base=OPENSUSE_BUSYBOX_URL,

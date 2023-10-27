@@ -13,7 +13,6 @@ from typing import Union
 
 from _pytest.mark import ParameterSet
 from filelock import FileLock
-
 from pytest_container.container import Container
 from pytest_container.container import ContainerData
 from pytest_container.container import ContainerLauncher
