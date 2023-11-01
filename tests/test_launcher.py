@@ -7,13 +7,6 @@ from time import sleep
 from typing import Any
 
 import pytest
-
-from .images import CMDLINE_APP_CONTAINER
-from .images import CONTAINER_THAT_FAILS_TO_LAUNCH
-from .images import LEAP
-from .test_volumes import LEAP_WITH_BIND_MOUNT_AND_VOLUME
-from .test_volumes import LEAP_WITH_CONTAINER_VOLUMES
-from .test_volumes import LEAP_WITH_VOLUMES
 from pytest_container import inspect
 from pytest_container.container import BindMount
 from pytest_container.container import Container
@@ -24,6 +17,13 @@ from pytest_container.container import DerivedContainer
 from pytest_container.container import EntrypointSelection
 from pytest_container.runtime import LOCALHOST
 from pytest_container.runtime import OciRuntimeBase
+
+from .images import CMDLINE_APP_CONTAINER
+from .images import CONTAINER_THAT_FAILS_TO_LAUNCH
+from .images import LEAP
+from .test_volumes import LEAP_WITH_BIND_MOUNT_AND_VOLUME
+from .test_volumes import LEAP_WITH_CONTAINER_VOLUMES
+from .test_volumes import LEAP_WITH_VOLUMES
 
 
 LEAP_WITH_STOPSIGNAL_SIGKILL = DerivedContainer(

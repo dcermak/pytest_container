@@ -4,15 +4,15 @@
 from typing import List
 
 import pytest
-
-from .images import NGINX_URL
-from .images import WEB_SERVER
 from pytest_container.container import ContainerData
 from pytest_container.container import DerivedContainer
 from pytest_container.container import PortForwarding
 from pytest_container.inspect import NetworkProtocol
 from pytest_container.runtime import LOCALHOST
 from pytest_container.runtime import Version
+
+from .images import NGINX_URL
+from .images import WEB_SERVER
 
 
 def _create_nginx_container(number: int) -> DerivedContainer:

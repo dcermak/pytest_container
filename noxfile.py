@@ -11,14 +11,7 @@ from nox_poetry import session
     [nox.param(runtime, id=runtime) for runtime in ("podman", "docker")],
 )
 def test(session: Session, container_runtime: str):
-    session.install(
-        "pytest",
-        "pytest-xdist",
-        "coverage",
-        "pytest-rerunfailures",
-        "typeguard",
-        ".",
-    )
+    session.install("-r", "test-requirements.txt")
     session.run(
         "coverage",
         "run",
@@ -35,7 +28,7 @@ def test(session: Session, container_runtime: str):
 
 @session()
 def coverage(session: Session):
-    session.install("coverage")
+    session.install("-r", "test-requirements.txt")
     session.run("coverage", "combine")
     session.run("coverage", "report", "-m")
     session.run("coverage", "html")
@@ -44,9 +37,7 @@ def coverage(session: Session):
 
 @session()
 def lint(session: Session):
-    session.install(
-        "mypy", "pytest", "filelock", "pylint", "typeguard", "twine", "."
-    )
+    session.install("-r", "test-requirements.txt")
     session.run("mypy", "pytest_container")
     session.run("pylint", "--fail-under", "9.2", "pytest_container", "tests/")
     session.run("twine", "check", "dist/*.whl")
@@ -54,13 +45,13 @@ def lint(session: Session):
 
 @session()
 def doc(session: Session):
-    session.install("sphinx", ".")
+    session.install("-r", "test-requirements.txt")
     session.run("sphinx-build", "-M", "html", "source", "build", "-W")
 
 
 @session()
 def format(session: Session):
-    session.install("black", "reorder-python-imports")
+    session.install("-r", "test-requirements.txt")
 
     args = ["--check", "--diff"] if "--check" in session.posargs else []
     session.run("black", ".", *args)

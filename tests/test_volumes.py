@@ -5,8 +5,6 @@ from os.path import join
 from typing import List
 
 import pytest
-
-from .images import LEAP_URL
 from pytest_container.container import BindMount
 from pytest_container.container import BindMountCreator
 from pytest_container.container import ContainerData
@@ -17,6 +15,8 @@ from pytest_container.container import get_volume_creator
 from pytest_container.container import VolumeFlag
 from pytest_container.runtime import LOCALHOST
 from pytest_container.runtime import OciRuntimeBase
+
+from .images import LEAP_URL
 
 
 @pytest.mark.parametrize(

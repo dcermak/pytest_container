@@ -1,11 +1,11 @@
 # pylint: disable=missing-function-docstring,missing-module-docstring
 import pytest
-
-from .test_container_build import LEAP
 from pytest_container import DerivedContainer
 from pytest_container.container import ContainerData
 from pytest_container.inspect import VolumeMount
 from pytest_container.runtime import OciRuntimeBase
+
+from .test_container_build import LEAP
 
 
 IMAGE_WITH_EVERYTHING = DerivedContainer(

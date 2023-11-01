@@ -2,14 +2,6 @@
 from pathlib import Path
 
 import pytest
-
-from .images import BUSYBOX
-from .images import CONTAINER_THAT_FAILS_TO_LAUNCH
-from .images import LEAP
-from .images import LEAP_WITH_MAN
-from .images import NGINX_URL
-from .images import TEST_POD
-from .images import WEB_SERVER
 from pytest_container.container import DerivedContainer
 from pytest_container.container import ImageFormat
 from pytest_container.container import PortForwarding
@@ -18,6 +10,14 @@ from pytest_container.pod import PodData
 from pytest_container.pod import PodLauncher
 from pytest_container.runtime import OciRuntimeBase
 from pytest_container.runtime import PodmanRuntime
+
+from .images import BUSYBOX
+from .images import CONTAINER_THAT_FAILS_TO_LAUNCH
+from .images import LEAP
+from .images import LEAP_WITH_MAN
+from .images import NGINX_URL
+from .images import TEST_POD
+from .images import WEB_SERVER
 
 
 TEST_POD_WITHOUT_PORTS = Pod(containers=[LEAP, LEAP_WITH_MAN, BUSYBOX])

@@ -4,9 +4,6 @@ from typing import Union
 
 import pytest
 from _pytest.mark import ParameterSet
-
-from .images import LEAP
-from .images import TEST_POD
 from pytest_container import container_from_pytest_param
 from pytest_container import container_to_pytest_param
 from pytest_container import DerivedContainer
@@ -16,6 +13,9 @@ from pytest_container import OciRuntimeBase
 from pytest_container.container import ContainerData
 from pytest_container.pod import Pod
 from pytest_container.pod import pod_from_pytest_param
+
+from .images import LEAP
+from .images import TEST_POD
 
 
 LEAP_PARAM = pytest.param(LEAP)
