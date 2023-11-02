@@ -10,6 +10,7 @@ from pytest_container import DerivedContainer
 from pytest_container import get_extra_build_args
 from pytest_container import MultiStageBuild
 from pytest_container import OciRuntimeBase
+from pytest_container.container import container_and_marks_from_pytest_param
 from pytest_container.container import ContainerData
 from pytest_container.pod import Pod
 from pytest_container.pod import pod_from_pytest_param
@@ -113,6 +114,33 @@ def test_container_from_pytest_param() -> None:
 
     with pytest.raises(ValueError) as val_err_ctx:
         container_from_pytest_param(pytest.param(16, 45))
+    assert "Invalid pytest.param values" in str(val_err_ctx.value)
+    assert "(16, 45)" in str(val_err_ctx.value)
+
+
+def test_container_and_marks_from_pytest_param() -> None:
+    cont, marks = container_and_marks_from_pytest_param(
+        container_to_pytest_param(LEAP)
+    )
+    assert cont == LEAP and not marks
+
+    cont, marks = container_and_marks_from_pytest_param(
+        pytest.param(LEAP, 1, "a")
+    )
+    assert cont == LEAP and not marks
+
+    assert container_and_marks_from_pytest_param(LEAP) == (LEAP, None)
+
+    derived = DerivedContainer(base=LEAP, containerfile="ENV foo=bar")
+    cont, marks = container_and_marks_from_pytest_param(
+        container_to_pytest_param(derived)
+    )
+    assert cont == derived and not marks
+
+    assert container_and_marks_from_pytest_param(derived) == (derived, None)
+
+    with pytest.raises(ValueError) as val_err_ctx:
+        container_and_marks_from_pytest_param(pytest.param(16, 45))
     assert "Invalid pytest.param values" in str(val_err_ctx.value)
     assert "(16, 45)" in str(val_err_ctx.value)
 

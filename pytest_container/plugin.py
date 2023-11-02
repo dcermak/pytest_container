@@ -8,7 +8,7 @@ from subprocess import run
 from typing import Callable
 from typing import Generator
 
-from pytest_container.container import container_from_pytest_param
+from pytest_container.container import container_and_marks_from_pytest_param
 from pytest_container.container import ContainerData
 from pytest_container.container import ContainerLauncher
 from pytest_container.helpers import get_extra_build_args
@@ -76,12 +76,12 @@ def _create_auto_container_fixture(
         pytest_generate_tests.
         """
 
-        launch_data = container_from_pytest_param(request.param)
-        _logger.debug("Requesting the container %s", str(launch_data))
+        container, _ = container_and_marks_from_pytest_param(request.param)
+        _logger.debug("Requesting the container %s", str(container))
 
-        if scope == "session" and launch_data.singleton:
+        if scope == "session" and container.singleton:
             raise RuntimeError(
-                f"A singleton container ({launch_data}) cannot be used in a session level fixture"
+                f"A singleton container ({container}) cannot be used in a session level fixture"
             )
 
         add_labels = [
@@ -100,7 +100,7 @@ def _create_auto_container_fixture(
             pass
 
         with ContainerLauncher(
-            container=launch_data,
+            container=container,
             container_runtime=container_runtime,
             rootdir=pytestconfig.rootpath,
             extra_build_args=get_extra_build_args(pytestconfig),
