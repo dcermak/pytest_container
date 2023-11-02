@@ -32,6 +32,7 @@ dataclasses = { version = ">=0.8", python = "< 3.7" }
 typing-extensions = { version = ">=3.0", markers="python_version < '3.8'" }
 cached-property = { version = "^1.5", markers="python_version < '3.8'" }
 filelock = "^3.4"
+deprecation = "^2.1"
 
 [tool.poetry.dev-dependencies]
 black = ">=21.9b0"
@@ -57,5 +58,5 @@ line-length = 79
 strict = true
 
 [[tool.mypy.overrides]]
-module = "testinfra"
+module = "testinfra,deprecation"
 ignore_missing_imports = true

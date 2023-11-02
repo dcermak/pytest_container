@@ -3,6 +3,11 @@ Next Release
 
 Breaking changes:
 
+- deprecate the function ``pytest_container.container_from_pytest_param``,
+  please use
+  :py:func:`~pytest_container.container.container_and_marks_from_pytest_param`
+  instead.
+
 
 Improvements and new features:
 

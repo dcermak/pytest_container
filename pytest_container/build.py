@@ -19,7 +19,7 @@ from uuid import uuid4
 from _pytest.config import Config
 from _pytest.mark.structures import ParameterSet
 from pytest_container.container import Container
-from pytest_container.container import container_from_pytest_param
+from pytest_container.container import container_and_marks_from_pytest_param
 from pytest_container.container import DerivedContainer
 from pytest_container.logging import _logger
 from pytest_container.runtime import OciRuntimeBase
@@ -158,7 +158,9 @@ class MultiStageBuild:
             **{
                 k: v
                 if isinstance(v, str)
-                else str(container_from_pytest_param(v)._build_tag)
+                else str(
+                    container_and_marks_from_pytest_param(v)[0]._build_tag
+                )
                 for k, v in self.containers.items()
             }
         )
@@ -178,9 +180,9 @@ class MultiStageBuild:
         _logger.debug("Preparing multistage build")
         for _, container in self.containers.items():
             if not isinstance(container, str):
-                container_from_pytest_param(container).prepare_container(
-                    rootdir, extra_build_args
-                )
+                container_and_marks_from_pytest_param(container)[
+                    0
+                ].prepare_container(rootdir, extra_build_args)
 
         dockerfile_dest = tmp_path / "Dockerfile"
         with open(dockerfile_dest, "w", encoding="utf-8") as containerfile:

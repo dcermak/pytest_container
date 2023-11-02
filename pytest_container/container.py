@@ -34,14 +34,15 @@ from typing import Dict
 from typing import List
 from typing import Optional
 from typing import overload
+from typing import Tuple
 from typing import Type
 from typing import Union
 from uuid import uuid4
 
+import deprecation
 import pytest
 import testinfra
-from _pytest.mark.structures import MarkDecorator
-from _pytest.mark.structures import ParameterSet
+from _pytest.mark import ParameterSet
 from filelock import FileLock
 from pytest_container.inspect import ContainerHealth
 from pytest_container.inspect import ContainerInspect
@@ -50,6 +51,13 @@ from pytest_container.inspect import VolumeMount
 from pytest_container.logging import _logger
 from pytest_container.runtime import get_selected_runtime
 from pytest_container.runtime import OciRuntimeBase
+
+if sys.version_info >= (3, 8):
+    from importlib import metadata
+    from typing import Literal
+else:
+    import importlib_metadata as metadata
+    from typing_extensions import Literal
 
 
 @enum.unique
@@ -853,7 +861,9 @@ class ContainerData:
 
 def container_to_pytest_param(
     container: ContainerBase,
-    marks: Optional[Union[Collection[MarkDecorator], MarkDecorator]] = None,
+    marks: Optional[
+        Union[Collection[pytest.MarkDecorator], pytest.MarkDecorator]
+    ] = None,
 ) -> ParameterSet:
     """Converts a subclass of :py:class:`~pytest_container.container.ContainerBase`
     (:py:class:`~pytest_container.container.Container` or
@@ -869,6 +879,64 @@ def container_to_pytest_param(
     return pytest.param(container, marks=marks or [], id=str(container))
 
 
+@overload
+def container_and_marks_from_pytest_param(
+    param: Container,
+) -> Tuple[Container, Literal[None]]:
+    ...
+
+
+@overload
+def container_and_marks_from_pytest_param(
+    param: DerivedContainer,
+) -> Tuple[DerivedContainer, Literal[None]]:
+    ...
+
+
+@overload
+def container_and_marks_from_pytest_param(
+    param: ParameterSet,
+) -> Tuple[
+    Union[Container, DerivedContainer],
+    Optional[Collection[Union[pytest.MarkDecorator, pytest.Mark]]],
+]:
+    ...
+
+
+def container_and_marks_from_pytest_param(
+    param: Union[ParameterSet, Container, DerivedContainer],
+) -> Tuple[
+    Union[Container, DerivedContainer],
+    Optional[Collection[Union[pytest.MarkDecorator, pytest.Mark]]],
+]:
+    """Extracts the :py:class:`~pytest_container.container.Container` or
+    :py:class:`~pytest_container.container.DerivedContainer` and the
+    corresponding marks from a `pytest.param
+    <https://docs.pytest.org/en/stable/reference.html?#pytest.param>`_ and
+    returns both.
+
+    If ``param`` is either a :py:class:`~pytest_container.container.Container`
+    or a :py:class:`~pytest_container.container.DerivedContainer`, then param is
+    returned directly and the second return value is ``None``.
+
+    """
+    if isinstance(param, (Container, DerivedContainer)):
+        return param, None
+
+    if len(param.values) > 0 and isinstance(
+        param.values[0], (Container, DerivedContainer)
+    ):
+        return param.values[0], param.marks
+
+    raise ValueError(f"Invalid pytest.param values: {param.values}")
+
+
+@deprecation.deprecated(
+    deprecated_in="0.4.0",
+    removed_in="0.5.0",
+    current_version=metadata.version("pytest_container"),
+    details="use container_and_marks_from_pytest_param instead",
+)  # type: ignore
 def container_from_pytest_param(
     param: Union[ParameterSet, Container, DerivedContainer],
 ) -> Union[Container, DerivedContainer]:
