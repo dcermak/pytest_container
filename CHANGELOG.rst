@@ -8,6 +8,9 @@ Breaking changes:
   :py:func:`~pytest_container.container.container_and_marks_from_pytest_param`
   instead.
 
+- :py:func:`~pytest_container.container.ContainerBaseABC.get_base` no longer
+  returns the recursive base but the immediate base.
+
 
 Improvements and new features:
 

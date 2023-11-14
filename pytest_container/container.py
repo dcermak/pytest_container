@@ -617,7 +617,7 @@ class ContainerBaseABC(ABC):
         """Prepares the container so that it can be launched."""
 
     @abstractmethod
-    def get_base(self) -> "Container":
+    def get_base(self) -> "Union[Container, DerivedContainer]":
         """Returns the Base of this Container Image. If the container has no
         base, then ``self`` is returned.
 
@@ -703,15 +703,11 @@ class DerivedContainer(ContainerBase, ContainerBaseABC):
             or f"container derived from {self.base.__str__()}"
         )
 
-    def get_base(self) -> Container:
-        """Return the recursive base of this derived container (i.e. if the base
-        if this container is a derived one, then it takes the base of the
-        base).
-
-        """
+    def get_base(self) -> Union[Container, "DerivedContainer"]:
+        """Return the base of this derived container."""
         if isinstance(self.base, str):
             return Container(url=self.base)
-        return self.base.get_base()
+        return self.base
 
     def prepare_container(
         self, rootdir: Path, extra_build_args: Optional[List[str]] = None
@@ -732,6 +728,7 @@ class DerivedContainer(ContainerBase, ContainerBaseABC):
         # tags are added
         if not self.containerfile and not self.add_build_tags:
             base = self.get_base()
+            base.prepare_container(rootdir, extra_build_args)
             self.container_id, self.url = base.container_id, base.url
             return
 
