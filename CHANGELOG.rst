@@ -14,6 +14,9 @@ Breaking changes:
 
 Improvements and new features:
 
+- Add property
+  :py:attr:`~pytest_container.container.ContainerBase.extra_entrypoint_args` to
+  support appending arguments to the container launch command
 
 - Add property :py:attr:`~pytest_container.inspect.PortForwarding.bind_ip`
   to support binding to arbitrary IP addresses.
