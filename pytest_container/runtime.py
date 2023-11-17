@@ -614,14 +614,14 @@ def get_selected_runtime() -> OciRuntimeBase:
 
     It defaults to podman and selects docker if podman & buildah are not
     present. If podman and docker are both present, then docker is returned if
-    the environment variable `CONTAINER_RUNTIME` is set to `docker`.
+    the environment variable `CONTAINER_RUNTIMES` is set to `docker`.
 
     If neither docker nor podman are available, then a ValueError is raised.
     """
     podman_exists = LOCALHOST.exists("podman") and LOCALHOST.exists("buildah")
     docker_exists = LOCALHOST.exists("docker")
 
-    runtime_choice = getenv("CONTAINER_RUNTIME", "podman").lower()
+    runtime_choice = getenv("CONTAINER_RUNTIMES", "podman").lower()
     if runtime_choice not in ("podman", "docker"):
         raise ValueError(f"Invalid CONTAINER_RUNTIME {runtime_choice}")
 
