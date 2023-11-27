@@ -2,6 +2,7 @@
 :py:attr:`~pytest_container.container.ContainerBase.forwarded_ports`."""
 # pylint: disable=missing-function-docstring
 import itertools
+import socket
 from typing import List
 
 import pytest
@@ -216,3 +217,31 @@ def test_bind_to_address(addr: str, container: ContainerData, host) -> None:
             )
         else:
             assert host.run_expect([7], cmd)
+
+
+_sock = socket.socket(family=socket.AF_INET, type=socket.SOCK_STREAM)
+_sock.bind(("", 0))
+_PORT = _sock.getsockname()[1]
+_sock.close()
+
+
+@pytest.mark.parametrize(
+    "container",
+    (
+        DerivedContainer(
+            base=WEB_SERVER,
+            forwarded_ports=[
+                PortForwarding(container_port=8000, host_port=_PORT)
+            ],
+        ),
+    ),
+    indirect=True,
+)
+def test_bind_to_host_port(container: ContainerData, host) -> None:
+    assert container.forwarded_ports[0].host_port == _PORT
+    assert (
+        host.run_expect(
+            [0], f"{_CURL} http://localhost:{_PORT}"
+        ).stdout.strip()
+        == "Hello Green World!"
+    )
