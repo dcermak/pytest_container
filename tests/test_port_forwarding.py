@@ -1,6 +1,7 @@
 """Module containing tests of the automated port exposure via
 :py:attr:`~pytest_container.container.ContainerBase.forwarded_ports`."""
 # pylint: disable=missing-function-docstring
+import itertools
 from typing import List
 
 import pytest
@@ -172,3 +173,46 @@ def test_multiple_open_ports(container: ContainerData, number: int, host):
             f"curl --insecure https://localhost:{container.forwarded_ports[1].host_port}",
         ).stdout
     )
+
+
+_INTERFACES = [
+    name
+    for name in LOCALHOST.interface.names()
+    if name[:2] in ("en", "et", "wl")
+]
+_ADDRESES = [
+    addr
+    for addr in itertools.chain.from_iterable(
+        LOCALHOST.interface(interface).addresses for interface in _INTERFACES
+    )
+    if not addr.startswith("169.254.") and not addr.startswith("fe80:")
+]
+
+
+@pytest.mark.parametrize(
+    "addr,container",
+    zip(
+        _ADDRESES,
+        [
+            DerivedContainer(
+                base=WEB_SERVER,
+                forwarded_ports=[
+                    PortForwarding(container_port=8000, bind_ip=addr)
+                ],
+            )
+            for addr in _ADDRESES
+        ],
+    ),
+    indirect=["container"],
+)
+def test_bind_to_address(addr: str, container: ContainerData, host) -> None:
+    """address"""
+    for host_addr in _ADDRESES:
+        cmd = f"{_CURL} http://{host_addr}:{container.forwarded_ports[0].host_port}"
+        if addr == host_addr:
+            assert (
+                host.run_expect([0], cmd).stdout.strip()
+                == "Hello Green World!"
+            )
+        else:
+            assert host.run_expect([7], cmd)
