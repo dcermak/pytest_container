@@ -236,7 +236,7 @@ exists. Otherwise <code class="docutils literal notranslate"><span class="pre">N
 
 <dl class="py method">
 <dt class="sig sig-object py" id="pytest_container.container.ContainerBaseABC.get_base">
-<em class="property"><span class="pre">abstract</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">get_base</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference internal" href="#pytest_container.container.Container" title="pytest_container.container.Container"><span class="pre">Container</span></a></span></span><a class="headerlink" href="#pytest_container.container.ContainerBaseABC.get_base" title="Permalink to this definition">¶</a></dt>
+<em class="property"><span class="pre">abstract</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">get_base</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Union" title="(in Python v3.12)"><span class="pre">Union</span></a><span class="p"><span class="pre">[</span></span><a class="reference internal" href="#pytest_container.container.Container" title="pytest_container.container.Container"><span class="pre">Container</span></a><span class="p"><span class="pre">,</span></span><span class="w"> </span><a class="reference internal" href="#pytest_container.container.DerivedContainer" title="pytest_container.container.DerivedContainer"><span class="pre">DerivedContainer</span></a><span class="p"><span class="pre">]</span></span></span></span><a class="headerlink" href="#pytest_container.container.ContainerBaseABC.get_base" title="Permalink to this definition">¶</a></dt>
 <dd><p>Returns the Base of this Container Image. If the container has no
 base, then <code class="docutils literal notranslate"><span class="pre">self</span></code> is returned.</p>
 </dd></dl>
@@ -439,10 +439,8 @@ from <a class="reference internal" href="#pytest_container.container.DerivedCont
 
 <dl class="py method">
 <dt class="sig sig-object py" id="pytest_container.container.DerivedContainer.get_base">
-<span class="sig-name descname"><span class="pre">get_base</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference internal" href="#pytest_container.container.Container" title="pytest_container.container.Container"><span class="pre">Container</span></a></span></span><a class="headerlink" href="#pytest_container.container.DerivedContainer.get_base" title="Permalink to this definition">¶</a></dt>
-<dd><p>Return the recursive base of this derived container (i.e. if the base
-if this container is a derived one, then it takes the base of the
-base).</p>
+<span class="sig-name descname"><span class="pre">get_base</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Union" title="(in Python v3.12)"><span class="pre">Union</span></a><span class="p"><span class="pre">[</span></span><a class="reference internal" href="#pytest_container.container.Container" title="pytest_container.container.Container"><span class="pre">Container</span></a><span class="p"><span class="pre">,</span></span><span class="w"> </span><a class="reference internal" href="#pytest_container.container.DerivedContainer" title="pytest_container.container.DerivedContainer"><span class="pre">DerivedContainer</span></a><span class="p"><span class="pre">]</span></span></span></span><a class="headerlink" href="#pytest_container.container.DerivedContainer.get_base" title="Permalink to this definition">¶</a></dt>
+<dd><p>Return the base of this derived container.</p>
 </dd></dl>
 
 <dl class="py attribute">
