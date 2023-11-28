@@ -79,6 +79,16 @@ if _curl_version >= Version(major=7, minor=71, patch=0):
         ),
         (
             PortForwarding(
+                container_port=80, host_port=8080, bind_ip="127.0.0.1"
+            ),
+            ["-p", "127.0.0.1:8080:80/tcp"],
+        ),
+        (
+            PortForwarding(container_port=80, host_port=8080, bind_ip="::1"),
+            ["-p", "[::1]:8080:80/tcp"],
+        ),
+        (
+            PortForwarding(
                 container_port=53, host_port=5053, protocol=NetworkProtocol.UDP
             ),
             ["-p", "5053:53/udp"],

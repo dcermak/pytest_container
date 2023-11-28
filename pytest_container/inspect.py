@@ -68,15 +68,30 @@ class PortForwarding:
     #: so there's no need for the user to modify it
     host_port: int = -1
 
+    #: The IP address to which to bind. By default, it will be '::' (all addresses).
+    bind_ip: str = ""
+
     @property
     def forward_cli_args(self) -> List[str]:
         """Returns a list of command line arguments for the container launch
         command to automatically expose this port forwarding.
 
         """
+
+        if self.bind_ip:
+            # If it contains a colon, it must be an IPv6 address and thus must
+            # be wrapped in brackets for the launch command
+            if ":" in self.bind_ip:
+                bind_ip = f"[{self.bind_ip}]:"
+            else:
+                bind_ip = self.bind_ip + ":"
+        else:
+            bind_ip = ""
+
         return [
             "-p",
-            ("" if self.host_port == -1 else f"{self.host_port}:")
+            bind_ip
+            + ("" if self.host_port == -1 else f"{self.host_port}:")
             + f"{self.container_port}/{self.protocol}",
         ]
 

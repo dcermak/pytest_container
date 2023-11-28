@@ -93,12 +93,16 @@ def create_host_port_port_forward(
     sockets: List[socket.socket] = []
 
     for port in port_forwards:
+        if socket.has_ipv6 and (":" in port.bind_ip or not port.bind_ip):
+            family = socket.AF_INET6
+        else:
+            family = socket.AF_INET
 
         sock = socket.socket(
-            family=socket.AF_INET6 if socket.has_ipv6 else socket.AF_INET,
+            family=family,
             type=port.protocol.SOCK_CONST,
         )
-        sock.bind(("", 0))
+        sock.bind((port.bind_ip, max(0, port.host_port)))
 
         port_num: int = sock.getsockname()[1]
 
@@ -107,6 +111,7 @@ def create_host_port_port_forward(
                 container_port=port.container_port,
                 protocol=port.protocol,
                 host_port=port_num,
+                bind_ip=port.bind_ip,
             )
         )
         sockets.append(sock)

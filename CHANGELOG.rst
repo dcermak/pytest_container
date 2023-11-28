@@ -12,6 +12,12 @@ Breaking changes:
 Improvements and new features:
 
 
+- Add property :py:attr:`~pytest_container.inspect.PortForwarding.bind_ip`
+  to support binding to arbitrary IP addresses.
+- Fix :py:attr:`~pytest_container.inspect.PortForwarding.host_port` being
+  ignored when picking the host port
+
+
 Documentation:
 
 
