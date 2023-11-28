@@ -107,7 +107,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        python_version: ["3.7", "3.8", "3.9", "3.10", "3.11"]
+        python_version: ["3.7", "3.8", "3.9", "3.10", "3.11", "3.12"]
         container_runtime: ["podman", "docker"]
         update_runtime: [ true, false ]
 
@@ -126,6 +126,9 @@ jobs:
             update_runtime: true
           - container_runtime: "docker"
             python_version: "3.11"
+            update_runtime: true
+          - container_runtime: "docker"
+            python_version: "3.12"
             update_runtime: true
 
     steps:
