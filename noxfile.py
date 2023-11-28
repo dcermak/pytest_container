@@ -5,7 +5,7 @@ from nox_poetry import Session
 from nox_poetry import session
 
 
-@session(python=["3.11", "3.10", "3.9", "3.8", "3.7", "3.6"])
+@session(python=["3.12", "3.11", "3.10", "3.9", "3.8", "3.7", "3.6"])
 @nox.parametrize(
     "container_runtime",
     [nox.param(runtime, id=runtime) for runtime in ("podman", "docker")],

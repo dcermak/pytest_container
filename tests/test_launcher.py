@@ -44,6 +44,16 @@ LEAP_WITH_STOPSIGNAL_SIGKILL_AND_CUSTOM_ENTRYPOINT = DerivedContainer(
     custom_entry_point="/bin/sh",
 )
 
+PYTHON_LEAP = DerivedContainer(
+    base=LEAP,
+    containerfile="""
+RUN set -euxo pipefail; zypper -n ref; zypper -n in python3 curl;
+
+ENTRYPOINT ["/usr/bin/python3"]
+CMD ["-m", "http.server"]
+""",
+)
+
 
 def _test_func(con: Any) -> None:
     sleep(5)
@@ -268,3 +278,24 @@ def test_launcher_unlocks_on_preparation_failure(
     assert not Path(
         tempfile.gettempdir(), container_with_wrong_url.filelock_filename
     ).exists()
+
+
+@pytest.mark.parametrize(
+    "container,port_num",
+    [
+        (
+            DerivedContainer(
+                base=PYTHON_LEAP,
+                extra_entrypoint_args=["-m", "http.server", "8080"],
+            ),
+            8080,
+        ),
+        (PYTHON_LEAP, 8000),
+    ],
+    indirect=["container"],
+)
+def test_extra_command_args(container: ContainerData, port_num: int) -> None:
+    print(id(container.container))
+    assert container.connection.check_output(
+        f"curl http://localhost:{port_num}"
+    )

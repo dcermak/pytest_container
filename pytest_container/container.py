@@ -452,9 +452,20 @@ class ContainerBase:
     custom_entry_point: Optional[str] = None
 
     #: List of additional flags that will be inserted after
-    #: `docker/podman run -d`. The list must be properly escaped, e.g. as
-    #: created by `shlex.split`
+    #: `docker/podman run -d` and before the image name (i.e. these arguments
+    #: are not passed to the entrypoint or ``CMD``). The list must be properly
+    #: escaped, e.g. as created by ``shlex.split``.
     extra_launch_args: List[str] = field(default_factory=list)
+
+    #: List of additional arguments that are passed to the ``CMD`` or
+    #: entrypoint. These arguments are inserted after the :command:`docker/podman
+    #: run -d $image` on launching the image.
+    #: The list must be properly escaped, e.g. by passing the string through
+    #: ``shlex.split``.
+    #: The arguments must not cause the container to exit early. It must remain
+    #: active in the background, otherwise this library will not function
+    #: properly.
+    extra_entrypoint_args: List[str] = field(default_factory=list)
 
     #: Time for the container to become healthy (the timeout is ignored
     #: when the container image defines no ``HEALTHCHECK`` or when the timeout
@@ -575,6 +586,8 @@ class ContainerBase:
                 cmd.extend(bash_launch_end)
         else:  # pragma: no cover
             assert False, "This branch must be unreachable"  # pragma: no cover
+
+        cmd.extend(self.extra_entrypoint_args)
 
         return cmd
 
