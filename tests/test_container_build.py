@@ -1,5 +1,6 @@
 # pylint: disable=missing-function-docstring,missing-module-docstring
 from pathlib import Path
+from typing import Union
 
 import pytest
 from pytest import Config
@@ -161,9 +162,18 @@ def test_leap_with_man_and_lua(container: ContainerData):
     assert container.connection.exists("lua")
 
 
-def test_container_objects() -> None:
-    for cont in CONTAINER_IMAGES:
-        assert cont.get_base() == LEAP
+@pytest.mark.parametrize(
+    "cont,base",
+    [
+        (c, base)
+        for c, base in zip(CONTAINER_IMAGES, [LEAP, LEAP, LEAP_WITH_MAN])
+    ],
+)
+def test_container_objects(
+    cont: Union[Container, DerivedContainer],
+    base: Union[Container, DerivedContainer],
+) -> None:
+    assert cont.get_base() == base
 
 
 def test_auto_container_fixture(auto_container: ContainerData):
