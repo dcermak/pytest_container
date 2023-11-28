@@ -375,8 +375,8 @@ follows:</p>
 </pre></div>
 </div>
 </section>
-<section id="entrypoint-and-stop-signal-handling">
-<h2>Entrypoint and stop signal handling<a class="headerlink" href="#entrypoint-and-stop-signal-handling" title="Permalink to this heading">¶</a></h2>
+<section id="entrypoint-launch-command-and-stop-signal-handling">
+<h2>Entrypoint, launch command and stop signal handling<a class="headerlink" href="#entrypoint-launch-command-and-stop-signal-handling" title="Permalink to this heading">¶</a></h2>
 <p><code class="docutils literal notranslate"><span class="pre">pytest_container</span></code> will by default (when
 <a class="reference internal" href="api.html#pytest_container.container.ContainerBase.entry_point" title="pytest_container.container.ContainerBase.entry_point"><code class="xref py py-attr docutils literal notranslate"><span class="pre">entry_point</span></code></a> is set to
 <a class="reference internal" href="api.html#pytest_container.container.EntrypointSelection.AUTO" title="pytest_container.container.EntrypointSelection.AUTO"><code class="xref py py-attr docutils literal notranslate"><span class="pre">AUTO</span></code></a>) try to
@@ -394,6 +394,12 @@ the entrypoint to <code class="file docutils literal notranslate"><span class="p
 (<a class="reference internal" href="api.html#pytest_container.container.EntrypointSelection.BASH" title="pytest_container.container.EntrypointSelection.BASH"><code class="xref py py-attr docutils literal notranslate"><span class="pre">BASH</span></code></a>) or launch the
 image without specifying one
 (<a class="reference internal" href="api.html#pytest_container.container.EntrypointSelection.IMAGE" title="pytest_container.container.EntrypointSelection.IMAGE"><code class="xref py py-attr docutils literal notranslate"><span class="pre">IMAGE</span></code></a>).</p>
+<p>The container under test is launched by default with no further
+arguments. Additional arguments can be passed to the entrypoint via the
+parameter
+<a class="reference internal" href="api.html#pytest_container.container.ContainerBase.extra_entrypoint_args" title="pytest_container.container.ContainerBase.extra_entrypoint_args"><code class="xref py py-attr docutils literal notranslate"><span class="pre">extra_entrypoint_args</span></code></a>. The
+list of arguments/parameters is appended to the container launch command line
+after the container image.</p>
 <p>Changing the container entrypoint can have a catch with respect to the
 <code class="docutils literal notranslate"><span class="pre">STOPSIGNAL</span></code> defined by a container image. Container images that have
 non-shell entry points sometimes use a different signal for stopping the main
@@ -436,7 +442,7 @@ the container runtime waits for 10 seconds before sending
 <li class="toctree-l2"><a class="reference internal" href="#exposing-ports-from-containers">Exposing ports from containers</a></li>
 <li class="toctree-l2"><a class="reference internal" href="#setting-up-bind-mounts-or-container-volumes">Setting up bind mounts or container volumes</a></li>
 <li class="toctree-l2"><a class="reference internal" href="#create-and-manage-pods">Create and manage pods</a></li>
-<li class="toctree-l2"><a class="reference internal" href="#entrypoint-and-stop-signal-handling">Entrypoint and stop signal handling</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#entrypoint-launch-command-and-stop-signal-handling">Entrypoint, launch command and stop signal handling</a></li>
 </ul>
 </li>
 <li class="toctree-l1"><a class="reference internal" href="changelog.html">Changelog</a></li>

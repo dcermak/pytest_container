@@ -394,8 +394,8 @@ follows:
    :command:`podman`.
 
 
-Entrypoint and stop signal handling
------------------------------------
+Entrypoint, launch command and stop signal handling
+---------------------------------------------------
 
 ``pytest_container`` will by default (when
 :py:attr:`~pytest_container.container.ContainerBase.entry_point` is set to
@@ -417,6 +417,14 @@ the entrypoint to :file:`/bin/bash`
 (:py:attr:`~pytest_container.container.EntrypointSelection.BASH`) or launch the
 image without specifying one
 (:py:attr:`~pytest_container.container.EntrypointSelection.IMAGE`).
+
+
+The container under test is launched by default with no further
+arguments. Additional arguments can be passed to the entrypoint via the
+parameter
+:py:attr:`~pytest_container.container.ContainerBase.extra_entrypoint_args`. The
+list of arguments/parameters is appended to the container launch command line
+after the container image.
 
 
 Changing the container entrypoint can have a catch with respect to the
