@@ -44,7 +44,7 @@ jobs:
           pipx install poetry
           poetry export --with=dev --without-hashes > requirements.txt
 
-      - uses: actions/upload-artifact@v3
+      - uses: actions/upload-artifact@v4
         with:
           name: requirements
           path: requirements.txt
@@ -203,7 +203,7 @@ jobs:
           poetry install
           poetry build
 
-      - uses: actions/upload-artifact@v3
+      - uses: actions/upload-artifact@v4
         with:
           name: wheel
           path: dist/pytest_container*whl
@@ -257,7 +257,7 @@ jobs:
       - run: nox -s doc
 
       - name: upload the build directory
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: build
           path: ./build/html
