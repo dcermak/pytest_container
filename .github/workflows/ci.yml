@@ -44,7 +44,7 @@ jobs:
           pipx install poetry
           poetry export --with=dev --without-hashes > requirements.txt
 
-      - uses: actions/upload-artifact@v3
+      - uses: actions/upload-artifact@v4
         with:
           name: requirements
           path: requirements.txt
@@ -66,7 +66,7 @@ jobs:
         with:
           python-version: 3.6
 
-      - uses: actions/download-artifact@v3
+      - uses: actions/download-artifact@v4
         with:
           name: requirements
           path: .
@@ -203,7 +203,7 @@ jobs:
           poetry install
           poetry build
 
-      - uses: actions/upload-artifact@v3
+      - uses: actions/upload-artifact@v4
         with:
           name: wheel
           path: dist/pytest_container*whl
@@ -227,7 +227,7 @@ jobs:
         with:
           python-version: ${{ matrix.python_version }}
 
-      - uses: actions/download-artifact@v3
+      - uses: actions/download-artifact@v4
         with:
           name: wheel
           path: dist
@@ -257,7 +257,7 @@ jobs:
       - run: nox -s doc
 
       - name: upload the build directory
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: build
           path: ./build/html
@@ -269,7 +269,7 @@ jobs:
     if: github.ref == 'refs/heads/main'
     steps:
       - uses: actions/checkout@v4
-      - uses: actions/download-artifact@v3
+      - uses: actions/download-artifact@v4
         with:
           name: build
           path: ./build
@@ -304,7 +304,7 @@ jobs:
       - run: pip install --upgrade nox poetry nox-poetry
 
       # grab the previously built wheel for checking with twine
-      - uses: actions/download-artifact@v3
+      - uses: actions/download-artifact@v4
         with:
           name: wheel
           path: dist
