@@ -76,7 +76,13 @@ def _create_auto_container_fixture(
         pytest_generate_tests.
         """
 
-        container, _ = container_and_marks_from_pytest_param(request.param)
+        try:
+            container, _ = container_and_marks_from_pytest_param(request.param)
+        except AttributeError as attr_err:
+            raise RuntimeError(
+                "This fixture was not parametrized correctly, "
+                "did you forget to call `auto_container_parametrize` in `pytest_generate_tests`?"
+            ) from attr_err
         _logger.debug("Requesting the container %s", str(container))
 
         if scope == "session" and container.singleton:
