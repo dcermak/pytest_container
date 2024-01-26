@@ -94,7 +94,6 @@ def test_launcher_creates_and_cleanes_up_volumes(
         assert container.volume_mounts
 
         for vol in container.volume_mounts:
-
             if isinstance(vol, BindMount):
                 assert vol.host_path and os.path.exists(vol.host_path)
             elif isinstance(vol, ContainerVolume):

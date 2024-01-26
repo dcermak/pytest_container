@@ -268,7 +268,7 @@ def test_multistage_build_target(
         == "foobar"
     )
 
-    for (distro, target) in (
+    for distro, target in (
         ("Leap", first_target),
         ("Alpine", second_target),
     ):

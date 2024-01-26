@@ -26,80 +26,6 @@ jobs:
           pip install --upgrade poetry nox nox-poetry
           nox -s format -- --check
 
-  generate_requirements:
-    name: Generate requirements.txt for Python 3.6 CI
-    runs-on: ubuntu-latest
-
-    steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
-        with:
-          python-version: '3.x'
-      - uses: actions/cache@v4
-        with:
-          path: ~/.cache/pypoetry/virtualenvs
-          key: poetry-${{ hashFiles('poetry.lock') }}
-
-      - run: |
-          pipx install poetry
-          poetry export --with=dev --without-hashes > requirements.txt
-
-      - uses: actions/upload-artifact@v4
-        with:
-          name: requirements
-          path: requirements.txt
-          if-no-files-found: error
-
-  ci_36:
-    name: Run the integration tests for Python 3.6
-    runs-on: ubuntu-20.04
-    needs: generate_requirements
-
-    strategy:
-      fail-fast: false
-      matrix:
-        container_runtime: ["podman", "docker"]
-
-    steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
-        with:
-          python-version: 3.6
-
-      - uses: actions/download-artifact@v4
-        with:
-          name: requirements
-          path: .
-
-      - run: pip install -r test-requirements.txt
-
-      - run: |
-          export CUR_USER="$(whoami)"
-          sudo loginctl enable-linger ${CUR_USER}
-
-      - run: |
-          mkdir ./tmp/
-          chmod 1777 ./tmp
-          export TMPDIR="$(pwd)/tmp"
-          # duplication of noxfile.py because we can't use that one with python 3.6 :-/
-          coverage run -m pytest -vv tests -p pytest_container -x -n auto --reruns 3 --pytest-container-log-level DEBUG
-          coverage run -m pytest -vv tests -p pytest_container -x --reruns 3 --pytest-container-log-level DEBUG
-          coverage combine
-          coverage report -m
-          coverage xml
-
-      - name: verify that no stray containers are left
-        run: |
-          [[ $(${{ matrix.container_runtime }} ps -aq|wc -l) = "0" ]]
-
-      - name: verify that no stray volumes are left
-        run: |
-          [[ $(${{ matrix.container_runtime }} volume ls -q|wc -l) = "0" ]]
-
-      - name: Upload coverage to Codecov
-        uses: codecov/codecov-action@v3
-        with:
-          fail_ci_if_error: true
 
   ci:
     name: Run the integration tests
@@ -107,17 +33,11 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        python_version: ["3.7", "3.8", "3.9", "3.10", "3.11", "3.12"]
+        python_version: ["3.9", "3.10", "3.11", "3.12"]
         container_runtime: ["podman", "docker"]
         update_runtime: [ true, false ]
 
         exclude:
-          - container_runtime: "docker"
-            python_version: "3.7"
-            update_runtime: true
-          - container_runtime: "docker"
-            python_version: "3.8"
-            update_runtime: true
           - container_runtime: "docker"
             python_version: "3.9"
             update_runtime: true
@@ -217,10 +137,7 @@ jobs:
       fail-fast: false
       matrix:
         os_version: ["ubuntu-latest"]
-        python_version: ["3.7", "3.8", "3.9", "3.10", "3.11"]
-        include:
-          - os_version: "ubuntu-20.04"
-            python_version: "3.6"
+        python_version: ["3.9", "3.10", "3.11"]
 
     steps:
       - uses: actions/setup-python@v5

@@ -490,6 +490,9 @@ class ContainerBase:
         default_factory=list
     )
 
+    #: optional target platform for the container image
+    platform: Optional[str] = None
+
     _is_local: bool = False
 
     def __post_init__(self) -> None:
@@ -654,7 +657,14 @@ class Container(ContainerBase, ContainerBaseABC):
         container runtime"""
         runtime = get_selected_runtime()
         _logger.debug("Pulling %s via %s", self.url, runtime.runner_binary)
-        check_output([runtime.runner_binary, "pull", self.url])
+
+        # Construct the args passed to the Docker CLI
+        cmd_args = [runtime.runner_binary, "pull"]
+        if self.platform is not None:
+            cmd_args += ["--platform", self.platform]
+        cmd_args.append(self.url)
+
+        check_output(cmd_args)
 
     def prepare_container(
         self, rootdir: Path, extra_build_args: Optional[List[str]] = None
@@ -1066,6 +1076,9 @@ class ContainerLauncher:
 
         if self.container_name:
             extra_run_args.extend(("--name", self.container_name))
+
+        if self.container.platform:
+            extra_run_args.extend(("--platform", self.container.platform))
 
         extra_run_args.append(f"--cidfile={self._cidfile}")
 
