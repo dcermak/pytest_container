@@ -621,15 +621,21 @@ def get_selected_runtime() -> OciRuntimeBase:
     podman_exists = LOCALHOST.exists("podman") and LOCALHOST.exists("buildah")
     docker_exists = LOCALHOST.exists("docker")
 
-    runtime_choice = getenv("CONTAINER_RUNTIME", "podman").lower()
-    if runtime_choice not in ("podman", "docker"):
+    runtime_choice = getenv("CONTAINER_RUNTIME", None)
+    if runtime_choice is not None and runtime_choice.lower() not in (
+        "podman",
+        "docker",
+    ):
         raise ValueError(f"Invalid CONTAINER_RUNTIME {runtime_choice}")
 
-    if runtime_choice == "podman" and podman_exists:
+    runtime_choice = runtime_choice and runtime_choice.lower() or None
+    if runtime_choice in ("podman", None) and podman_exists:
         return PodmanRuntime()
-    if runtime_choice == "docker" and docker_exists:
+
+    if runtime_choice in ("docker", None) and docker_exists:
         return DockerRuntime()
 
+    runtime_choice = runtime_choice or "(podman or docker)"
     raise ValueError(
         "Selected runtime " + runtime_choice + " does not exist on the system"
     )
