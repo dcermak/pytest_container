@@ -5,15 +5,12 @@ using the fixtures provided by this plugin.
 """
 import contextlib
 import enum
-import functools
 import itertools
-import operator
 import os
 import socket
 import sys
 import tempfile
 import time
-import warnings
 from abc import ABC
 from abc import abstractmethod
 from dataclasses import dataclass
@@ -49,7 +46,7 @@ from pytest_container.inspect import ContainerInspect
 from pytest_container.inspect import PortForwarding
 from pytest_container.inspect import VolumeMount
 from pytest_container.logging import _logger
-from pytest_container.runtime import get_selected_runtime
+from pytest_container.runtime import ImageFormat
 from pytest_container.runtime import OciRuntimeBase
 
 if sys.version_info >= (3, 8):
@@ -58,21 +55,6 @@ if sys.version_info >= (3, 8):
 else:
     import importlib_metadata as metadata
     from typing_extensions import Literal
-
-
-@enum.unique
-class ImageFormat(enum.Enum):
-    """Image formats supported by buildah."""
-
-    #: The default OCIv1 image format.
-    OCIv1 = "oci"
-
-    #: Docker's default image format that supports additional properties, like
-    #: ``HEALTHCHECK``
-    DOCKER = "docker"
-
-    def __str__(self) -> str:
-        return "oci" if self == ImageFormat.OCIv1 else "docker"
 
 
 def create_host_port_port_forward(
@@ -490,6 +472,9 @@ class ContainerBase:
         default_factory=list
     )
 
+    #: optional target architecture for the container image
+    architecture: Optional[str] = None
+
     _is_local: bool = False
 
     def __post_init__(self) -> None:
@@ -625,7 +610,10 @@ class ContainerBaseABC(ABC):
 
     @abstractmethod
     def prepare_container(
-        self, rootdir: Path, extra_build_args: Optional[List[str]]
+        self,
+        rootdir: Path,
+        runtime: OciRuntimeBase,
+        extra_build_args: Optional[List[str]] = None,
     ) -> None:
         """Prepares the container so that it can be launched."""
 
@@ -649,19 +637,36 @@ class ContainerBaseABC(ABC):
 class Container(ContainerBase, ContainerBaseABC):
     """This class stores information about the Container Image under test."""
 
-    def pull_container(self) -> None:
+    @deprecation.deprecated(
+        deprecated_in="0.4.0",
+        removed_in="0.5.0",
+        current_version=metadata.version("pytest_container"),
+        details="use prepare_container, it does exactly the same, except it doesn't break for local images",
+    )  # type: ignore
+    def pull_container(self, runtime: OciRuntimeBase) -> None:
         """Pulls the container with the given url using the currently selected
         container runtime"""
-        runtime = get_selected_runtime()
         _logger.debug("Pulling %s via %s", self.url, runtime.runner_binary)
-        check_output([runtime.runner_binary, "pull", self.url])
+
+        pull_cmd: Tuple[str, ...] = (runtime.runner_binary, "pull")
+        if self.architecture:
+            pull_cmd += ("--platform", self.architecture)
+        pull_cmd += (self.url,)
+
+        check_output(pull_cmd)
 
     def prepare_container(
-        self, rootdir: Path, extra_build_args: Optional[List[str]] = None
+        self,
+        rootdir: Path,
+        runtime: OciRuntimeBase,
+        extra_build_args: Optional[List[str]] = None,
     ) -> None:
         """Prepares the container so that it can be launched."""
         if not self._is_local:
-            self.pull_container()
+            _logger.debug("Pulling %s via %s", self.url, runtime.runner_binary)
+            check_output(
+                runtime.construct_pull_command(self.url, self.architecture)
+            )
 
     def get_base(self) -> "Container":
         return self
@@ -719,29 +724,30 @@ class DerivedContainer(ContainerBase, ContainerBaseABC):
     def get_base(self) -> Union[Container, "DerivedContainer"]:
         """Return the base of this derived container."""
         if isinstance(self.base, str):
-            return Container(url=self.base)
+            return Container(url=self.base, architecture=self.architecture)
         return self.base
 
     def prepare_container(
-        self, rootdir: Path, extra_build_args: Optional[List[str]] = None
+        self,
+        rootdir: Path,
+        runtime: OciRuntimeBase,
+        extra_build_args: Optional[List[str]] = None,
     ) -> None:
         _logger.debug("Preparing derived container based on %s", self.base)
         if isinstance(self.base, str):
             # we need to pull the container so that the inspect in the launcher
             # doesn't fail
-            Container(url=self.base).prepare_container(
-                rootdir, extra_build_args
-            )
+            Container(
+                url=self.base, architecture=self.architecture
+            ).prepare_container(rootdir, runtime, extra_build_args)
         else:
-            self.base.prepare_container(rootdir, extra_build_args)
-
-        runtime = get_selected_runtime()
+            self.base.prepare_container(rootdir, runtime, extra_build_args)
 
         # do not build containers without a containerfile and where no build
         # tags are added
         if not self.containerfile and not self.add_build_tags:
             base = self.get_base()
-            base.prepare_container(rootdir, extra_build_args)
+            base.prepare_container(rootdir, runtime, extra_build_args)
             self.container_id, self.url = base.container_id, base.url
             return
 
@@ -765,59 +771,15 @@ class DerivedContainer(ContainerBase, ContainerBaseABC):
                 )
                 containerfile.write(containerfile_contents)
 
-            cmd = runtime.build_command
-            if "buildah" in runtime.build_command:
-                if self.image_format is not None:
-                    cmd += ["--format", str(self.image_format)]
-                else:
-                    assert (
-                        "podman" in runtime.runner_binary
-                    ), "The runner for buildah should be podman"
-
-                    if not runtime.supports_healthcheck_inherit_from_base:
-                        warnings.warn(
-                            UserWarning(
-                                "Runtime does not support inheriting HEALTHCHECK "
-                                "from base images, image format auto-detection "
-                                "will *not* work!"
-                            )
-                        )
-
-                    # if the parent image has a healthcheck defined, then we
-                    # have to use the docker image format, so that the
-                    # healthcheck is in newly build image as well
-                    elif (
-                        "<nil>"
-                        != check_output(
-                            [
-                                runtime.runner_binary,
-                                "inspect",
-                                "-f",
-                                "{{.HealthCheck}}",
-                                from_id,
-                            ]
-                        )
-                        .decode()
-                        .strip()
-                    ):
-                        cmd += ["--format", str(ImageFormat.DOCKER)]
-
-            cmd += (
-                (extra_build_args or [])
-                + (
-                    functools.reduce(
-                        operator.add,
-                        (["-t", tag] for tag in self.add_build_tags),
-                    )
-                    if self.add_build_tags
-                    else []
-                )
-                + [
-                    f"--iidfile={iidfile}",
-                    "-f",
-                    containerfile_path,
-                    str(rootdir),
-                ]
+            cmd = runtime.construct_build_command(
+                from_id=from_id,
+                iidfile_path=iidfile,
+                containerfile_path=containerfile_path,
+                rootdir=rootdir,
+                architecture=self.architecture,
+                add_build_tags=self.add_build_tags,
+                extra_build_args=extra_build_args,
+                image_format=self.image_format,
             )
 
             _logger.debug("Building image via: %s", cmd)
@@ -1042,7 +1004,7 @@ class ContainerLauncher:
         try:
             lock.acquire()
             self.container.prepare_container(
-                self.rootdir, self.extra_build_args
+                self.rootdir, self.container_runtime, self.extra_build_args
             )
         except:
             release_lock()
@@ -1066,6 +1028,9 @@ class ContainerLauncher:
 
         if self.container_name:
             extra_run_args.extend(("--name", self.container_name))
+
+        if self.container.architecture:
+            extra_run_args.extend(("--platform", self.container.architecture))
 
         extra_run_args.append(f"--cidfile={self._cidfile}")
 

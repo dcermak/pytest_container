@@ -3,19 +3,25 @@ implementation details of container runtimes like :command:`docker` or
 :command:`podman`.
 
 """
+import enum
+import functools
 import json
+import operator
 import re
 import sys
+import warnings
 from abc import ABC
 from abc import abstractmethod
 from dataclasses import dataclass
 from dataclasses import field
 from os import getenv
+from pathlib import Path
 from subprocess import check_output
 from typing import Any
 from typing import Callable
 from typing import List
 from typing import Optional
+from typing import Tuple
 from typing import TYPE_CHECKING
 from typing import Union
 
@@ -53,6 +59,21 @@ else:
 
 if TYPE_CHECKING:  # pragma: no cover
     import pytest_container
+
+
+@enum.unique
+class ImageFormat(enum.Enum):
+    """Image formats supported by buildah."""
+
+    #: The default OCIv1 image format.
+    OCIv1 = "oci"
+
+    #: Docker's default image format that supports additional properties, like
+    #: ``HEALTHCHECK``
+    DOCKER = "docker"
+
+    def __str__(self) -> str:
+        return "oci" if self == ImageFormat.OCIv1 else "docker"
 
 
 @dataclass(frozen=True)
@@ -225,6 +246,86 @@ class OciRuntimeABC(ABC):
         """Indicates whether the container runtime supports that derived images
         will inherit the healthcheck from the base image.
 
+        """
+
+    @staticmethod
+    def _common_build_cmd_end(
+        iidfile_path: str,
+        containerfile_path: str,
+        rootdir: Union[str, Path],
+        add_build_tags: Optional[List[str]] = None,
+        extra_build_args: Optional[List[str]] = None,
+    ) -> Tuple[str, ...]:
+        cmd: Tuple[str, ...] = tuple()
+        if extra_build_args:
+            cmd += tuple(extra_build_args)
+
+        if add_build_tags:
+            cmd += functools.reduce(
+                operator.add,
+                (("-t", tag) for tag in add_build_tags),
+            )
+        cmd += (
+            f"--iidfile={iidfile_path}",
+            "-f",
+            containerfile_path,
+            str(rootdir),
+        )
+        return cmd
+
+    @abstractmethod
+    def construct_build_command(
+        self,
+        from_id: str,
+        iidfile_path: str,
+        containerfile_path: str,
+        rootdir: Union[str, Path],
+        architecture: Optional[str] = None,
+        add_build_tags: Optional[List[str]] = None,
+        extra_build_args: Optional[List[str]] = None,
+        image_format: Optional[ImageFormat] = None,
+    ) -> Tuple[str, ...]:
+        """Construct the build command for this runtime.
+
+        Parameters:
+
+        - from_id: the base image of the build (only required for checking image
+          properties)
+        - iidfile_path: path to which the image id is written
+        - containerfile_path: path to the :file:`Containerfile` used for
+          building
+        - rootdir: root directory where the build is run (= context of the
+          build)
+        - architecture: target architecture of the image
+        - add_build_tags: additional tags with which the image will be tagged
+        - extra_build_args: additional free form build arguments
+        - image_format: the target image format (only relevant for
+          :command:`buildah`)
+        """
+
+    def _pull_cmd(
+        self,
+        runner_binary: str,
+        url: str,
+        arch_cli_flag: str,
+        architecture: Optional[str] = None,
+    ) -> Tuple[str, ...]:
+        cmd: Tuple[str, ...] = (runner_binary, "pull")
+        if architecture:
+            cmd += (arch_cli_flag, architecture)
+        cmd += (url,)
+        return cmd
+
+    @abstractmethod
+    def construct_pull_command(
+        self, url: str, architecture: Optional[str] = None
+    ) -> Tuple[str, ...]:
+        """Creates the pull command for this container runtime.
+
+        Parameters:
+
+        - url: url via which the container can be pulled
+        - architecture: optional foreign architecture
         """
 
 
@@ -525,6 +626,73 @@ class PodmanRuntime(OciRuntimeBase):
             mounts=self._mounts_from_inspect(inspect),
         )
 
+    def construct_build_command(
+        self,
+        from_id: str,
+        iidfile_path: str,
+        containerfile_path: str,
+        rootdir: Union[str, Path],
+        architecture: Optional[str] = None,
+        add_build_tags: Optional[List[str]] = None,
+        extra_build_args: Optional[List[str]] = None,
+        image_format: Optional[ImageFormat] = None,
+    ) -> Tuple[str, ...]:
+        cmd: Tuple[str, ...] = tuple(self.build_command)
+
+        if image_format:
+            cmd += ("--format", str(image_format))
+        else:
+            if not self.supports_healthcheck_inherit_from_base:
+                warnings.warn(
+                    UserWarning(
+                        "Runtime does not support inheriting HEALTHCHECK from "
+                        "base images, image format auto-detection will "
+                        "*not* work!"
+                    )
+                )
+
+            # if the parent image has a healthcheck defined, then we have to use
+            # the docker image format, so that the healthcheck is in newly build
+            # image as well
+            elif (
+                "<nil>"
+                != check_output(
+                    [
+                        self.runner_binary,
+                        "inspect",
+                        "-f",
+                        "{{.HealthCheck}}",
+                        from_id,
+                    ]
+                )
+                .decode()
+                .strip()
+            ):
+                cmd += ("--format", str(ImageFormat.DOCKER))
+
+        if architecture:
+            cmd += (f"--arch={architecture}",)
+
+        cmd += self._common_build_cmd_end(
+            iidfile_path,
+            containerfile_path,
+            rootdir,
+            add_build_tags,
+            extra_build_args,
+        )
+
+        return cmd
+
+    def construct_pull_command(
+        self, url: str, architecture: Optional[str] = None
+    ) -> Tuple[str, ...]:
+        return self._pull_cmd(
+            runner_binary=self.runner_binary,
+            url=url,
+            arch_cli_flag="--arch",
+            architecture=architecture,
+        )
+
 
 def _get_docker_version(version_stdout: str) -> Version:
     if version_stdout[:15].lower() != "docker version ":
@@ -606,6 +774,42 @@ class DockerRuntime(OciRuntimeBase):
             image_hash=inspect["Image"],
             network=self._network_settings_from_inspect(inspect),
             mounts=self._mounts_from_inspect(inspect),
+        )
+
+    def construct_build_command(
+        self,
+        from_id: str,
+        iidfile_path: str,
+        containerfile_path: str,
+        rootdir: Union[str, Path],
+        architecture: Optional[str] = None,
+        add_build_tags: Optional[List[str]] = None,
+        extra_build_args: Optional[List[str]] = None,
+        image_format: Optional[ImageFormat] = None,
+    ) -> Tuple[str, ...]:
+        cmd: Tuple[str, ...] = tuple(self.build_command)
+
+        if architecture:
+            cmd += (f"--platform={architecture}",)
+
+        cmd += self._common_build_cmd_end(
+            iidfile_path,
+            containerfile_path,
+            rootdir,
+            add_build_tags,
+            extra_build_args,
+        )
+
+        return cmd
+
+    def construct_pull_command(
+        self, url: str, architecture: Optional[str] = None
+    ) -> Tuple[str, ...]:
+        return self._pull_cmd(
+            runner_binary=self.runner_binary,
+            url=url,
+            arch_cli_flag="--platform",
+            architecture=architecture,
         )
 
 

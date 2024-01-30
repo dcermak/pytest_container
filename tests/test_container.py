@@ -7,6 +7,7 @@ import pytest
 from pytest_container import Container
 from pytest_container import DerivedContainer
 from pytest_container.container import ImageFormat
+from pytest_container.runtime import OciRuntimeBase
 
 from . import images
 
@@ -37,16 +38,18 @@ def test_image_format() -> None:
     assert str(ImageFormat.OCIv1) == "oci"
 
 
-def test_local_image_url() -> None:
+def test_local_image_url(container_runtime: OciRuntimeBase) -> None:
     url = "docker.io/library/iDontExistHopefully/bazbarf/something"
     cont = Container(url=f"containers-storage:{url}")
     assert cont.local_image
     assert cont.url == url
     # prepare must not call `$runtime pull` as that would fail
-    cont.prepare_container(Path("."), [])
+    cont.prepare_container(Path("."), container_runtime)
 
 
-def test_lockfile_path(pytestconfig: pytest.Config) -> None:
+def test_lockfile_path(
+    pytestconfig: pytest.Config, container_runtime: OciRuntimeBase
+) -> None:
     """Check that the attribute
     :py:attr:`~pytest_container.ContainerBase.lockfile_filename` does change by
     the container having the attribute
@@ -58,7 +61,7 @@ def test_lockfile_path(pytestconfig: pytest.Config) -> None:
     )
     original_lock_fname = cont.filelock_filename
 
-    cont.prepare_container(pytestconfig.rootpath)
+    cont.prepare_container(pytestconfig.rootpath, container_runtime)
     assert cont.container_id, "container_id must not be empty"
     assert cont.filelock_filename == original_lock_fname
 
@@ -73,9 +76,11 @@ def test_lockfile_unique() -> None:
     assert cont1.filelock_filename != cont2.filelock_filename
 
 
-def test_derived_container_build_tag(pytestconfig: pytest.Config) -> None:
+def test_derived_container_build_tag(
+    pytestconfig: pytest.Config, container_runtime: OciRuntimeBase
+) -> None:
     cont = DerivedContainer(base=images.OPENSUSE_BUSYBOX_URL)
-    cont.prepare_container(pytestconfig.rootpath)
+    cont.prepare_container(pytestconfig.rootpath, container_runtime)
     assert cont._build_tag == images.OPENSUSE_BUSYBOX_URL
 
 

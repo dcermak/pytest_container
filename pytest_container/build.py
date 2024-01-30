@@ -169,6 +169,7 @@ class MultiStageBuild:
         self,
         tmp_path: Path,
         rootdir: Path,
+        runtime: OciRuntimeBase,
         extra_build_args: Optional[List[str]] = None,
     ) -> None:
         """Prepares the multistage build: it writes the rendered :file:`Containerfile`
@@ -182,7 +183,7 @@ class MultiStageBuild:
             if not isinstance(container, str):
                 container_and_marks_from_pytest_param(container)[
                     0
-                ].prepare_container(rootdir, extra_build_args)
+                ].prepare_container(rootdir, runtime, extra_build_args)
 
         dockerfile_dest = tmp_path / "Dockerfile"
         with open(dockerfile_dest, "w", encoding="utf-8") as containerfile:
@@ -272,6 +273,7 @@ class MultiStageBuild:
         self.prepare_build(
             tmp_path,
             root,
+            runtime,
             extra_build_args,
         )
         return MultiStageBuild.run_build_step(
