@@ -386,7 +386,11 @@ class OciRuntimeBase(_OciRuntimeBase, OciRuntimeABC, ToParamMixin):
                         host_port=int(bindings[0]["HostPort"]),
                     )
                 )
-        return ContainerNetworkSettings(ports=ports)
+
+        net_settings = container_inspect["NetworkSettings"]
+        ip = net_settings.get("IPAddress") or None
+
+        return ContainerNetworkSettings(ports=ports, ip_address=ip)
 
     @staticmethod
     def _mounts_from_inspect(
@@ -517,6 +521,7 @@ class PodmanRuntime(OciRuntimeBase):
         return ContainerInspect(
             config=conf,
             state=state,
+            name=inspect["Name"],
             id=inspect["Id"],
             path=inspect["Path"],
             args=inspect["Args"],
@@ -600,6 +605,8 @@ class DockerRuntime(OciRuntimeBase):
         return ContainerInspect(
             config=conf,
             state=state,
+            # docker prefixes the name with a / for reasons…
+            name=inspect["Name"].lstrip("/"),
             id=inspect["Id"],
             path=inspect["Path"],
             args=inspect["Args"],

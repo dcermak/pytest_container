@@ -242,6 +242,9 @@ class ContainerNetworkSettings:
     #: list of ports forwarded from the container to the host
     ports: List[PortForwarding] = field(default_factory=list)
 
+    #: IP Address of the container, if it has one
+    ip_address: Optional[str] = None
+
 
 @dataclass(frozen=True)
 class Mount:
@@ -280,8 +283,11 @@ class ContainerInspect:
 
     """
 
-    #: The Container's ID
+    #: The container's ID
     id: str
+
+    #: the container's name
+    name: str
 
     #: program that has been launched inside the container
     path: str
