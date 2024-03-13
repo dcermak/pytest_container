@@ -14,6 +14,10 @@ Breaking changes:
 
 Improvements and new features:
 
+- Add attributes :py:attr:`~pytest_container.inspect.ContainerInspect.name` and
+  :py:attr:`~pytest_container.inspect.ContainerNetworkSettings.ip_address`
+  exposing the container's name & IP
+
 - Add property
   :py:attr:`~pytest_container.container.ContainerBase.extra_entrypoint_args` to
   support appending arguments to the container launch command
