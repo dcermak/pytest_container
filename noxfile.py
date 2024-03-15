@@ -39,7 +39,7 @@ def coverage(session: Session):
 def lint(session: Session):
     session.install("-r", "test-requirements.txt")
     session.run("mypy", "pytest_container")
-    session.run("pylint", "--fail-under", "9.2", "pytest_container", "tests/")
+    session.run("pylint", "--fail-under", "9.3", "pytest_container", "tests/")
     session.run("twine", "check", "dist/*.whl")
 
 
