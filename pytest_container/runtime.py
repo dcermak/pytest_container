@@ -44,7 +44,6 @@ else:
 # cached_property from stdlib and we'll be fine
 if TYPE_CHECKING:  # pragma: no cover
     from functools import cached_property
-    from .container import ContainerBase
 else:
     try:
         from functools import cached_property
