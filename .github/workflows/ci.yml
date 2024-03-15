@@ -175,7 +175,7 @@ jobs:
 
       - name: verify that no stray containers are left
         run: |
-          [[ $(${{ matrix.container_runtime }} ps -aq|wc -l) = "0" ]]
+          [[ $(podman ps -aq|wc -l) = '0' ]] || (podman ps -aq|xargs podman inspect; exit 1)
 
       - name: verify that no stray volumes are left
         run: |
