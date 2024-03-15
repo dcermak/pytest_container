@@ -166,6 +166,9 @@ jobs:
           mkdir ./tmp/
           chmod 1777 ./tmp
           export TMPDIR="$(pwd)/tmp"
+          export PULL_ALWAYS=0
+          nox -s "test-${{ matrix.python_version }}(${{ matrix.container_runtime }})" -- -x -n auto --reruns 3 --pytest-container-log-level DEBUG
+          export PULL_ALWAYS=1
           nox -s "test-${{ matrix.python_version }}(${{ matrix.container_runtime }})" -- -x -n auto --reruns 3 --pytest-container-log-level DEBUG
           nox -s "test-${{ matrix.python_version }}(${{ matrix.container_runtime }})" -- -x --reruns 3 --pytest-container-log-level DEBUG
           nox -s coverage
