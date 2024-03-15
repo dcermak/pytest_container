@@ -4,6 +4,7 @@ line flags from pytest and for automatically parametrizing tests using the
 
 """
 import logging
+import os
 from typing import List
 
 from _pytest.config import Config
@@ -143,3 +144,14 @@ def get_extra_pod_create_args(pytestconfig: Config) -> List[str]:
 
     """
     return pytestconfig.getoption("extra_pod_create_args", default=[]) or []
+
+
+def get_always_pull_option() -> bool:
+    """Returns whether images should be always pulled before launching the
+    container or whether the container runtime can use the locally cached
+    image. This setting is controlled via the environment variable
+    ``PULL_ALWAYS``. If the environment variable is unset, then the default is
+    ``True``.
+
+    """
+    return bool(int(os.getenv("PULL_ALWAYS", "1")))

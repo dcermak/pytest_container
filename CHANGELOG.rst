@@ -18,6 +18,10 @@ Breaking changes:
 
 Improvements and new features:
 
+- Allow to configure whether container images are always pulled before test runs
+  or whether cached images can be used via the environment variable
+  ``PULL_ALWAYS`` (see :ref:`controlling-image-pulling-behavior`).
+
 - Add attributes :py:attr:`~pytest_container.inspect.ContainerInspect.name` and
   :py:attr:`~pytest_container.inspect.ContainerNetworkSettings.ip_address`
   exposing the container's name & IP

@@ -44,6 +44,7 @@ import pytest
 import testinfra
 from _pytest.mark import ParameterSet
 from filelock import FileLock
+from pytest_container.helpers import get_always_pull_option
 from pytest_container.inspect import ContainerHealth
 from pytest_container.inspect import ContainerInspect
 from pytest_container.inspect import PortForwarding
@@ -667,7 +668,14 @@ class Container(ContainerBase, ContainerBaseABC):
         extra_build_args: Optional[List[str]] = None,
     ) -> None:
         """Prepares the container so that it can be launched."""
-        if not self._is_local:
+        if self._is_local:
+            return
+
+        if get_always_pull_option():
+            self.pull_container(container_runtime)
+            return
+
+        if call([container_runtime.runner_binary, "inspect", self.url]) != 0:
             self.pull_container(container_runtime)
 
     def get_base(self) -> "Container":
