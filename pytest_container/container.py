@@ -625,7 +625,10 @@ class ContainerBaseABC(ABC):
 
     @abstractmethod
     def prepare_container(
-        self, rootdir: Path, extra_build_args: Optional[List[str]]
+        self,
+        container_runtime: OciRuntimeBase,
+        rootdir: Path,
+        extra_build_args: Optional[List[str]],
     ) -> None:
         """Prepares the container so that it can be launched."""
 
@@ -649,19 +652,23 @@ class ContainerBaseABC(ABC):
 class Container(ContainerBase, ContainerBaseABC):
     """This class stores information about the Container Image under test."""
 
-    def pull_container(self) -> None:
+    def pull_container(self, container_runtime: OciRuntimeBase) -> None:
         """Pulls the container with the given url using the currently selected
         container runtime"""
-        runtime = get_selected_runtime()
-        _logger.debug("Pulling %s via %s", self.url, runtime.runner_binary)
-        check_output([runtime.runner_binary, "pull", self.url])
+        _logger.debug(
+            "Pulling %s via %s", self.url, container_runtime.runner_binary
+        )
+        check_output([container_runtime.runner_binary, "pull", self.url])
 
     def prepare_container(
-        self, rootdir: Path, extra_build_args: Optional[List[str]] = None
+        self,
+        container_runtime: OciRuntimeBase,
+        rootdir: Path,
+        extra_build_args: Optional[List[str]] = None,
     ) -> None:
         """Prepares the container so that it can be launched."""
         if not self._is_local:
-            self.pull_container()
+            self.pull_container(container_runtime)
 
     def get_base(self) -> "Container":
         return self
@@ -723,17 +730,22 @@ class DerivedContainer(ContainerBase, ContainerBaseABC):
         return self.base
 
     def prepare_container(
-        self, rootdir: Path, extra_build_args: Optional[List[str]] = None
+        self,
+        container_runtime: OciRuntimeBase,
+        rootdir: Path,
+        extra_build_args: Optional[List[str]] = None,
     ) -> None:
         _logger.debug("Preparing derived container based on %s", self.base)
         if isinstance(self.base, str):
             # we need to pull the container so that the inspect in the launcher
             # doesn't fail
             Container(url=self.base).prepare_container(
-                rootdir, extra_build_args
+                container_runtime, rootdir, extra_build_args
             )
         else:
-            self.base.prepare_container(rootdir, extra_build_args)
+            self.base.prepare_container(
+                container_runtime, rootdir, extra_build_args
+            )
 
         runtime = get_selected_runtime()
 
@@ -741,7 +753,9 @@ class DerivedContainer(ContainerBase, ContainerBaseABC):
         # tags are added
         if not self.containerfile and not self.add_build_tags:
             base = self.get_base()
-            base.prepare_container(rootdir, extra_build_args)
+            base.prepare_container(
+                container_runtime, rootdir, extra_build_args
+            )
             self.container_id, self.url = base.container_id, base.url
             return
 
@@ -1042,7 +1056,7 @@ class ContainerLauncher:
         try:
             lock.acquire()
             self.container.prepare_container(
-                self.rootdir, self.extra_build_args
+                self.container_runtime, self.rootdir, self.extra_build_args
             )
         except:
             release_lock()

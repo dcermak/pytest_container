@@ -3,6 +3,10 @@ Next Release
 
 Breaking changes:
 
+- add the parameter ``container_runtime`` to
+  :py:func:`~pytest_container.container.ContainerBaseABC.prepare_container` and
+  :py:func:`~pytest_container.build.MultiStageBuild.prepare_build`.
+
 - deprecate the function ``pytest_container.container_from_pytest_param``,
   please use
   :py:func:`~pytest_container.container.container_and_marks_from_pytest_param`

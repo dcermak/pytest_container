@@ -54,19 +54,21 @@ def test_multistage_with_param(
 
 
 def test_multistage_build_invalid_param(
-    tmp_path: Path, pytestconfig: pytest.Config
+    tmp_path: Path,
+    pytestconfig: pytest.Config,
+    container_runtime: OciRuntimeBase,
 ):
     with pytest.raises(ValueError):
         MultiStageBuild(
             containers={"runner": pytest.param()},
             containerfile_template=TEMPLATE,
-        ).prepare_build(tmp_path, pytestconfig.rootpath)
+        ).prepare_build(tmp_path, container_runtime, pytestconfig.rootpath)
 
     with pytest.raises(ValueError):
         MultiStageBuild(
             containers={"runner": pytest.param(1.0)},
             containerfile_template=TEMPLATE,
-        ).prepare_build(tmp_path, pytestconfig.rootpath)
+        ).prepare_build(tmp_path, container_runtime, pytestconfig.rootpath)
 
 
 @pytest.mark.parametrize(

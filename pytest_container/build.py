@@ -168,6 +168,7 @@ class MultiStageBuild:
     def prepare_build(
         self,
         tmp_path: Path,
+        container_runtime: OciRuntimeBase,
         rootdir: Path,
         extra_build_args: Optional[List[str]] = None,
     ) -> None:
@@ -182,7 +183,9 @@ class MultiStageBuild:
             if not isinstance(container, str):
                 container_and_marks_from_pytest_param(container)[
                     0
-                ].prepare_container(rootdir, extra_build_args)
+                ].prepare_container(
+                    container_runtime, rootdir, extra_build_args
+                )
 
         dockerfile_dest = tmp_path / "Dockerfile"
         with open(dockerfile_dest, "w", encoding="utf-8") as containerfile:
@@ -271,6 +274,7 @@ class MultiStageBuild:
         )
         self.prepare_build(
             tmp_path,
+            runtime,
             root,
             extra_build_args,
         )

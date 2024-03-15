@@ -97,7 +97,7 @@ def test_container_data(container: ContainerData):
 def test_local_container_image_ref(
     container_runtime: OciRuntimeBase, pytestconfig: Config
 ):
-    LEAP_WITH_TAG.prepare_container(pytestconfig.rootpath)
+    LEAP_WITH_TAG.prepare_container(container_runtime, pytestconfig.rootpath)
 
     # this container only works if LEAP_WITH_TAG exists already
     local_container = Container(url=f"containers-storage:{TAG1}")
@@ -206,7 +206,7 @@ def test_container_size(
     container_runtime: OciRuntimeBase, pytestconfig: Config
 ):
     for container in [BUSYBOX_WITH_ENTRYPOINT, BUSYBOX_WITH_GARBAGE]:
-        container.prepare_container(pytestconfig.rootpath)
+        container.prepare_container(container_runtime, pytestconfig.rootpath)
 
     assert container_runtime.get_image_size(
         BUSYBOX_WITH_ENTRYPOINT
