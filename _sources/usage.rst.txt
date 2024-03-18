@@ -104,6 +104,22 @@ A Container defined in this way can be used like any other Container
 instance.
 
 
+.. _controlling-image-pulling-behavior:
+
+Controlling the image pulling behavior
+--------------------------------------
+
+``pytest_container`` will by default pull all container images from the defined
+registry before launching containers for tests. This is to ensure that stale
+images are not used by accident. The downside is, that tests take longer to
+execute, as the container runtime will try to pull images before every test.
+
+This behavior can be configured via the environment variable
+``PULL_ALWAYS``. Setting it to ``0`` results in ``pytest_container`` relying on
+the image cache and only pulling images if they are not present in the local
+container storage.
+
+
 Container Runtime version
 -------------------------
 

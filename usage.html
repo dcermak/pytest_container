@@ -127,6 +127,17 @@ syntax for the Container’s url, which is inspired by skopeo’s syntax:</p>
 <p>A Container defined in this way can be used like any other Container
 instance.</p>
 </section>
+<section id="controlling-the-image-pulling-behavior">
+<span id="controlling-image-pulling-behavior"></span><h2>Controlling the image pulling behavior<a class="headerlink" href="#controlling-the-image-pulling-behavior" title="Permalink to this heading">¶</a></h2>
+<p><code class="docutils literal notranslate"><span class="pre">pytest_container</span></code> will by default pull all container images from the defined
+registry before launching containers for tests. This is to ensure that stale
+images are not used by accident. The downside is, that tests take longer to
+execute, as the container runtime will try to pull images before every test.</p>
+<p>This behavior can be configured via the environment variable
+<code class="docutils literal notranslate"><span class="pre">PULL_ALWAYS</span></code>. Setting it to <code class="docutils literal notranslate"><span class="pre">0</span></code> results in <code class="docutils literal notranslate"><span class="pre">pytest_container</span></code> relying on
+the image cache and only pulling images if they are not present in the local
+container storage.</p>
+</section>
 <section id="container-runtime-version">
 <h2>Container Runtime version<a class="headerlink" href="#container-runtime-version" title="Permalink to this heading">¶</a></h2>
 <p>Sometimes it is necessary to implement tests differently depending on the
@@ -437,6 +448,7 @@ the container runtime waits for 10 seconds before sending
 <li class="toctree-l2"><a class="reference internal" href="#adding-global-build-run-or-pod-create-arguments">Adding global build, run or pod create arguments</a></li>
 <li class="toctree-l2"><a class="reference internal" href="#configuring-logging">Configuring logging</a></li>
 <li class="toctree-l2"><a class="reference internal" href="#testing-local-images">Testing local images</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#controlling-the-image-pulling-behavior">Controlling the image pulling behavior</a></li>
 <li class="toctree-l2"><a class="reference internal" href="#container-runtime-version">Container Runtime version</a></li>
 <li class="toctree-l2"><a class="reference internal" href="#copying-files-into-containers">Copying files into containers</a></li>
 <li class="toctree-l2"><a class="reference internal" href="#exposing-ports-from-containers">Exposing ports from containers</a></li>
