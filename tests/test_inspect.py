@@ -69,5 +69,6 @@ def test_inspect(
     )
 
     assert inspect.network.ip_address or "" == host.check_output(
-        f'{container_runtime.runner_binary} inspect --format "{{{{ .NetworkSettings.IPAddress }}}}" {_CTR_NAME}'
+        f"{container_runtime.runner_binary} inspect --format "
+        f'"{{{{ .NetworkSettings.IPAddress }}}}" {_CTR_NAME}'
     )

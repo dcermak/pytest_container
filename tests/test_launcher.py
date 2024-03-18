@@ -273,9 +273,10 @@ def test_pulls_container(
         )
         mock_check_output.return_value = None
 
-        _pull = lambda: Container(url=quay_busybox).prepare_container(
-            container_runtime, pytestconfig.rootpath
-        )
+        def _pull():
+            Container(url=quay_busybox).prepare_container(
+                container_runtime, pytestconfig.rootpath
+            )
 
         # first test: should always pull the image
         monkeypatch.setenv("PULL_ALWAYS", "1")

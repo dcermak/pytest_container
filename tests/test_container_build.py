@@ -163,11 +163,7 @@ def test_leap_with_man_and_lua(container: ContainerData):
 
 
 @pytest.mark.parametrize(
-    "cont,base",
-    [
-        (c, base)
-        for c, base in zip(CONTAINER_IMAGES, [LEAP, LEAP, LEAP_WITH_MAN])
-    ],
+    "cont,base", list(zip(CONTAINER_IMAGES, [LEAP, LEAP, LEAP_WITH_MAN]))
 )
 def test_container_objects(
     cont: Union[Container, DerivedContainer],
