@@ -1,10 +1,12 @@
 # pylint: disable=missing-function-docstring,missing-module-docstring
 import os
+import subprocess
 import tempfile
+from contextlib import ExitStack
 from pathlib import Path
-from subprocess import CalledProcessError
 from time import sleep
 from typing import Any
+from unittest.mock import patch
 
 import pytest
 from pytest_container import inspect
@@ -223,13 +225,7 @@ def test_launcher_does_not_override_stopsignal_for_entrypoint(
     assert container.inspect.config.stop_signal in (9, "SIGKILL")
 
 
-@pytest.mark.parametrize(
-    "container",
-    [
-        CMDLINE_APP_CONTAINER,
-    ],
-    indirect=True,
-)
+@pytest.mark.parametrize("container", [CMDLINE_APP_CONTAINER], indirect=True)
 def test_launcher_does_can_check_binaries_with_entrypoint(
     container: ContainerData,
 ) -> None:
@@ -256,6 +252,70 @@ def test_derived_container_pulls_base(
         assert launcher.container_data.container_id
 
 
+def test_pulls_container(
+    container_runtime: OciRuntimeBase,
+    pytestconfig: pytest.Config,
+    monkeypatch: pytest.MonkeyPatch,
+):
+    """Test of the pull-behavior switching via the environment variable
+    ``PULL_ALWAYS``
+
+    """
+    quay_busybox = "quay.io/libpod/busybox"
+
+    with ExitStack() as stack:
+        # mock setup
+        mock_check_output = stack.enter_context(
+            patch("pytest_container.container.check_output")
+        )
+        mock_check_call = stack.enter_context(
+            patch("pytest_container.container.call")
+        )
+        mock_check_output.return_value = None
+
+        _pull = lambda: Container(url=quay_busybox).prepare_container(
+            container_runtime, pytestconfig.rootpath
+        )
+
+        # first test: should always pull the image
+        monkeypatch.setenv("PULL_ALWAYS", "1")
+        _pull()
+
+        mock_check_output.assert_called_once_with(
+            [container_runtime.runner_binary, "pull", quay_busybox]
+        )
+        mock_check_call.assert_not_called()
+
+        mock_check_output.reset_mock()
+        mock_check_call.reset_mock()
+
+        # second test: should only pull the image if inspect fails
+        # in this case we mock the inspect call to return 0, i.e. image is there
+        monkeypatch.setenv("PULL_ALWAYS", "0")
+        mock_check_call.return_value = 0
+
+        _pull()
+        mock_check_call.assert_called_once_with(
+            [container_runtime.runner_binary, "inspect", quay_busybox]
+        )
+        mock_check_output.assert_not_called()
+
+        mock_check_output.reset_mock()
+        mock_check_call.reset_mock()
+
+        # third test: pull the image if inspect fails, so we mock the inspect
+        # call to return 1
+        mock_check_call.return_value = 1
+
+        _pull()
+        mock_check_call.assert_called_once_with(
+            [container_runtime.runner_binary, "inspect", quay_busybox]
+        )
+        mock_check_output.assert_called_once_with(
+            [container_runtime.runner_binary, "pull", quay_busybox]
+        )
+
+
 def test_launcher_unlocks_on_preparation_failure(
     container_runtime: OciRuntimeBase, pytestconfig: pytest.Config
 ) -> None:
@@ -264,7 +324,7 @@ def test_launcher_unlocks_on_preparation_failure(
     )
 
     def try_launch():
-        with pytest.raises(CalledProcessError):
+        with pytest.raises(subprocess.CalledProcessError):
             with ContainerLauncher(
                 container_with_wrong_url,
                 container_runtime,

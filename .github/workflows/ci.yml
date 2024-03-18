@@ -166,13 +166,16 @@ jobs:
           mkdir ./tmp/
           chmod 1777 ./tmp
           export TMPDIR="$(pwd)/tmp"
+          export PULL_ALWAYS=0
+          nox -s "test-${{ matrix.python_version }}(${{ matrix.container_runtime }})" -- -x -n auto --reruns 3 --pytest-container-log-level DEBUG
+          export PULL_ALWAYS=1
           nox -s "test-${{ matrix.python_version }}(${{ matrix.container_runtime }})" -- -x -n auto --reruns 3 --pytest-container-log-level DEBUG
           nox -s "test-${{ matrix.python_version }}(${{ matrix.container_runtime }})" -- -x --reruns 3 --pytest-container-log-level DEBUG
           nox -s coverage
 
       - name: verify that no stray containers are left
         run: |
-          [[ $(${{ matrix.container_runtime }} ps -aq|wc -l) = "0" ]]
+          [[ $(podman ps -aq|wc -l) = '0' ]] || (podman ps -aq|xargs podman inspect; exit 1)
 
       - name: verify that no stray volumes are left
         run: |

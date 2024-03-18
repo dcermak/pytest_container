@@ -3,6 +3,10 @@ Next Release
 
 Breaking changes:
 
+- add the parameter ``container_runtime`` to
+  :py:func:`~pytest_container.container.ContainerBaseABC.prepare_container` and
+  :py:func:`~pytest_container.build.MultiStageBuild.prepare_build`.
+
 - deprecate the function ``pytest_container.container_from_pytest_param``,
   please use
   :py:func:`~pytest_container.container.container_and_marks_from_pytest_param`
@@ -13,6 +17,10 @@ Breaking changes:
 
 
 Improvements and new features:
+
+- Allow to configure whether container images are always pulled before test runs
+  or whether cached images can be used via the environment variable
+  ``PULL_ALWAYS`` (see :ref:`controlling-image-pulling-behavior`).
 
 - Add attributes :py:attr:`~pytest_container.inspect.ContainerInspect.name` and
   :py:attr:`~pytest_container.inspect.ContainerNetworkSettings.ip_address`
