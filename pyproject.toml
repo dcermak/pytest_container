@@ -28,7 +28,11 @@ classifiers = [
 [tool.poetry.dependencies]
 python = ">=3.6.2,<4.0"
 pytest = ">= 3.10"
-pytest-testinfra = ">=6.4.0"
+pytest-testinfra = [
+    { version = ">=6.4.0", python = "< 3.7" },
+    { version = ">=7.0", python = ">= 3.7,< 3.8" },
+    { version = ">=8.0", python = ">= 3.8" }
+]
 dataclasses = { version = ">=0.8", python = "< 3.7" }
 typing-extensions = { version = ">=3.0", markers="python_version < '3.8'" }
 cached-property = { version = "^1.5", markers="python_version < '3.8'" }
