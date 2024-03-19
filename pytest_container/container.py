@@ -43,6 +43,7 @@ import deprecation
 import pytest
 import testinfra
 from _pytest.mark import ParameterSet
+from filelock import BaseFileLock
 from filelock import FileLock
 from pytest_container.helpers import get_always_pull_option
 from pytest_container.inspect import ContainerHealth
@@ -74,6 +75,11 @@ class ImageFormat(enum.Enum):
 
     def __str__(self) -> str:
         return "oci" if self == ImageFormat.OCIv1 else "docker"
+
+
+def lock_host_port_search(rootdir: Path) -> BaseFileLock:
+    """Generate a filelock for finding free ports on the host."""
+    return FileLock(rootdir / "port_check.lock")
 
 
 def create_host_port_port_forward(
@@ -1091,7 +1097,7 @@ class ContainerLauncher:
         # port forwards must be launched while the lock is being held. Otherwise
         # another container could pick the same ports before this one launches.
         if forwarded_ports and self._expose_ports:
-            with FileLock(self.rootdir / "port_check.lock"):
+            with lock_host_port_search(self.rootdir):
                 self._new_port_forwards = create_host_port_port_forward(
                     forwarded_ports
                 )
