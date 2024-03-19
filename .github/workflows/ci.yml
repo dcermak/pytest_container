@@ -108,28 +108,35 @@ jobs:
       fail-fast: false
       matrix:
         python_version: ["3.7", "3.8", "3.9", "3.10", "3.11", "3.12"]
-        container_runtime: ["podman", "docker"]
-        update_runtime: [ true, false ]
+        container_runtime: ["podman"]
+        update_runtime: [true, false]
+        rootfull: [true, false]
 
-        exclude:
+        include:
           - container_runtime: "docker"
             python_version: "3.7"
-            update_runtime: true
+            update_runtime: false
+            rootfull: false
           - container_runtime: "docker"
             python_version: "3.8"
-            update_runtime: true
+            update_runtime: false
+            rootfull: false
           - container_runtime: "docker"
             python_version: "3.9"
-            update_runtime: true
+            update_runtime: false
+            rootfull: false
           - container_runtime: "docker"
             python_version: "3.10"
-            update_runtime: true
+            update_runtime: false
+            rootfull: false
           - container_runtime: "docker"
             python_version: "3.11"
-            update_runtime: true
+            update_runtime: false
+            rootfull: false
           - container_runtime: "docker"
             python_version: "3.12"
-            update_runtime: true
+            update_runtime: false
+            rootfull: false
 
     steps:
       - uses: actions/checkout@v4
@@ -143,6 +150,10 @@ jobs:
           key: nox-${{ matrix.python_version }}-${{ hashFiles('poetry.lock') }}
 
       - run: pip install --upgrade nox poetry nox-poetry
+        if: ${{ ! matrix.rootfull }}
+
+      - run: sudo pip install --upgrade nox poetry nox-poetry
+        if: ${{ matrix.rootfull }}
 
       - name: update the container runtime
         if: ${{ matrix.update_runtime }}
@@ -161,6 +172,7 @@ jobs:
       - run: |
           export CUR_USER="$(whoami)"
           sudo loginctl enable-linger ${CUR_USER}
+        if: ${{ ! matrix.rootfull }}
 
       - run: |
           mkdir ./tmp/
@@ -172,6 +184,16 @@ jobs:
           nox -s "test-${{ matrix.python_version }}(${{ matrix.container_runtime }})" -- -x -n auto --reruns 3 --pytest-container-log-level DEBUG
           nox -s "test-${{ matrix.python_version }}(${{ matrix.container_runtime }})" -- -x --reruns 3 --pytest-container-log-level DEBUG
           nox -s coverage
+        if: ${{ ! matrix.rootfull }}
+
+      - run: |
+          mkdir ./tmp/
+          chmod 1777 ./tmp
+          export TMPDIR="$(pwd)/tmp"
+          sudo --preserve-env nox -s "test-${{ matrix.python_version }}(${{ matrix.container_runtime }})" -- -x -n auto --reruns 3 --pytest-container-log-level DEBUG
+          sudo --preserve-env nox -s "test-${{ matrix.python_version }}(${{ matrix.container_runtime }})" -- -x --reruns 3 --pytest-container-log-level DEBUG
+          sudo --preserve-env nox -s coverage
+        if: ${{ matrix.rootfull }}
 
       - name: verify that no stray containers are left
         run: |
