@@ -7,10 +7,15 @@ from typing import List
 
 import pytest
 from pytest_container.container import ContainerData
+from pytest_container.container import ContainerLauncher
 from pytest_container.container import DerivedContainer
+from pytest_container.container import lock_host_port_search
 from pytest_container.container import PortForwarding
 from pytest_container.inspect import NetworkProtocol
+from pytest_container.pod import Pod
+from pytest_container.pod import PodLauncher
 from pytest_container.runtime import LOCALHOST
+from pytest_container.runtime import OciRuntimeBase
 from pytest_container.runtime import Version
 
 from .images import NGINX_URL
@@ -219,29 +224,65 @@ def test_bind_to_address(addr: str, container: ContainerData, host) -> None:
             assert host.run_expect([7], cmd)
 
 
-_sock = socket.socket(family=socket.AF_INET, type=socket.SOCK_STREAM)
-_sock.bind(("", 0))
-_PORT = _sock.getsockname()[1]
-_sock.close()
+def test_container_bind_to_host_port(
+    container_runtime: OciRuntimeBase, host, pytestconfig: pytest.Config
+) -> None:
+    with lock_host_port_search(pytestconfig.rootpath):
+        with socket.socket(
+            family=socket.AF_INET, type=socket.SOCK_STREAM
+        ) as sock:
+            sock.bind(("", 0))
+            PORT = sock.getsockname()[1]
+
+            ctr = DerivedContainer(
+                base=WEB_SERVER,
+                forwarded_ports=[
+                    PortForwarding(container_port=8000, host_port=PORT)
+                ],
+            )
+    with ContainerLauncher(
+        container=ctr,
+        container_runtime=container_runtime,
+        rootdir=pytestconfig.rootpath,
+    ) as launcher:
+        launcher.launch_container()
+
+        assert launcher.container_data.forwarded_ports[0].host_port == PORT
+        assert (
+            host.run_expect(
+                [0], f"{_CURL} http://localhost:{PORT}"
+            ).stdout.strip()
+            == "Hello Green World!"
+        )
 
 
-@pytest.mark.parametrize(
-    "container",
-    (
-        DerivedContainer(
-            base=WEB_SERVER,
-            forwarded_ports=[
-                PortForwarding(container_port=8000, host_port=_PORT)
-            ],
-        ),
-    ),
-    indirect=True,
-)
-def test_bind_to_host_port(container: ContainerData, host) -> None:
-    assert container.forwarded_ports[0].host_port == _PORT
-    assert (
-        host.run_expect(
-            [0], f"{_CURL} http://localhost:{_PORT}"
-        ).stdout.strip()
-        == "Hello Green World!"
-    )
+def test_pod_bind_to_host_port(
+    container_runtime: OciRuntimeBase, host, pytestconfig: pytest.Config
+) -> None:
+    if not container_runtime.runner_binary.endswith("podman"):
+        pytest.skip("pods are only supported with podman")
+
+    with lock_host_port_search(pytestconfig.rootpath):
+        with socket.socket(
+            family=socket.AF_INET, type=socket.SOCK_STREAM
+        ) as sock:
+            sock.bind(("", 0))
+            PORT = sock.getsockname()[1]
+
+            pod = Pod(
+                containers=[WEB_SERVER],
+                forwarded_ports=[
+                    PortForwarding(container_port=8000, host_port=PORT)
+                ],
+            )
+
+    with PodLauncher(pod=pod, rootdir=pytestconfig.rootpath) as launcher:
+        launcher.launch_pod()
+
+        assert launcher.pod_data.forwarded_ports[0].host_port == PORT
+        assert (
+            host.run_expect(
+                [0], f"{_CURL} http://localhost:{PORT}"
+            ).stdout.strip()
+            == "Hello Green World!"
+        )
