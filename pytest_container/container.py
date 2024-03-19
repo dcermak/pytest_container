@@ -43,6 +43,7 @@ import deprecation
 import pytest
 import testinfra
 from _pytest.mark import ParameterSet
+from filelock import BaseFileLock
 from filelock import FileLock
 from pytest_container.helpers import get_always_pull_option
 from pytest_container.inspect import ContainerHealth
@@ -76,6 +77,11 @@ class ImageFormat(enum.Enum):
         return "oci" if self == ImageFormat.OCIv1 else "docker"
 
 
+def lock_host_port_search(rootdir: Path) -> BaseFileLock:
+    """Generate a filelock for finding free ports on the host."""
+    return FileLock(rootdir / "port_check.lock")
+
+
 def create_host_port_port_forward(
     port_forwards: List[PortForwarding],
 ) -> List[PortForwarding]:
@@ -87,38 +93,34 @@ def create_host_port_port_forward(
     """
     finished_forwards: List[PortForwarding] = []
 
-    # list of sockets that will be created and cleaned up afterwards
-    # We have to defer the cleanup, as otherwise the OS might give us a
-    # previously freed socket again. But it will not do that, if we are still
-    # listening on it.
-    sockets: List[socket.socket] = []
+    # We have to defer the cleanup of all sockets via an ExitStack, as otherwise
+    # the OS might give us a previously freed port again. But it will not do
+    # that, if we are still listening on it
+    with contextlib.ExitStack() as stack:
+        for port in port_forwards:
+            if socket.has_ipv6 and (":" in port.bind_ip or not port.bind_ip):
+                family = socket.AF_INET6
+            else:
+                family = socket.AF_INET
 
-    for port in port_forwards:
-        if socket.has_ipv6 and (":" in port.bind_ip or not port.bind_ip):
-            family = socket.AF_INET6
-        else:
-            family = socket.AF_INET
-
-        sock = socket.socket(
-            family=family,
-            type=port.protocol.SOCK_CONST,
-        )
-        sock.bind((port.bind_ip, max(0, port.host_port)))
-
-        port_num: int = sock.getsockname()[1]
-
-        finished_forwards.append(
-            PortForwarding(
-                container_port=port.container_port,
-                protocol=port.protocol,
-                host_port=port_num,
-                bind_ip=port.bind_ip,
+            sock = stack.enter_context(
+                socket.socket(
+                    family=family,
+                    type=port.protocol.SOCK_CONST,
+                )
             )
-        )
-        sockets.append(sock)
+            sock.bind((port.bind_ip, max(0, port.host_port)))
 
-    for sock in sockets:
-        sock.close()
+            port_num: int = sock.getsockname()[1]
+
+            finished_forwards.append(
+                PortForwarding(
+                    container_port=port.container_port,
+                    protocol=port.protocol,
+                    host_port=port_num,
+                    bind_ip=port.bind_ip,
+                )
+            )
 
     assert len(port_forwards) == len(finished_forwards)
     return finished_forwards
@@ -1095,7 +1097,7 @@ class ContainerLauncher:
         # port forwards must be launched while the lock is being held. Otherwise
         # another container could pick the same ports before this one launches.
         if forwarded_ports and self._expose_ports:
-            with FileLock(self.rootdir / "port_check.lock"):
+            with lock_host_port_search(self.rootdir):
                 self._new_port_forwards = create_host_port_port_forward(
                     forwarded_ports
                 )

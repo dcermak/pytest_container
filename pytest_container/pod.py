@@ -12,12 +12,12 @@ from typing import Type
 from typing import Union
 
 from _pytest.mark import ParameterSet
-from filelock import FileLock
 from pytest_container.container import Container
 from pytest_container.container import ContainerData
 from pytest_container.container import ContainerLauncher
 from pytest_container.container import create_host_port_port_forward
 from pytest_container.container import DerivedContainer
+from pytest_container.container import lock_host_port_search
 from pytest_container.inspect import PortForwarding
 from pytest_container.logging import _logger
 from pytest_container.runtime import get_selected_runtime
@@ -122,7 +122,7 @@ class PodLauncher:
         )
 
         if self.pod.forwarded_ports:
-            with FileLock(self.rootdir / "port_check.lock"):
+            with lock_host_port_search(self.rootdir):
                 self._new_port_forwards = create_host_port_port_forward(
                     self.pod.forwarded_ports
                 )

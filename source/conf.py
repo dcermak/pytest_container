@@ -59,4 +59,7 @@ intersphinx_mapping = {"python": ("https://docs.python.org/3", None)}
 
 nitpicky = True
 nitpick_ignore = [("py:class", "py._path.local.LocalPath")]
-nitpick_ignore_regex = [("py:class", "_pytest.*")]
+nitpick_ignore_regex = [
+    ("py:class", "_pytest.*"),
+    ("py:class", ".*BaseFileLock.*"),
+]
