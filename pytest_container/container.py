@@ -790,14 +790,10 @@ class DerivedContainer(ContainerBase, ContainerBaseABC):
                 containerfile.write(containerfile_contents)
 
             cmd = runtime.build_command
-            if "buildah" in runtime.build_command:
+            if "podman" in runtime.runner_binary:
                 if self.image_format is not None:
                     cmd += ["--format", str(self.image_format)]
                 else:
-                    assert (
-                        "podman" in runtime.runner_binary
-                    ), "The runner for buildah should be podman"
-
                     if not runtime.supports_healthcheck_inherit_from_base:
                         warnings.warn(
                             UserWarning(
