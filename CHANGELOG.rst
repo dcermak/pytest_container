@@ -3,6 +3,21 @@ Next Release
 
 Breaking changes:
 
+
+Improvements and new features:
+
+
+Documentation:
+
+
+Internal changes:
+
+
+0.4.0 (27 March 2024)
+---------------------
+
+Breaking changes:
+
 - add the parameter ``container_runtime`` to
   :py:func:`~pytest_container.container.ContainerBaseABC.prepare_container` and
   :py:func:`~pytest_container.build.MultiStageBuild.prepare_build`.
