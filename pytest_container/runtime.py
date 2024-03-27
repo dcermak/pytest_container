@@ -450,27 +450,27 @@ class PodmanRuntime(OciRuntimeBase):
 
     """
 
-    _runtime_functional = (
-        LOCALHOST.run("podman ps").succeeded
-        and LOCALHOST.run("buildah").succeeded
-    )
+    _runtime_functional = LOCALHOST.run("podman ps").succeeded
+    _buildah_functional = LOCALHOST.run("buildah").succeeded
 
     @staticmethod
     def _runtime_error_message() -> str:
         if PodmanRuntime._runtime_functional:
             return ""
+
         podman_ps = LOCALHOST.run("podman ps")
-        if not podman_ps.succeeded:
-            return str(podman_ps.stderr)
-        buildah = LOCALHOST.run("buildah")
         assert (
-            not buildah.succeeded
-        ), "buildah command must not succeed as PodmanRuntime is not functional"
-        return str(buildah.stderr)
+            not podman_ps.succeeded
+        ), "podman runtime is not functional, but 'podman ps' succeeded"
+        return str(podman_ps.stderr)
 
     def __init__(self) -> None:
         super().__init__(
-            build_command=["buildah", "bud", "--layers", "--force-rm"],
+            build_command=(
+                ["buildah", "bud", "--layers", "--force-rm"]
+                if self._buildah_functional
+                else ["podman", "build", "--layers", "--force-rm"]
+            ),
             runner_binary="podman",
             _runtime_functional=self._runtime_functional,
         )
@@ -489,9 +489,15 @@ class PodmanRuntime(OciRuntimeBase):
         #   https://github.com/containers/buildah/blob/main/CHANGELOG.md#v1250-2022-03-25
         # - podman 4.1.0 bundles buildah >= 1.25.0
         #   https://github.com/containers/podman/blob/main/RELEASE_NOTES.md#misc-8
-        return self.version >= Version(
-            4, 1, 0
-        ) and _get_buildah_version() >= Version(1, 25, 0)
+        podman_recent_enough = self.version >= Version(4, 1, 0)
+
+        # if buildah isn't installed, don't check the buildah version
+        if not self._buildah_functional:
+            return podman_recent_enough
+
+        return podman_recent_enough and _get_buildah_version() >= Version(
+            1, 25, 0
+        )
 
     def inspect_container(self, container_id: str) -> ContainerInspect:
         inspect = self._get_container_inspect(container_id)
@@ -624,7 +630,7 @@ def get_selected_runtime() -> OciRuntimeBase:
 
     If neither docker nor podman are available, then a ValueError is raised.
     """
-    podman_exists = LOCALHOST.exists("podman") and LOCALHOST.exists("buildah")
+    podman_exists = LOCALHOST.exists("podman")
     docker_exists = LOCALHOST.exists("docker")
 
     runtime_choice = getenv("CONTAINER_RUNTIME", "podman").lower()

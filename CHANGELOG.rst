@@ -18,6 +18,9 @@ Breaking changes:
 
 Improvements and new features:
 
+- No longer depend on :command:`buildah` being installed when using
+  :command:`podman` to build container images.
+
 - Allow to configure whether container images are always pulled before test runs
   or whether cached images can be used via the environment variable
   ``PULL_ALWAYS`` (see :ref:`controlling-image-pulling-behavior`).
