@@ -13,6 +13,23 @@ Documentation:
 Internal changes:
 
 
+0.4.1 (2 April 2024)
+--------------------
+
+Breaking changes:
+
+
+Improvements and new features:
+
+
+Documentation:
+
+
+Internal changes:
+
+- fix imports for older pytest releases
+
+
 0.4.0 (27 March 2024)
 ---------------------
 
