@@ -40,11 +40,13 @@ from typing import Union
 from uuid import uuid4
 
 import deprecation
-import pytest
 import testinfra
+from _pytest.mark import Mark
+from _pytest.mark import MarkDecorator
 from _pytest.mark import ParameterSet
 from filelock import BaseFileLock
 from filelock import FileLock
+from pytest import param
 from pytest_container.helpers import get_always_pull_option
 from pytest_container.inspect import ContainerHealth
 from pytest_container.inspect import ContainerInspect
@@ -896,9 +898,7 @@ class ContainerData:
 
 def container_to_pytest_param(
     container: ContainerBase,
-    marks: Optional[
-        Union[Collection[pytest.MarkDecorator], pytest.MarkDecorator]
-    ] = None,
+    marks: Optional[Union[Collection[MarkDecorator], MarkDecorator]] = None,
 ) -> ParameterSet:
     """Converts a subclass of :py:class:`~pytest_container.container.ContainerBase`
     (:py:class:`~pytest_container.container.Container` or
@@ -911,38 +911,38 @@ def container_to_pytest_param(
     :py:attr:`~pytest_container.container.ContainerBase.container_id`)
 
     """
-    return pytest.param(container, marks=marks or [], id=str(container))
+    return param(container, marks=marks or [], id=str(container))
 
 
 @overload
 def container_and_marks_from_pytest_param(
-    param: Container,
+    ctr_or_param: Container,
 ) -> Tuple[Container, Literal[None]]:
     ...
 
 
 @overload
 def container_and_marks_from_pytest_param(
-    param: DerivedContainer,
+    ctr_or_param: DerivedContainer,
 ) -> Tuple[DerivedContainer, Literal[None]]:
     ...
 
 
 @overload
 def container_and_marks_from_pytest_param(
-    param: ParameterSet,
+    ctr_or_param: ParameterSet,
 ) -> Tuple[
     Union[Container, DerivedContainer],
-    Optional[Collection[Union[pytest.MarkDecorator, pytest.Mark]]],
+    Optional[Collection[Union[MarkDecorator, Mark]]],
 ]:
     ...
 
 
 def container_and_marks_from_pytest_param(
-    param: Union[ParameterSet, Container, DerivedContainer],
+    ctr_or_param: Union[ParameterSet, Container, DerivedContainer],
 ) -> Tuple[
     Union[Container, DerivedContainer],
-    Optional[Collection[Union[pytest.MarkDecorator, pytest.Mark]]],
+    Optional[Collection[Union[MarkDecorator, Mark]]],
 ]:
     """Extracts the :py:class:`~pytest_container.container.Container` or
     :py:class:`~pytest_container.container.DerivedContainer` and the
@@ -955,15 +955,15 @@ def container_and_marks_from_pytest_param(
     returned directly and the second return value is ``None``.
 
     """
-    if isinstance(param, (Container, DerivedContainer)):
-        return param, None
+    if isinstance(ctr_or_param, (Container, DerivedContainer)):
+        return ctr_or_param, None
 
-    if len(param.values) > 0 and isinstance(
-        param.values[0], (Container, DerivedContainer)
+    if len(ctr_or_param.values) > 0 and isinstance(
+        ctr_or_param.values[0], (Container, DerivedContainer)
     ):
-        return param.values[0], param.marks
+        return ctr_or_param.values[0], ctr_or_param.marks
 
-    raise ValueError(f"Invalid pytest.param values: {param.values}")
+    raise ValueError(f"Invalid pytest.param values: {ctr_or_param.values}")
 
 
 @deprecation.deprecated(
