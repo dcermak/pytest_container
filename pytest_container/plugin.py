@@ -26,12 +26,13 @@ if sys.version_info >= (3, 8):
 else:
     from typing_extensions import Literal
 
-import pytest
+from pytest import fixture
+from pytest import skip
 from _pytest.config import Config
 from _pytest.fixtures import SubRequest
 
 
-@pytest.fixture(scope="session")
+@fixture(scope="session")
 def container_runtime() -> OciRuntimeBase:
     """pytest fixture that returns the currently selected container runtime
     according to the rules outlined :ref:`here <runtime selection rules>`.
@@ -63,7 +64,7 @@ def _create_auto_container_fixture(
 ) -> Callable[
     [SubRequest, OciRuntimeBase, Config], Generator[ContainerData, None, None]
 ]:
-    def fixture(
+    def fixture_funct(
         request: SubRequest,
         # we must call this parameter container runtime, so that pytest will
         # treat it as a fixture, but that causes pylint to complain…
@@ -125,7 +126,7 @@ def _create_auto_container_fixture(
                         launcher._container_id, container_runtime
                     )
 
-    return pytest.fixture(scope=scope)(fixture)
+    return fixture(scope=scope)(fixture_funct)
 
 
 def _create_auto_pod_fixture(
@@ -133,7 +134,7 @@ def _create_auto_pod_fixture(
 ) -> Callable[
     [SubRequest, OciRuntimeBase, Config], Generator[PodData, None, None]
 ]:
-    def fixture(
+    def fixture_funct(
         request: SubRequest,
         # we must call this parameter container runtime, so that pytest will
         # treat it as a fixture, but that causes pylint to complain…
@@ -142,7 +143,7 @@ def _create_auto_pod_fixture(
         pytestconfig: Config,
     ) -> Generator[PodData, None, None]:
         if "podman" not in container_runtime.runner_binary:
-            pytest.skip("Pods are only supported in podman")
+            skip("Pods are only supported in podman")
 
         pod = pod_from_pytest_param(request.param)
         with PodLauncher(
@@ -163,7 +164,7 @@ def _create_auto_pod_fixture(
                             ctr_launcher._container_id, container_runtime
                         )
 
-    return pytest.fixture(scope=scope)(fixture)
+    return fixture(scope=scope)(fixture_funct)
 
 
 #: This fixture parametrizes the test function once for each container image

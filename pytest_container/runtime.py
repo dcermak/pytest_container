@@ -19,9 +19,9 @@ from typing import Optional
 from typing import TYPE_CHECKING
 from typing import Union
 
-import pytest
 import testinfra
 from _pytest.mark.structures import ParameterSet
+from pytest import param
 from pytest_container.inspect import BindMount
 from pytest_container.inspect import Config
 from pytest_container.inspect import ContainerHealth
@@ -65,7 +65,7 @@ class ToParamMixin:
 
     def to_pytest_param(self) -> ParameterSet:
         """Convert this class into a ``pytest.param``"""
-        return pytest.param(self, id=str(self), marks=self.marks or ())
+        return param(self, id=str(self), marks=self.marks or ())
 
 
 @dataclass(frozen=True)
