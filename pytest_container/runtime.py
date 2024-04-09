@@ -514,7 +514,9 @@ class PodmanRuntime(OciRuntimeBase):
             tty=Conf["Tty"],
             cmd=Conf["Cmd"],
             image=Conf["Image"],
-            entrypoint=Conf["Entrypoint"].split(),
+            entrypoint=Conf["Entrypoint"].split()
+            if Conf["Entrypoint"]
+            else None,
             labels=Conf["Labels"],
             env=dict([env.split("=", maxsplit=1) for env in Conf["Env"]]),
             stop_signal=self._stop_signal_from_inspect_conf(Conf),
