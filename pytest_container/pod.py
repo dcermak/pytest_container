@@ -66,6 +66,31 @@ class PodData:
     forwarded_ports: List[PortForwarding]
 
 
+def infra_container_id_from_pod_inspect(inspect_output: bytes) -> str:
+    """Given the output of :command:`podman pod inspect $id`, return the id of
+    the infra container.
+
+    """
+    # we don't want to directly query the infra container id via
+    # podman pod inspect -f "{{.InfraContainerID}}"
+    # as that doesn't work on ancient podman versions
+    #
+    # But both new and old podman versions have the Containers field with
+    # (at this stage), just the infra container.
+    # So we just grab the id from the full inspect
+    pod_inspect = json.loads(inspect_output.decode().strip())
+
+    # for $reasons, since podman 5, the output of `podman pod inspect $id`
+    # is no longer a dict, but a list of a dict 😡
+    infra_container = (
+        pod_inspect[0] if isinstance(pod_inspect, list) else pod_inspect
+    )["Containers"][0]
+
+    # old podman had the id of the containers with lowercase, new podman has
+    # uppercase => have to check for both :-(
+    return str(infra_container.get("Id", infra_container.get("id")))
+
+
 @dataclass
 class PodLauncher:
     """A context manager that creates, starts and destroys a pod with all of its
@@ -147,13 +172,7 @@ class PodLauncher:
 
         self._stack.callback(_delete_pod)
 
-        # we don't want to directly query the infra container id via
-        # podman pod inspect -f "{{.InfraContainerID}}"
-        # as that doesn't work on ancient podman versions
-        # But both new and old podman versions have the Containers field with
-        # (at this stage), just the infra container.
-        # So we just grab the id from the full inspect
-        pod_inspect = json.loads(
+        self._infra_container_id = infra_container_id_from_pod_inspect(
             check_output(
                 [
                     runtime.runner_binary,
@@ -162,14 +181,6 @@ class PodLauncher:
                     self._pod_id,
                 ]
             )
-            .decode()
-            .strip()
-        )
-        infra_container = pod_inspect["Containers"][0]
-        # old podman had the id of the containers with lowercase, new podman has
-        # uppercase => have to check for both :-(
-        self._infra_container_id = infra_container.get(
-            "Id", infra_container.get("id")
         )
 
         for container in self.pod.containers:
