@@ -13,6 +13,22 @@ Documentation:
 Internal changes:
 
 
+0.4.2 (10 April 2024)
+---------------------
+
+Breaking changes:
+
+
+Improvements and new features:
+- Add compatibility with podman 5
+
+
+Documentation:
+
+
+Internal changes:
+
+
 0.4.1 (2 April 2024)
 --------------------
 
