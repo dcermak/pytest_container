@@ -1,10 +1,11 @@
-# pylint: disable=missing-function-docstring,missing-module-docstring
+# pylint: disable=missing-function-docstring,missing-module-docstring,line-too-long,trailing-whitespace
 from pathlib import Path
 
 import pytest
 from pytest_container.container import DerivedContainer
 from pytest_container.container import ImageFormat
 from pytest_container.container import PortForwarding
+from pytest_container.pod import infra_container_id_from_pod_inspect
 from pytest_container.pod import Pod
 from pytest_container.pod import PodData
 from pytest_container.pod import PodLauncher
@@ -159,3 +160,162 @@ def test_launcher_pod_data_uninitialized() -> None:
         _ = PodLauncher(TEST_POD, Path("/")).pod_data
 
     assert "Pod has not been created" in str(rt_ctx.value)
+
+
+@pytest.mark.parametrize(
+    "inspect_output, expected_id",
+    (
+        # podman 1.6.4 (CentOS 7)
+        (
+            """{
+     "Config": {
+          "id": "2df19026a989667f0c9956723a45b25ccd32c0efaec19d375727d37622709040",
+          "name": "happy_beaver",
+          "hostname": "happy_beaver",
+          "labels": {
+               
+          },
+          "cgroupParent": "machine.slice",
+          "sharesCgroup": true,
+          "sharesIpc": true,
+          "sharesNet": true,
+          "sharesUts": true,
+          "infraConfig": {
+               "makeInfraContainer": true,
+               "infraPortBindings": null
+          },
+          "created": "2024-04-09T12:56:00.106588707Z",
+          "lockID": 0
+     },
+     "State": {
+          "cgroupPath": "machine.slice/machine-libpod_pod_2df19026a989667f0c9956723a45b25ccd32c0efaec19d375727d37622709040.slice",
+          "infraContainerID": "9c77fc16ce2cd7b7b648ac161596b8e2c4b66e6b388b1262de402bb76b2563a4"
+     },
+     "Containers": [
+          {
+               "id": "9c77fc16ce2cd7b7b648ac161596b8e2c4b66e6b388b1262de402bb76b2563a4",
+               "state": "configured"
+          }
+     ]
+}
+""",
+            "9c77fc16ce2cd7b7b648ac161596b8e2c4b66e6b388b1262de402bb76b2563a4",
+        ),
+        # podman < 5
+        (
+            """{
+     "Id": "759b48e641608d2dc8ecef44084d4671b9d127e4f39d9cdfa9c9bb326cfe64f0",
+     "Name": "git",
+     "Created": "2024-04-09T14:34:44.307240325+02:00",
+     "CreateCommand": [
+          "podman",
+          "pod",
+          "create",
+          "git"
+     ],
+     "ExitPolicy": "continue",
+     "State": "Created",
+     "Hostname": "",
+     "CreateCgroup": true,
+     "CgroupParent": "user.slice",
+     "CgroupPath": "user.slice/user-1000.slice/user@1000.service/user.slice/user-libpod_pod_759b48e641608d2dc8ecef44084d4671b9d127e4f39d9cdfa9c9bb326cfe64f0.slice",
+     "CreateInfra": true,
+     "InfraContainerID": "b4541110f6c7f06aec932b1e5381682df306d52b6eb080d44aa09c2865469584",
+     "InfraConfig": {
+          "PortBindings": {},
+          "HostNetwork": false,
+          "StaticIP": "",
+          "StaticMAC": "",
+          "NoManageResolvConf": false,
+          "DNSServer": null,
+          "DNSSearch": null,
+          "DNSOption": null,
+          "NoManageHosts": false,
+          "HostAdd": null,
+          "Networks": null,
+          "NetworkOptions": null,
+          "pid_ns": "private",
+          "userns": "host",
+          "uts_ns": "private"
+     },
+     "SharedNamespaces": [
+          "ipc",
+          "net",
+          "uts"
+     ],
+     "NumContainers": 1,
+     "Containers": [
+          {
+               "Id": "b4541110f6c7f06aec932b1e5381682df306d52b6eb080d44aa09c2865469584",
+               "Name": "759b48e64160-infra",
+               "State": "created"
+          }
+     ],
+     "LockNumber": 0
+}
+""",
+            "b4541110f6c7f06aec932b1e5381682df306d52b6eb080d44aa09c2865469584",
+        ),  # podman > 5
+        (
+            """[
+     {
+          "Id": "759b48e641608d2dc8ecef44084d4671b9d127e4f39d9cdfa9c9bb326cfe64f0",
+          "Name": "git",
+          "Created": "2024-04-09T14:34:44.307240325+02:00",
+          "CreateCommand": [
+               "podman",
+               "pod",
+               "create",
+               "git"
+          ],
+          "ExitPolicy": "continue",
+          "State": "Created",
+          "Hostname": "",
+          "CreateCgroup": true,
+          "CgroupParent": "user.slice",
+          "CgroupPath": "user.slice/user-1000.slice/user@1000.service/user.slice/user-libpod_pod_759b48e641608d2dc8ecef44084d4671b9d127e4f39d9cdfa9c9bb326cfe64f0.slice",
+          "CreateInfra": true,
+          "InfraContainerID": "b4541110f6c7f06aec932b1e5381682df306d52b6eb080d44aa09c2865469584",
+          "InfraConfig": {
+               "PortBindings": {},
+               "HostNetwork": false,
+               "StaticIP": "",
+               "StaticMAC": "",
+               "NoManageResolvConf": false,
+               "DNSServer": null,
+               "DNSSearch": null,
+               "DNSOption": null,
+               "NoManageHosts": false,
+               "HostAdd": null,
+               "Networks": null,
+               "NetworkOptions": null,
+               "pid_ns": "private",
+               "userns": "host",
+               "uts_ns": "private"
+          },
+          "SharedNamespaces": [
+               "net",
+               "uts",
+               "ipc"
+          ],
+          "NumContainers": 1,
+          "Containers": [
+               {
+                    "Id": "b4541110f6c7f06aec932b1e5381682df306d52b6eb080d44aa09c2865469584",
+                    "Name": "759b48e64160-infra",
+                    "State": "created"
+               }
+          ],
+          "LockNumber": 0
+     }
+]
+""",
+            "b4541110f6c7f06aec932b1e5381682df306d52b6eb080d44aa09c2865469584",
+        ),
+    ),
+)
+def test_get_infra_container_id(inspect_output: str, expected_id: str) -> None:
+    assert (
+        infra_container_id_from_pod_inspect(inspect_output.encode())
+        == expected_id
+    )

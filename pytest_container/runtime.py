@@ -502,24 +502,28 @@ class PodmanRuntime(OciRuntimeBase):
     def inspect_container(self, container_id: str) -> ContainerInspect:
         inspect = self._get_container_inspect(container_id)
 
-        Conf = inspect["Config"]
+        config = inspect["Config"]
         healthcheck = None
-        if "Healthcheck" in Conf:
+        if "Healthcheck" in config:
             healthcheck = HealthCheck.from_container_inspect(
-                Conf["Healthcheck"]
+                config["Healthcheck"]
             )
 
+        entrypoint = config.get("Entrypoint")
+        if isinstance(entrypoint, str):
+            entrypoint = entrypoint.split()
+        if not entrypoint:
+            entrypoint = []
+
         conf = Config(
-            user=Conf["User"],
-            tty=Conf["Tty"],
-            cmd=Conf["Cmd"],
-            image=Conf["Image"],
-            entrypoint=Conf["Entrypoint"].split()
-            if Conf["Entrypoint"]
-            else None,
-            labels=Conf["Labels"],
-            env=dict([env.split("=", maxsplit=1) for env in Conf["Env"]]),
-            stop_signal=self._stop_signal_from_inspect_conf(Conf),
+            user=config["User"],
+            tty=config["Tty"],
+            cmd=config["Cmd"],
+            image=config["Image"],
+            entrypoint=entrypoint,
+            labels=config["Labels"],
+            env=dict([env.split("=", maxsplit=1) for env in config["Env"]]),
+            stop_signal=self._stop_signal_from_inspect_conf(config),
             healthcheck=healthcheck,
         )
 
@@ -584,25 +588,25 @@ class DockerRuntime(OciRuntimeBase):
     def inspect_container(self, container_id: str) -> ContainerInspect:
         inspect = self._get_container_inspect(container_id)
 
-        Conf = inspect["Config"]
-        if Conf.get("Env"):
-            env = dict([env.split("=", maxsplit=1) for env in Conf["Env"]])
+        config = inspect["Config"]
+        if config.get("Env"):
+            env = dict([env.split("=", maxsplit=1) for env in config["Env"]])
         else:
             env = {}
         healthcheck = None
-        if "Healthcheck" in Conf:
+        if "Healthcheck" in config:
             healthcheck = HealthCheck.from_container_inspect(
-                Conf["Healthcheck"]
+                config["Healthcheck"]
             )
 
         conf = Config(
-            user=Conf["User"],
-            tty=Conf["Tty"],
-            cmd=Conf["Cmd"],
-            image=Conf["Image"],
-            entrypoint=Conf["Entrypoint"],
-            labels=Conf["Labels"],
-            stop_signal=self._stop_signal_from_inspect_conf(Conf),
+            user=config["User"],
+            tty=config["Tty"],
+            cmd=config["Cmd"],
+            image=config["Image"],
+            entrypoint=config["Entrypoint"],
+            labels=config["Labels"],
+            stop_signal=self._stop_signal_from_inspect_conf(config),
             env=env,
             healthcheck=healthcheck,
         )
