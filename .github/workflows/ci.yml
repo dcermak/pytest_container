@@ -97,7 +97,7 @@ jobs:
           [[ $(${{ matrix.container_runtime }} volume ls -q|wc -l) = "0" ]]
 
       - name: Upload coverage to Codecov
-        uses: codecov/codecov-action@v3
+        uses: codecov/codecov-action@v4
         with:
           fail_ci_if_error: true
           token: ${{ secrets.CODECOV_TOKEN }}
@@ -206,7 +206,7 @@ jobs:
           [[ $(${{ matrix.container_runtime }} volume ls -q|wc -l) = "0" ]]
 
       - name: Upload coverage to Codecov
-        uses: codecov/codecov-action@v3
+        uses: codecov/codecov-action@v4
         with:
           fail_ci_if_error: true
           token: ${{ secrets.CODECOV_TOKEN }}
