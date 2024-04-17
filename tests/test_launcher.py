@@ -1,5 +1,6 @@
 # pylint: disable=missing-function-docstring,missing-module-docstring
 import os
+import re
 import subprocess
 import tempfile
 from contextlib import ExitStack
@@ -183,7 +184,13 @@ def test_launcher_fails_on_failing_healthcheck(
             launcher.launch_container()
             assert False, "This code must be unreachable"
 
-    assert "did not become healthy within" in str(runtime_err_ctx.value)
+    err_msg_regex = re.compile(
+        r"Container (\d|\w*) did not become healthy within (\d+\.\d+s), took (\d+.\d+s) and state is (\w+)"
+    )
+    err_msg_match = err_msg_regex.match(str(runtime_err_ctx.value))
+    assert (
+        err_msg_match
+    ), f"Error message '{str(runtime_err_ctx.value)}' does not match expected pattern {err_msg_regex}"
 
     # the container must not exist anymore
     err_msg = host.run_expect(

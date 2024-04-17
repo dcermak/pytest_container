@@ -1180,8 +1180,8 @@ class ContainerLauncher:
                 if delta > timeout:
                     raise RuntimeError(
                         f"Container {self._container_id} did not become healthy within "
-                        f"{1000 * timeout.total_seconds()}ms, took {delta} and "
-                        f"state is {str(health)}"
+                        f"{timeout.total_seconds()}s, took "
+                        f"{delta.total_seconds()}s and state is {str(health)}"
                     )
                 time.sleep(max(0.5, timeout.total_seconds() / 10))
 
