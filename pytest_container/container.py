@@ -1157,13 +1157,18 @@ class ContainerLauncher:
 
         if timeout is not None and timeout > timedelta(seconds=0):
             _logger.debug(
-                "Container has a healthcheck defined, will wait at most %s ms",
-                timeout,
+                "Container has a healthcheck defined, will wait at most %s s",
+                timeout.total_seconds(),
             )
             while True:
-                health = self.container_runtime.get_container_health(
+                inspect = self.container_runtime.inspect_container(
                     self._container_id
                 )
+                if not inspect.state.running:
+                    raise RuntimeError(
+                        f"Container {self._container_id} is not running, got {inspect.state.status}"
+                    )
+                health = inspect.state.health
                 _logger.debug("Container has the health status %s", health)
 
                 if health in (
@@ -1175,8 +1180,8 @@ class ContainerLauncher:
                 if delta > timeout:
                     raise RuntimeError(
                         f"Container {self._container_id} did not become healthy within "
-                        f"{1000 * timeout.total_seconds()}ms, took {delta} and "
-                        f"state is {str(health)}"
+                        f"{timeout.total_seconds()}s, took "
+                        f"{delta.total_seconds()}s and state is {str(health)}"
                     )
                 time.sleep(max(0.5, timeout.total_seconds() / 10))
 

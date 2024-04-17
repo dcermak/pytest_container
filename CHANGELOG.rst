@@ -6,6 +6,11 @@ Breaking changes:
 
 Improvements and new features:
 
+- Don't wait for crashed/stopped containers to become healthy (`gh#207
+  <https://github.com/dcermak/pytest_container/issues/207>`_)
+
+- Improve logging and error messages involving ``HEALTHCHECK``
+
 
 Documentation:
 
@@ -20,6 +25,7 @@ Breaking changes:
 
 
 Improvements and new features:
+
 - Add compatibility with podman 5
 
 

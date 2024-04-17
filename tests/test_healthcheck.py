@@ -1,10 +1,13 @@
 # pylint: disable=missing-function-docstring,missing-module-docstring
+import logging
+from datetime import datetime
 from datetime import timedelta
 from time import sleep
 from typing import Optional
 
 import pytest
 from pytest_container.container import ContainerData
+from pytest_container.container import ContainerLauncher
 from pytest_container.container import DerivedContainer
 from pytest_container.container import ImageFormat
 from pytest_container.runtime import ContainerHealth
@@ -45,6 +48,14 @@ HEALTHCHECK {healtcheck_args} CMD false
 
 CONTAINER_WITH_FAILING_HEALTHCHECK = _failing_healthcheck_container(
     "--retries=2 --interval=2s"
+)
+
+CONTAINER_THAT_FAILS_TO_LAUNCH_WITH_FAILING_HEALTHCHECK = DerivedContainer(
+    base=LEAP_URL,
+    image_format=ImageFormat.DOCKER,
+    containerfile="""ENTRYPOINT ["/bin/false"]
+HEALTHCHECK --retries=5 --timeout=10s --interval=10s CMD false
+""",
 )
 
 
@@ -151,4 +162,54 @@ def test_image_deriving_from_healthcheck_has_healthcheck(
     assert (
         container_runtime.get_container_health(container.container_id)
         == ContainerHealth.HEALTHY
+    )
+
+
+def test_container_that_doesnt_run_is_reported_unhealthy(
+    container_runtime: OciRuntimeBase, pytestconfig: pytest.Config
+) -> None:
+    before = datetime.now()
+    with pytest.raises(RuntimeError) as rt_err_ctx:
+        with ContainerLauncher(
+            container=CONTAINER_THAT_FAILS_TO_LAUNCH_WITH_FAILING_HEALTHCHECK,
+            container_runtime=container_runtime,
+            rootdir=pytestconfig.rootpath,
+        ) as launcher:
+            launcher.launch_container()
+            assert False, "The container must fail to launch"
+    after = datetime.now()
+
+    time_to_fail = after - before
+    assert time_to_fail < timedelta(
+        seconds=15
+    ), f"container must fail quickly (threshold 15s), but it took {time_to_fail.total_seconds()}"
+    assert "not running, got " in str(rt_err_ctx.value)
+
+
+def test_container_launcher_logs_correct_healthcheck_timeout(
+    container_runtime: OciRuntimeBase,
+    pytestconfig: pytest.Config,
+    caplog: pytest.LogCaptureFixture,
+) -> None:
+    caplog.set_level(logging.DEBUG)
+    ctr = DerivedContainer(
+        base=LEAP_URL,
+        image_format=ImageFormat.DOCKER,
+        containerfile="HEALTHCHECK --retries=5 --timeout=10s --interval=10s CMD true",
+    )
+    with ContainerLauncher(
+        container=ctr,
+        container_runtime=container_runtime,
+        rootdir=pytestconfig.rootpath,
+    ) as launcher:
+        launcher.launch_container()
+        assert launcher.container_data.inspect.config.healthcheck
+        timeout = (
+            launcher.container_data.inspect.config.healthcheck.max_wait_time
+        )
+        assert timeout == timedelta(seconds=60)
+
+    assert (
+        "Container has a healthcheck defined, will wait at most 60.0 s"
+        in caplog.text
     )
