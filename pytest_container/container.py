@@ -1161,9 +1161,14 @@ class ContainerLauncher:
                 timeout,
             )
             while True:
-                health = self.container_runtime.get_container_health(
+                inspect = self.container_runtime.inspect_container(
                     self._container_id
                 )
+                if not inspect.state.running:
+                    raise RuntimeError(
+                        f"Container {self._container_id} is not running, got {inspect.state.status}"
+                    )
+                health = inspect.state.health
                 _logger.debug("Container has the health status %s", health)
 
                 if health in (
