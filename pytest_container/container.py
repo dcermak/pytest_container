@@ -1157,8 +1157,8 @@ class ContainerLauncher:
 
         if timeout is not None and timeout > timedelta(seconds=0):
             _logger.debug(
-                "Container has a healthcheck defined, will wait at most %s ms",
-                timeout,
+                "Container has a healthcheck defined, will wait at most %s s",
+                timeout.total_seconds(),
             )
             while True:
                 inspect = self.container_runtime.inspect_container(
