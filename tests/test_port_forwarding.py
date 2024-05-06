@@ -186,7 +186,7 @@ _INTERFACES = [
     for name in LOCALHOST.interface.names()
     if name[:2] in ("en", "et", "wl")
 ]
-_ADDRESES = [
+_ADDRESSES = [
     addr
     for addr in itertools.chain.from_iterable(
         LOCALHOST.interface(interface).addresses for interface in _INTERFACES
@@ -198,7 +198,7 @@ _ADDRESES = [
 @pytest.mark.parametrize(
     "addr,container",
     zip(
-        _ADDRESES,
+        _ADDRESSES,
         [
             DerivedContainer(
                 base=WEB_SERVER,
@@ -206,14 +206,14 @@ _ADDRESES = [
                     PortForwarding(container_port=8000, bind_ip=addr)
                 ],
             )
-            for addr in _ADDRESES
+            for addr in _ADDRESSES
         ],
     ),
     indirect=["container"],
 )
 def test_bind_to_address(addr: str, container: ContainerData, host) -> None:
     """address"""
-    for host_addr in _ADDRESES:
+    for host_addr in _ADDRESSES:
         cmd = f"{_CURL} http://{host_addr}:{container.forwarded_ports[0].host_port}"
         if addr == host_addr:
             assert (

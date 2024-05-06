@@ -213,7 +213,7 @@ LEAP_WITH_BIND_MOUNT_AND_VOLUME = DerivedContainer(
     [LEAP_WITH_BIND_MOUNT_AND_VOLUME for _ in range(10)],
     indirect=True,
 )
-def test_concurent_container_volumes(container_per_test: ContainerData):
+def test_concurrent_container_volumes(container_per_test: ContainerData):
     """Test that containers can be launched using the same ContainerVolume or
     BindMount and do not influence each other.
 
