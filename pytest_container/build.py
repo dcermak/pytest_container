@@ -205,7 +205,7 @@ class MultiStageBuild:
     ) -> str:
         """Run the multistage build in the given ``tmp_path`` using the supplied
         ``runtime``. This function requires :py:meth:`prepare_build` to be run
-        beforehands.
+        beforehand.
 
         Args:
             tmp_path: the path in which the build was prepared.
