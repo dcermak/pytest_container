@@ -20,7 +20,7 @@ from dataclasses import dataclass
 from dataclasses import field
 from datetime import datetime
 from datetime import timedelta
-from hashlib import md5
+from hashlib import sha3_256
 from os.path import exists
 from os.path import isabs
 from os.path import join
@@ -39,11 +39,9 @@ from typing import Type
 from typing import Union
 from uuid import uuid4
 
+import _pytest.mark
 import deprecation
 import testinfra
-from _pytest.mark import Mark
-from _pytest.mark import MarkDecorator
-from _pytest.mark import ParameterSet
 from filelock import BaseFileLock
 from filelock import FileLock
 from pytest import param
@@ -619,7 +617,12 @@ class ContainerBase:
                 all_elements.append("".join(value.values()))
             else:
                 all_elements.append(str(value))
-        return f"{md5((''.join(all_elements)).encode()).hexdigest()}.lock"
+
+        # Use a FIPS supported algorithm in here to avoid potential issues on
+        # hosts running in FIPS mode
+        # Unfortunately, we cannot use the usedforsecurity=False parameter, as
+        # that is not available on old python versions that we still support
+        return f"{sha3_256((''.join(all_elements)).encode()).hexdigest()}.lock"
 
 
 class ContainerBaseABC(ABC):
@@ -898,8 +901,12 @@ class ContainerData:
 
 def container_to_pytest_param(
     container: ContainerBase,
-    marks: Optional[Union[Collection[MarkDecorator], MarkDecorator]] = None,
-) -> ParameterSet:
+    marks: Optional[
+        Union[
+            Collection[_pytest.mark.MarkDecorator], _pytest.mark.MarkDecorator
+        ]
+    ] = None,
+) -> _pytest.mark.ParameterSet:
     """Converts a subclass of :py:class:`~pytest_container.container.ContainerBase`
     (:py:class:`~pytest_container.container.Container` or
     :py:class:`~pytest_container.container.DerivedContainer`) into a
@@ -930,19 +937,21 @@ def container_and_marks_from_pytest_param(
 
 @overload
 def container_and_marks_from_pytest_param(
-    ctr_or_param: ParameterSet,
+    ctr_or_param: _pytest.mark.ParameterSet,
 ) -> Tuple[
     Union[Container, DerivedContainer],
-    Optional[Collection[Union[MarkDecorator, Mark]]],
+    Optional[Collection[Union[_pytest.mark.MarkDecorator, _pytest.mark.Mark]]],
 ]:
     ...
 
 
 def container_and_marks_from_pytest_param(
-    ctr_or_param: Union[ParameterSet, Container, DerivedContainer],
+    ctr_or_param: Union[
+        _pytest.mark.ParameterSet, Container, DerivedContainer
+    ],
 ) -> Tuple[
     Union[Container, DerivedContainer],
-    Optional[Collection[Union[MarkDecorator, Mark]]],
+    Optional[Collection[Union[_pytest.mark.MarkDecorator, _pytest.mark.Mark]]],
 ]:
     """Extracts the :py:class:`~pytest_container.container.Container` or
     :py:class:`~pytest_container.container.DerivedContainer` and the
@@ -973,7 +982,7 @@ def container_and_marks_from_pytest_param(
     details="use container_and_marks_from_pytest_param instead",
 )  # type: ignore
 def container_from_pytest_param(
-    param: Union[ParameterSet, Container, DerivedContainer],
+    param: Union[_pytest.mark.ParameterSet, Container, DerivedContainer],
 ) -> Union[Container, DerivedContainer]:
     """Extracts the :py:class:`~pytest_container.container.Container` or
     :py:class:`~pytest_container.container.DerivedContainer` from a
