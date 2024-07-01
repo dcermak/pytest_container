@@ -6,6 +6,9 @@ Breaking changes:
 
 Improvements and new features:
 
+- Don't use non-FIPS hashes for generating the lockfile (`gh#213
+  <https://github.com/dcermak/pytest_container/issues/213>`_)
+
 - Don't wait for crashed/stopped containers to become healthy (`gh#207
   <https://github.com/dcermak/pytest_container/issues/207>`_)
 

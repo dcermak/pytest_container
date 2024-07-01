@@ -20,7 +20,7 @@ from dataclasses import dataclass
 from dataclasses import field
 from datetime import datetime
 from datetime import timedelta
-from hashlib import md5
+from hashlib import sha3_256
 from os.path import exists
 from os.path import isabs
 from os.path import join
@@ -619,7 +619,12 @@ class ContainerBase:
                 all_elements.append("".join(value.values()))
             else:
                 all_elements.append(str(value))
-        return f"{md5((''.join(all_elements)).encode()).hexdigest()}.lock"
+
+        # Use a FIPS supported algorithm in here to avoid potential issues on
+        # hosts running in FIPS mode
+        # Unfortunately, we cannot use the usedforsecurity=False parameter, as
+        # that is not available on old python versions that we still support
+        return f"{sha3_256((''.join(all_elements)).encode()).hexdigest()}.lock"
 
 
 class ContainerBaseABC(ABC):
