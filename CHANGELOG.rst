@@ -6,6 +6,9 @@ Breaking changes:
 
 Improvements and new features:
 
+- Expose the working directory via
+  :py:attr:`~pytest_container.inspect.Config.workingdir`
+
 - Don't use non-FIPS hashes for generating the lockfile (`gh#213
   <https://github.com/dcermak/pytest_container/issues/213>`_)
 

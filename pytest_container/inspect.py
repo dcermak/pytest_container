@@ -231,6 +231,9 @@ class Config:
     #:
     stop_signal: Union[int, str]
 
+    #: The working directory of the container
+    workingdir: str
+
     #: optional healthcheck defined for the underlying container image
     healthcheck: Optional[HealthCheck] = None
 
