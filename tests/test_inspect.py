@@ -23,6 +23,7 @@ RUN useradd opensuse
 USER opensuse
 ENTRYPOINT ["/bin/bash", "-e"]
 ENV HOME=/src/
+WORKDIR /foobar/
 ENV MY_VAR=
 ENV SUFFIX_NAME=dc=example,dc=com
 CMD ["/bin/sh"]
@@ -66,6 +67,7 @@ def test_inspect(
 
     assert inspect.config.image == expected_img
     assert inspect.config.cmd == ["/bin/sh"]
+    assert inspect.config.workingdir == "/foobar/"
 
     assert (
         not inspect.state.paused
@@ -82,8 +84,17 @@ def test_inspect(
 
     assert inspect.network.ip_address or "" == host.check_output(
         f"{container_runtime.runner_binary} inspect --format "
-        f'"{{{{ .NetworkSettings.IPAddress }}}}" {_CTR_NAME}'
+        '"{{ .NetworkSettings.IPAddress }}" ' + _CTR_NAME
     )
+
+
+@pytest.mark.parametrize("container", [LEAP], indirect=True)
+def test_inspect_unset_workdir(container: ContainerData) -> None:
+    """If the container has no workdir set, check that it defaults to ``/`` as
+    docker sometimes omits the workingdir setting.
+
+    """
+    assert container.inspect.config.workingdir == "/"
 
 
 @pytest.mark.parametrize(

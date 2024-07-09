@@ -522,6 +522,7 @@ class PodmanRuntime(OciRuntimeBase):
             image=config["Image"],
             entrypoint=entrypoint,
             labels=config["Labels"],
+            workingdir=config["WorkingDir"],
             env=dict([env.split("=", maxsplit=1) for env in config["Env"]]),
             stop_signal=self._stop_signal_from_inspect_conf(config),
             healthcheck=healthcheck,
@@ -606,6 +607,9 @@ class DockerRuntime(OciRuntimeBase):
             image=config["Image"],
             entrypoint=config["Entrypoint"],
             labels=config["Labels"],
+            # docker sometimes omits the working directory,
+            # then it defaults to
+            workingdir=config["WorkingDir"] or "/",
             stop_signal=self._stop_signal_from_inspect_conf(config),
             env=env,
             healthcheck=healthcheck,
