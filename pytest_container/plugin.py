@@ -7,10 +7,13 @@ from subprocess import PIPE
 from subprocess import run
 from typing import Callable
 from typing import Generator
+from typing import Union
 
+from pytest_container.container import Container
 from pytest_container.container import container_and_marks_from_pytest_param
 from pytest_container.container import ContainerData
 from pytest_container.container import ContainerLauncher
+from pytest_container.container import DerivedContainer
 from pytest_container.helpers import get_extra_build_args
 from pytest_container.helpers import get_extra_pod_create_args
 from pytest_container.helpers import get_extra_run_args
@@ -77,13 +80,12 @@ def _create_auto_container_fixture(
         pytest_generate_tests.
         """
 
-        try:
-            container, _ = container_and_marks_from_pytest_param(request.param)
-        except AttributeError as attr_err:
-            raise RuntimeError(
-                "This fixture was not parametrized correctly, "
-                "did you forget to call `auto_container_parametrize` in `pytest_generate_tests`?"
-            ) from attr_err
+        container: Union[DerivedContainer, Container] = (
+            request.param
+            if isinstance(request.param, (DerivedContainer, Container))
+            else request.param[0]
+        )
+        assert isinstance(container, (DerivedContainer, Container))
         _logger.debug("Requesting the container %s", str(container))
 
         if scope == "session" and container.singleton:

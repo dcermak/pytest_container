@@ -1,17 +1,27 @@
 """Module for managing podman pods."""
 import contextlib
 import json
+from abc import ABCMeta
 from dataclasses import dataclass
 from dataclasses import field
 from pathlib import Path
 from subprocess import check_output
 from types import TracebackType
+from typing import Collection
 from typing import List
 from typing import Optional
+
+try:
+    from typing import Self
+except ImportError:
+    from typing_extensions import Self
+from typing import Tuple
 from typing import Type
 from typing import Union
 
 from _pytest.mark import ParameterSet
+from pytest import Mark
+from pytest import MarkDecorator
 from pytest_container.container import Container
 from pytest_container.container import ContainerData
 from pytest_container.container import ContainerLauncher
@@ -24,8 +34,18 @@ from pytest_container.runtime import get_selected_runtime
 from pytest_container.runtime import PodmanRuntime
 
 
+class _HackMROMeta(ABCMeta):
+    def mro(cls):
+        return (
+            cls,
+            tuple,
+            ParameterSet,
+            object,
+        )
+
+
 @dataclass
-class Pod:
+class Pod(ParameterSet, metaclass=_HackMROMeta):
     """A pod is a collection of containers that share the same network and port
     forwards. Currently only :command:`podman` supports creating pods.
 
@@ -39,6 +59,30 @@ class Pod:
 
     #: ports exposed by the pod
     forwarded_ports: List[PortForwarding] = field(default_factory=list)
+
+    _marks: Collection[Union[MarkDecorator, Mark]] = field(
+        default_factory=list
+    )
+
+    @property
+    def values(self) -> Tuple[Self]:
+        return (self,)
+
+    @property
+    def marks(self) -> Collection[Union[MarkDecorator, Mark]]:
+        marks = tuple(self._marks)
+        for ctr in self.containers:
+            marks += tuple(ctr.marks)
+        return marks
+
+    @property
+    def id(self) -> str:
+        return "Pod with containers: " + ",".join(
+            str(c) for c in self.containers
+        )
+
+    def __bool__(self) -> bool:
+        return True
 
 
 @dataclass(frozen=True)
