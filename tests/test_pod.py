@@ -41,15 +41,25 @@ PROXY_POD = Pod(
 
 
 def test_pod_launcher(
-    container_runtime: OciRuntimeBase, pytestconfig: pytest.Config
+    tmp_path: Path,
+    container_runtime: OciRuntimeBase,
+    pytestconfig: pytest.Config,
 ) -> None:
     if container_runtime != PodmanRuntime():
         pytest.skip("pods only work with podman")
 
-    with PodLauncher(pod=TEST_POD, rootdir=pytestconfig.rootpath) as launcher:
+    pidfile_path = str(tmp_path / "pidfile")
+    with PodLauncher(
+        pod=TEST_POD,
+        rootdir=pytestconfig.rootpath,
+        extra_pod_create_args=["--pod-id-file", pidfile_path],
+    ) as launcher:
         launcher.launch_pod()
         pod_data = launcher.pod_data
         assert pod_data.pod_id and pod_data.infra_container_id
+
+        with open(pidfile_path, encoding="utf-8") as pyproject:
+            assert pod_data.pod_id == pyproject.read()
 
         assert (
             len(pod_data.forwarded_ports) == 2

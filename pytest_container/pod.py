@@ -142,8 +142,10 @@ class PodLauncher:
 
         """
         runtime = get_selected_runtime()
-        create_cmd = [runtime.runner_binary, "pod", "create"] + (
-            ["--name", self.pod_name] if self.pod_name else []
+        create_cmd = (
+            [runtime.runner_binary, "pod", "create"]
+            + (["--name", self.pod_name] if self.pod_name else [])
+            + self.extra_pod_create_args
         )
 
         if self.pod.forwarded_ports:
