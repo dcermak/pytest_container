@@ -316,3 +316,13 @@ def test_multistage_build_target(
                 "cat /etc/os-release",
             ).stdout.strip()
         )
+
+
+LEAP_THAT_ECHOES_STUFF = DerivedContainer(
+    base=LEAP, containerfile="""CMD ["echo", "foobar"]"""
+)
+
+
+@pytest.mark.parametrize("container", [LEAP_THAT_ECHOES_STUFF], indirect=True)
+def test_container_logs(container: ContainerData) -> None:
+    assert "foobar" in container.read_container_logs()

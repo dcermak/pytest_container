@@ -6,6 +6,10 @@ Breaking changes:
 
 Improvements and new features:
 
+- Add the function
+  :py:func:`~pytest_container.container.ContainerData.read_container_logs` to
+  get access to the logs of the running container
+
 - Expose the working directory via
   :py:attr:`~pytest_container.inspect.Config.workingdir`
 
