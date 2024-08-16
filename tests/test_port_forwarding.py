@@ -131,7 +131,7 @@ def test_port_forward_set_up(auto_container: ContainerData, host):
 
     assert (
         host.check_output(
-            f"{_CURL} localhost:{auto_container.forwarded_ports[0].host_port}",
+            f"{_CURL} 0.0.0.0:{auto_container.forwarded_ports[0].host_port}",
         ).strip()
         == "Hello Green World!"
     )
@@ -163,15 +163,16 @@ def test_multiple_open_ports(container: ContainerData, number: int, host):
         and container.forwarded_ports[0].container_port == 80
     )
     assert f"Test page {number}" in host.check_output(
-        f"{_CURL} localhost:{container.forwarded_ports[0].host_port}"
+        f"{_CURL} 0.0.0.0:{container.forwarded_ports[0].host_port}"
     )
 
     assert (
         container.forwarded_ports[1].protocol == NetworkProtocol.TCP
         and container.forwarded_ports[1].container_port == 443
     )
+
     assert f"Test page {number}" in host.check_output(
-        f"curl --insecure https://localhost:{container.forwarded_ports[1].host_port}",
+        f"curl --insecure https://0.0.0.0:{container.forwarded_ports[1].host_port}",
     )
 
 
@@ -243,7 +244,7 @@ def test_container_bind_to_host_port(
 
         assert launcher.container_data.forwarded_ports[0].host_port == PORT
         assert (
-            host.check_output(f"{_CURL} http://localhost:{PORT}").strip()
+            host.check_output(f"{_CURL} http://0.0.0.0:{PORT}").strip()
             == "Hello Green World!"
         )
 
@@ -273,6 +274,6 @@ def test_pod_bind_to_host_port(
 
         assert launcher.pod_data.forwarded_ports[0].host_port == PORT
         assert (
-            host.check_output(f"{_CURL} http://localhost:{PORT}").strip()
+            host.check_output(f"{_CURL} http://0.0.0.0:{PORT}").strip()
             == "Hello Green World!"
         )
