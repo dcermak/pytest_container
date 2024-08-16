@@ -194,7 +194,7 @@ def test_auto_container_fixture(auto_container: ContainerData):
     "container", [BUSYBOX_WITH_ENTRYPOINT], indirect=["container"]
 )
 def test_custom_entry_point(container: ContainerData):
-    container.connection.run_expect([0], "true")
+    container.connection.check_output("true")
 
 
 @pytest.mark.parametrize(
@@ -209,7 +209,7 @@ def test_default_entry_point(container: ContainerData):
 @pytest.mark.parametrize("container", [CONTAINER_THAT_STOPS], indirect=True)
 def test_container_that_stops(container: ContainerData) -> None:
     # it should just be alive
-    container.connection.run_expect([0], "true")
+    container.connection.check_output("true")
 
 
 def test_container_size(
@@ -280,10 +280,9 @@ def test_multistage_build_target(
         extra_build_args=get_extra_build_args(pytestconfig),
     )
     assert (
-        LOCALHOST.run_expect(
-            [0],
+        LOCALHOST.check_output(
             f"{container_runtime.runner_binary} run --rm {first_target}",
-        ).stdout.strip()
+        ).strip()
         == "foobar"
     )
 
@@ -297,10 +296,9 @@ def test_multistage_build_target(
 
     assert first_target != second_target
     assert (
-        LOCALHOST.run_expect(
-            [0],
+        LOCALHOST.check_output(
             f"{container_runtime.runner_binary} run --rm {second_target} /bin/test.sh",
-        ).stdout.strip()
+        ).strip()
         == "foobar"
     )
 
@@ -310,11 +308,10 @@ def test_multistage_build_target(
     ):
         assert (
             distro
-            in LOCALHOST.run_expect(
-                [0],
+            in LOCALHOST.check_output(
                 f"{container_runtime.runner_binary} run --rm --entrypoint= {target} "
                 "cat /etc/os-release",
-            ).stdout.strip()
+            ).strip()
         )
 
 
