@@ -11,6 +11,7 @@ from pytest_container.build import MultiStageBuild
 from pytest_container.container import ContainerData
 from pytest_container.container import ContainerLauncher
 from pytest_container.container import EntrypointSelection
+from pytest_container.inspect import PortForwarding
 from pytest_container.runtime import LOCALHOST
 from pytest_container.runtime import OciRuntimeBase
 
@@ -46,6 +47,19 @@ SLEEP_CONTAINER = DerivedContainer(
 )
 
 LEAP2 = DerivedContainer(base=LEAP)
+
+LEAP_WITH_BIN = DerivedContainer(
+    base=LEAP,
+    containerfile="""RUN zypper -n in system-user-bin
+USER bin
+""",
+)
+
+LEAP_WITH_BIN_AND_CMD = DerivedContainer(
+    base=LEAP_WITH_BIN,
+    containerfile="""CMD ["/usr/bin/sleep", "3600"]""",
+    forwarded_ports=[PortForwarding(container_port=8080)],
+)
 
 CONTAINER_IMAGES = [LEAP, LEAP_WITH_MAN, LEAP_WITH_MAN_AND_LUA]
 
@@ -212,6 +226,32 @@ def test_container_size(
         - container_runtime.get_image_size(BUSYBOX_WITH_GARBAGE)
         < 4096 * 1024 * 1024
     )
+
+
+@pytest.mark.parametrize(
+    "container",
+    (LEAP_WITH_BIN, LEAP_WITH_BIN_AND_CMD),
+    indirect=True,
+)
+def test_derived_containers_use_correct_user(
+    container: ContainerData,
+) -> None:
+    assert container.connection.check_output("id -nu").strip() == "bin"
+    assert container.inspect.config.user == "bin"
+
+
+@pytest.mark.parametrize(
+    "container",
+    [
+        DerivedContainer(base=ctr, extra_launch_args=["--user", "root"])
+        for ctr in (LEAP_WITH_BIN, LEAP_WITH_BIN_AND_CMD)
+    ],
+    indirect=True,
+)
+def test_derived_container_respects_launch_args(
+    container: ContainerData,
+) -> None:
+    assert int(container.connection.check_output("id -u").strip()) == 0
 
 
 def test_multistage_containerfile() -> None:
