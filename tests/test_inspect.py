@@ -1,5 +1,6 @@
 # pylint: disable=missing-function-docstring,missing-module-docstring,line-too-long
 import json
+from pathlib import Path
 from typing import List
 
 import pytest
@@ -67,7 +68,7 @@ def test_inspect(
 
     assert inspect.config.image == expected_img
     assert inspect.config.cmd == ["/bin/sh"]
-    assert inspect.config.workingdir == "/foobar/"
+    assert Path("/foobar/") == inspect.config.workingdir
 
     assert (
         not inspect.state.paused
@@ -94,7 +95,7 @@ def test_inspect_unset_workdir(container: ContainerData) -> None:
     docker sometimes omits the workingdir setting.
 
     """
-    assert container.inspect.config.workingdir == "/"
+    assert container.inspect.config.workingdir == Path("/")
 
 
 @pytest.mark.parametrize(
