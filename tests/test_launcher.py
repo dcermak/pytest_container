@@ -363,7 +363,6 @@ def test_launcher_unlocks_on_preparation_failure(
     indirect=["container"],
 )
 def test_extra_command_args(container: ContainerData, port_num: int) -> None:
-    print(id(container.container))
     assert container.connection.check_output(
         f"curl http://localhost:{port_num}"
     )
