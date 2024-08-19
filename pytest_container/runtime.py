@@ -11,6 +11,7 @@ from abc import abstractmethod
 from dataclasses import dataclass
 from dataclasses import field
 from os import getenv
+from pathlib import Path
 from subprocess import check_output
 from typing import Any
 from typing import Callable
@@ -522,7 +523,7 @@ class PodmanRuntime(OciRuntimeBase):
             image=config["Image"],
             entrypoint=entrypoint,
             labels=config["Labels"],
-            workingdir=config["WorkingDir"],
+            workingdir=Path(config["WorkingDir"]),
             env=dict([env.split("=", maxsplit=1) for env in config["Env"]]),
             stop_signal=self._stop_signal_from_inspect_conf(config),
             healthcheck=healthcheck,
@@ -609,7 +610,7 @@ class DockerRuntime(OciRuntimeBase):
             labels=config["Labels"],
             # docker sometimes omits the working directory,
             # then it defaults to
-            workingdir=config["WorkingDir"] or "/",
+            workingdir=Path(config["WorkingDir"] or "/"),
             stop_signal=self._stop_signal_from_inspect_conf(config),
             env=env,
             healthcheck=healthcheck,

@@ -7,6 +7,7 @@ import socket
 from dataclasses import dataclass
 from dataclasses import field
 from datetime import timedelta
+from pathlib import Path
 from typing import Dict
 from typing import List
 from typing import Optional
@@ -232,7 +233,7 @@ class Config:
     stop_signal: Union[int, str]
 
     #: The working directory of the container
-    workingdir: str
+    workingdir: Path
 
     #: optional healthcheck defined for the underlying container image
     healthcheck: Optional[HealthCheck] = None
