@@ -15,6 +15,7 @@ import tempfile
 import time
 import warnings
 from abc import ABC
+from abc import ABCMeta
 from abc import abstractmethod
 from dataclasses import dataclass
 from dataclasses import field
@@ -34,6 +35,11 @@ from typing import Dict
 from typing import List
 from typing import Optional
 from typing import overload
+
+try:
+    from typing import Self
+except ImportError:
+    from typing_extensions import Self
 from typing import Tuple
 from typing import Type
 from typing import Union
@@ -44,6 +50,8 @@ import deprecation
 import testinfra
 from filelock import BaseFileLock
 from filelock import FileLock
+from pytest import Mark
+from pytest import MarkDecorator
 from pytest import param
 from pytest_container.helpers import get_always_pull_option
 from pytest_container.inspect import ContainerHealth
@@ -493,6 +501,11 @@ class ContainerBase:
         default_factory=list
     )
 
+    #: optional list of marks applied to this container image under test
+    _marks: Collection[Union[MarkDecorator, Mark]] = field(
+        default_factory=list
+    )
+
     _is_local: bool = False
 
     def __post_init__(self) -> None:
@@ -502,6 +515,9 @@ class ContainerBase:
 
     def __str__(self) -> str:
         return self.url or self.container_id
+
+    def __bool__(self) -> bool:
+        return True
 
     @property
     def _build_tag(self) -> str:
@@ -518,6 +534,18 @@ class ContainerBase:
 
         """
         return self._is_local
+
+    @property
+    def marks(self) -> Collection[Union[MarkDecorator, Mark]]:
+        return self._marks
+
+    @property
+    def values(self) -> Tuple[Self, ...]:
+        return (self,)
+
+    @property
+    def id(self) -> str:
+        return str(self)
 
     def get_launch_cmd(
         self,
@@ -656,8 +684,25 @@ class ContainerBaseABC(ABC):
         """
 
 
+class _HackMROMeta(ABCMeta):
+    def mro(cls):
+        return (
+            cls,
+            ContainerBase,
+            ContainerBaseABC,
+            tuple,
+            _pytest.mark.ParameterSet,
+            object,
+        )
+
+
 @dataclass(unsafe_hash=True)
-class Container(ContainerBase, ContainerBaseABC):
+class Container(
+    ContainerBase,
+    ContainerBaseABC,
+    _pytest.mark.ParameterSet,
+    metaclass=_HackMROMeta,
+):
     """This class stores information about the Container Image under test."""
 
     def pull_container(self, container_runtime: OciRuntimeBase) -> None:
@@ -696,7 +741,12 @@ class Container(ContainerBase, ContainerBaseABC):
 
 
 @dataclass(unsafe_hash=True)
-class DerivedContainer(ContainerBase, ContainerBaseABC):
+class DerivedContainer(
+    ContainerBase,
+    ContainerBaseABC,
+    _pytest.mark.ParameterSet,
+    metaclass=_HackMROMeta,
+):
     """Class for storing information about the Container Image under test, that
     is build from a :file:`Containerfile`/:file:`Dockerfile` from a different
     image (can be any image from a registry or an instance of
@@ -722,6 +772,23 @@ class DerivedContainer(ContainerBase, ContainerBaseABC):
     #: Additional build tags/names that should be added to the container once it
     #: has been built
     add_build_tags: List[str] = field(default_factory=list)
+
+    @staticmethod
+    def _get_recursive_marks(
+        ctr: Union[Container, "DerivedContainer", str]
+    ) -> Collection[Union[MarkDecorator, Mark]]:
+        if isinstance(ctr, str):
+            return []
+        if isinstance(ctr, Container):
+            return ctr._marks
+
+        return tuple(ctr._marks) + tuple(
+            DerivedContainer._get_recursive_marks(ctr.base)
+        )
+
+    @property
+    def marks(self) -> Collection[Union[MarkDecorator, Mark]]:
+        return DerivedContainer._get_recursive_marks(self)
 
     def __post_init__(self) -> None:
         super().__post_init__()
