@@ -898,6 +898,12 @@ class ContainerData:
         """
         return self._container_runtime.inspect_container(self.container_id)
 
+    def read_container_logs(self) -> str:
+        """Returns the logs from the running container."""
+        return check_output(
+            [self._container_runtime.runner_binary, "logs", self.container_id]
+        ).decode()
+
 
 def container_to_pytest_param(
     container: ContainerBase,
