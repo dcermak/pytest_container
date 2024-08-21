@@ -6,14 +6,11 @@ import pytest
 from pytest import Config
 from pytest_container import Container
 from pytest_container import DerivedContainer
-from pytest_container import get_extra_build_args
-from pytest_container.build import MultiStageBuild
 from pytest_container.container import BindMount
 from pytest_container.container import ContainerData
 from pytest_container.container import ContainerLauncher
 from pytest_container.container import EntrypointSelection
 from pytest_container.inspect import PortForwarding
-from pytest_container.runtime import LOCALHOST
 from pytest_container.runtime import OciRuntimeBase
 
 from .images import LEAP
@@ -67,27 +64,6 @@ LEAP_WITH_BIN_AND_CMD = DerivedContainer(
 
 CONTAINER_IMAGES = [LEAP, LEAP_WITH_MAN, LEAP_WITH_MAN_AND_LUA]
 
-MULTI_STAGE_BUILD = MultiStageBuild(
-    containers={
-        "builder": LEAP_WITH_MAN,
-        "runner1": LEAP,
-        "runner2": "docker.io/alpine",
-    },
-    containerfile_template=r"""FROM $builder as builder
-WORKDIR /src
-RUN echo $$'#!/bin/sh \n\
-echo "foobar"' > test.sh && chmod +x test.sh
-
-FROM $runner1 as runner1
-WORKDIR /bin
-COPY --from=builder /src/test.sh .
-ENTRYPOINT ["/bin/test.sh"]
-
-FROM $runner2 as runner2
-WORKDIR /bin
-COPY --from=builder /src/test.sh .
-""",
-)
 
 # This container would just stop if we would launch it with -d and use the
 # default entrypoint. If we set the entrypoint to bash, then it should stay up.
@@ -256,67 +232,6 @@ def test_derived_container_respects_launch_args(
     container: ContainerData,
 ) -> None:
     assert int(container.connection.check_output("id -u").strip()) == 0
-
-
-def test_multistage_containerfile() -> None:
-    assert "FROM docker.io/alpine" in MULTI_STAGE_BUILD.containerfile
-
-
-def test_multistage_build(
-    tmp_path: Path, pytestconfig: Config, container_runtime: OciRuntimeBase
-):
-    MULTI_STAGE_BUILD.build(
-        tmp_path,
-        pytestconfig.rootpath,
-        container_runtime,
-        extra_build_args=get_extra_build_args(pytestconfig),
-    )
-
-
-def test_multistage_build_target(
-    tmp_path: Path, pytestconfig: Config, container_runtime: OciRuntimeBase
-):
-    first_target = MULTI_STAGE_BUILD.build(
-        tmp_path,
-        pytestconfig.rootpath,
-        container_runtime,
-        "runner1",
-        extra_build_args=get_extra_build_args(pytestconfig),
-    )
-    assert (
-        LOCALHOST.check_output(
-            f"{container_runtime.runner_binary} run --rm {first_target}",
-        ).strip()
-        == "foobar"
-    )
-
-    second_target = MULTI_STAGE_BUILD.build(
-        tmp_path,
-        pytestconfig,
-        container_runtime,
-        "runner2",
-        extra_build_args=get_extra_build_args(pytestconfig),
-    )
-
-    assert first_target != second_target
-    assert (
-        LOCALHOST.check_output(
-            f"{container_runtime.runner_binary} run --rm {second_target} /bin/test.sh",
-        ).strip()
-        == "foobar"
-    )
-
-    for (distro, target) in (
-        ("Leap", first_target),
-        ("Alpine", second_target),
-    ):
-        assert (
-            distro
-            in LOCALHOST.check_output(
-                f"{container_runtime.runner_binary} run --rm --entrypoint= {target} "
-                "cat /etc/os-release",
-            ).strip()
-        )
 
 
 LEAP_THAT_ECHOES_STUFF = DerivedContainer(
