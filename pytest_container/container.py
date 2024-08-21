@@ -53,7 +53,6 @@ from pytest_container.inspect import ContainerInspect
 from pytest_container.inspect import PortForwarding
 from pytest_container.inspect import VolumeMount
 from pytest_container.logging import _logger
-from pytest_container.runtime import get_selected_runtime
 from pytest_container.runtime import OciRuntimeBase
 
 if sys.version_info >= (3, 8):
@@ -698,6 +697,97 @@ class Container(ContainerBase, ContainerBaseABC):
         return self.url
 
 
+def _run_container_build(
+    container_runtime: OciRuntimeBase,
+    rootdir: Path,
+    containerfile: str,
+    parent_image_id: Optional[str] = None,
+    extra_build_args: Optional[Tuple[str, ...]] = None,
+    image_format: Optional[ImageFormat] = None,
+    add_build_tags: Optional[List[str]] = None,
+) -> Tuple[str, str]:
+    with tempfile.TemporaryDirectory() as tmpdirname:
+        containerfile_path = join(tmpdirname, "Dockerfile")
+        iidfile = join(tmpdirname, str(uuid4()))
+        with open(containerfile_path, "w", encoding="utf8") as containerfile_f:
+            _logger.debug(
+                "Writing containerfile to %s: %s",
+                containerfile_path,
+                containerfile,
+            )
+            containerfile_f.write(containerfile)
+
+        cmd = container_runtime.build_command
+        if "podman" in container_runtime.runner_binary:
+            if image_format is not None:
+                cmd += ("--format", str(image_format))
+            else:
+                if (
+                    not container_runtime.supports_healthcheck_inherit_from_base
+                ):
+                    warnings.warn(
+                        UserWarning(
+                            "Runtime does not support inheriting HEALTHCHECK "
+                            "from base images, image format auto-detection "
+                            "will *not* work!"
+                        )
+                    )
+
+                # if the parent image has a healthcheck defined, then we
+                # have to use the docker image format, so that the
+                # healthcheck is in newly build image as well
+                elif parent_image_id and (
+                    "<nil>"
+                    != check_output(
+                        [
+                            container_runtime.runner_binary,
+                            "inspect",
+                            "-f",
+                            "{{.HealthCheck}}",
+                            parent_image_id,
+                        ]
+                    )
+                    .decode()
+                    .strip()
+                ):
+                    cmd += ("--format", str(ImageFormat.DOCKER))
+
+        cmd += extra_build_args or ()
+        if add_build_tags:
+            cmd += functools.reduce(
+                operator.add,
+                (("-t", tag) for tag in add_build_tags),
+            )
+
+        cmd += (f"--iidfile={iidfile}", "-f", containerfile_path, str(rootdir))
+
+        _logger.debug("Building image via: %s", cmd)
+        check_output(cmd)
+
+        container_image_id = container_runtime.get_image_id_from_iidfile(
+            iidfile
+        )
+
+        internal_build_tag = f"pytest_container:{container_image_id}"
+
+        check_output(
+            (
+                container_runtime.runner_binary,
+                "tag",
+                container_image_id,
+                internal_build_tag,
+            )
+        )
+
+        _logger.debug(
+            "Successfully build the container image %s and tagged it as %s",
+            container_image_id,
+            internal_build_tag,
+        )
+
+        return container_image_id, internal_build_tag
+
+
 @dataclass(unsafe_hash=True)
 class DerivedContainer(ContainerBase, ContainerBaseABC):
     """Class for storing information about the Container Image under test, that
@@ -765,8 +855,6 @@ class DerivedContainer(ContainerBase, ContainerBaseABC):
                 container_runtime, rootdir, extra_build_args
             )
 
-        runtime = get_selected_runtime()
-
         # do not build containers without a containerfile and where no build
         # tags are added
         if not self.containerfile and not self.add_build_tags:
@@ -777,98 +865,32 @@ class DerivedContainer(ContainerBase, ContainerBaseABC):
             self.container_id, self.url = base.container_id, base.url
             return
 
-        with tempfile.TemporaryDirectory() as tmpdirname:
-            containerfile_path = join(tmpdirname, "Dockerfile")
-            iidfile = join(tmpdirname, str(uuid4()))
-            with open(containerfile_path, "w") as containerfile:
-                from_id = (
-                    self.base
-                    if isinstance(self.base, str)
-                    else (getattr(self.base, "url") or self.base._build_tag)
-                )
-                assert from_id
-                containerfile_contents = f"""FROM {from_id}
+        if isinstance(self.base, str):
+            from_id = self.base
+        else:
+            from_id = getattr(self.base, "url") or self.base._build_tag
+        assert from_id and isinstance(from_id, str)
+
+        containerfile_contents = f"""FROM {from_id}
 {self.containerfile}
 """
-                _logger.debug(
-                    "Writing containerfile to %s: %s",
-                    containerfile_path,
-                    containerfile_contents,
-                )
-                containerfile.write(containerfile_contents)
+        self.container_id, internal_build_tag = _run_container_build(
+            container_runtime,
+            rootdir,
+            containerfile_contents,
+            parent_image_id=from_id,
+            extra_build_args=(
+                tuple(*extra_build_args) if extra_build_args else ()
+            ),
+            image_format=self.image_format,
+            add_build_tags=self.add_build_tags,
+        )
 
-            cmd = runtime.build_command
-            if "podman" in runtime.runner_binary:
-                if self.image_format is not None:
-                    cmd += ["--format", str(self.image_format)]
-                else:
-                    if not runtime.supports_healthcheck_inherit_from_base:
-                        warnings.warn(
-                            UserWarning(
-                                "Runtime does not support inheriting HEALTHCHECK "
-                                "from base images, image format auto-detection "
-                                "will *not* work!"
-                            )
-                        )
+        assert self._build_tag == internal_build_tag
 
-                    # if the parent image has a healthcheck defined, then we
-                    # have to use the docker image format, so that the
-                    # healthcheck is in newly build image as well
-                    elif (
-                        "<nil>"
-                        != check_output(
-                            [
-                                runtime.runner_binary,
-                                "inspect",
-                                "-f",
-                                "{{.HealthCheck}}",
-                                from_id,
-                            ]
-                        )
-                        .decode()
-                        .strip()
-                    ):
-                        cmd += ["--format", str(ImageFormat.DOCKER)]
 
-            cmd += (
-                (extra_build_args or [])
-                + (
-                    functools.reduce(
-                        operator.add,
-                        (["-t", tag] for tag in self.add_build_tags),
-                    )
-                    if self.add_build_tags
-                    else []
-                )
-                + [
-                    f"--iidfile={iidfile}",
-                    "-f",
-                    containerfile_path,
-                    str(rootdir),
-                ]
-            )
 
-            _logger.debug("Building image via: %s", cmd)
-            check_output(cmd)
 
-            self.container_id = runtime.get_image_id_from_iidfile(iidfile)
-
-            assert self._build_tag.startswith("pytest_container:")
-
-            check_output(
-                (
-                    runtime.runner_binary,
-                    "tag",
-                    self.container_id,
-                    self._build_tag,
-                )
-            )
-
-            _logger.debug(
-                "Successfully build the container image %s and tagged it as %s",
-                self.container_id,
-                self._build_tag,
-            )
 
 
 @dataclass(frozen=True)
