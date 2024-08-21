@@ -223,7 +223,7 @@ class MultiStageBuild:
         with tempfile.TemporaryDirectory() as tmp_dir:
             iidfile = join(tmp_dir, str(uuid4()))
             cmd = (
-                runtime.build_command
+                [*runtime.build_command]
                 + (extra_build_args or [])
                 + [f"--iidfile={iidfile}"]
                 + (["--target", target] if target else [])

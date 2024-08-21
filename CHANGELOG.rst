@@ -3,6 +3,9 @@ Next Release
 
 Breaking changes:
 
+- change type of ``OciRuntimeBase.build_command`` from ``List[str]`` to
+  ``Tuple[str, ...]``
+
 - Change addition of SELinux flags to volumes: SELinux flags are only added if
   :py:attr:`~pytest_container.container.ContainerVolumeBase.flags` is ``None``.
 

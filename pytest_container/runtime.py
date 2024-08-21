@@ -17,6 +17,7 @@ from typing import Any
 from typing import Callable
 from typing import List
 from typing import Optional
+from typing import Tuple
 from typing import TYPE_CHECKING
 from typing import Union
 
@@ -182,7 +183,7 @@ class Version:
 @dataclass(frozen=True)
 class _OciRuntimeBase:
     #: command that builds the Dockerfile in the current working directory
-    build_command: List[str] = field(default_factory=list)
+    build_command: Tuple[str, ...] = field(default_factory=tuple)
     #: the "main" binary of this runtime, e.g. podman or docker
     runner_binary: str = ""
     _runtime_functional: bool = False
@@ -468,9 +469,9 @@ class PodmanRuntime(OciRuntimeBase):
     def __init__(self) -> None:
         super().__init__(
             build_command=(
-                ["buildah", "bud", "--layers", "--force-rm"]
+                ("buildah", "bud", "--layers", "--force-rm")
                 if self._buildah_functional
-                else ["podman", "build", "--layers", "--force-rm"]
+                else ("podman", "build", "--layers", "--force-rm")
             ),
             runner_binary="podman",
             _runtime_functional=self._runtime_functional,
@@ -571,7 +572,7 @@ class DockerRuntime(OciRuntimeBase):
 
     def __init__(self) -> None:
         super().__init__(
-            build_command=["docker", "build", "--force-rm"],
+            build_command=("docker", "build", "--force-rm"),
             runner_binary="docker",
             _runtime_functional=self._runtime_functional,
         )
