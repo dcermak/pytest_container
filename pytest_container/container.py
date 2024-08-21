@@ -25,6 +25,7 @@ from os.path import exists
 from os.path import isabs
 from os.path import join
 from pathlib import Path
+from string import Template
 from subprocess import call
 from subprocess import check_output
 from types import TracebackType
@@ -616,7 +617,7 @@ class ContainerBase:
             if isinstance(value, list):
                 all_elements.append("".join([str(elem) for elem in value]))
             elif isinstance(value, dict):
-                all_elements.append("".join(value.values()))
+                all_elements.append("".join(str(v) for v in value.values()))
             else:
                 all_elements.append(str(value))
 
@@ -627,9 +628,9 @@ class ContainerBase:
         return f"{sha3_256((''.join(all_elements)).encode()).hexdigest()}.lock"
 
 
-class ContainerBaseABC(ABC):
+class _ContainerPrepareABC(ABC):
     """Abstract base class defining the methods that must be implemented by the
-    classes fed to the ``*container*`` fixtures.
+    classes fed to the ``container_image`` fixture.
 
     """
 
@@ -641,6 +642,13 @@ class ContainerBaseABC(ABC):
         extra_build_args: Optional[List[str]],
     ) -> None:
         """Prepares the container so that it can be launched."""
+
+
+class _ContainerBaseABC(_ContainerPrepareABC):
+    """Abstract base class defining the methods that must be implemented by the
+    classes fed to the ``*container*`` fixtures.
+
+    """
 
     @abstractmethod
     def get_base(self) -> "Union[Container, DerivedContainer]":
@@ -659,7 +667,7 @@ class ContainerBaseABC(ABC):
 
 
 @dataclass(unsafe_hash=True)
-class Container(ContainerBase, ContainerBaseABC):
+class Container(ContainerBase, _ContainerBaseABC):
     """This class stores information about the Container Image under test."""
 
     def pull_container(self, container_runtime: OciRuntimeBase) -> None:
@@ -789,19 +797,11 @@ def _run_container_build(
 
 
 @dataclass(unsafe_hash=True)
-class DerivedContainer(ContainerBase, ContainerBaseABC):
-    """Class for storing information about the Container Image under test, that
-    is build from a :file:`Containerfile`/:file:`Dockerfile` from a different
-    image (can be any image from a registry or an instance of
-    :py:class:`Container` or :py:class:`DerivedContainer`).
+class _ContainerForBuild(ContainerBase):
+    """Intermediate class for adding properties to :py:class:`DerivedContainer`
+    and :py:class:`MultiStageContainer`.
 
     """
-
-    base: Union[Container, "DerivedContainer", str] = ""
-
-    #: The :file:`Containerfile` that is used to build this container derived
-    #: from :py:attr:`base`.
-    containerfile: str = ""
 
     #: An optional image format when building images with :command:`buildah`. It
     #: is ignored when the container runtime is :command:`docker`.
@@ -815,6 +815,22 @@ class DerivedContainer(ContainerBase, ContainerBaseABC):
     #: Additional build tags/names that should be added to the container once it
     #: has been built
     add_build_tags: List[str] = field(default_factory=list)
+
+
+@dataclass(unsafe_hash=True)
+class DerivedContainer(_ContainerForBuild, _ContainerBaseABC):
+    """Class for storing information about the Container Image under test, that
+    is build from a :file:`Containerfile`/:file:`Dockerfile` from a different
+    image (can be any image from a registry or an instance of
+    :py:class:`Container` or :py:class:`DerivedContainer`).
+
+    """
+
+    base: Union[Container, "DerivedContainer", str] = ""
+
+    #: The :file:`Containerfile` that is used to build this container derived
+    #: from :py:attr:`base`.
+    containerfile: str = ""
 
     def __post_init__(self) -> None:
         super().__post_init__()
@@ -889,8 +905,88 @@ class DerivedContainer(ContainerBase, ContainerBaseABC):
         assert self._build_tag == internal_build_tag
 
 
+@dataclass
+class MultiStageContainer(_ContainerForBuild, _ContainerPrepareABC):
+    """Class representing a container built from a :file:`Containerfile`
+    containing multiple stages. The :py:attr:`MultiStageContainer.containerfile`
+    is templated using the builtin :py:class:`string.Template`, where container
+    image IDs are inserted from the containers in
+    :py:attr:`MultiStageContainer.containers` after these have been
+    built/pulled.
 
+    """
 
+    #: :file:`Containerfile` to built the container. If any stages require
+    #: images that are defined using a :py:class:`DerivedContainer` or a
+    #: :py:class:`Container`, then insert their ids as a template name and
+    #: provide that name and the class instance as the key & value into
+    #: :py:attr:`containers`.
+    containerfile: str = ""
+
+    #: Dictionary of container stages that are used to build the final
+    #: image. The keys are the template names used in :py:attr:`containerfile`
+    #: and will be replaced with the container image ids of the respective values.
+    containers: Dict[str, Union[Container, DerivedContainer, str]] = field(
+        default_factory=dict
+    )
+
+    #: Optional stage of the multistage container build that should be built.
+    #: The last stage is built by default.
+    target_stage: str = ""
+
+    def prepare_container(
+        self,
+        container_runtime: OciRuntimeBase,
+        rootdir: Path,
+        extra_build_args: Optional[List[str]],
+    ) -> None:
+        """Builds all intermediate containers and then builds the final
+        container up to :py:attr:`target_stage` or to the last stage.
+
+        """
+
+        template_kwargs: Dict[str, str] = {}
+
+        for name, ctr in self.containers.items():
+            if isinstance(ctr, str):
+                warnings.warn(
+                    UserWarning(
+                        "Putting container URLs or scratch into the containers "
+                        "dictionary is not required, just add them to the "
+                        "containerfile directly."
+                    )
+                )
+
+                if ctr == "scratch":
+                    template_kwargs[name] = ctr
+                else:
+                    cont_from_url = Container(url=ctr)
+                    cont_from_url.prepare_container(
+                        container_runtime, rootdir, extra_build_args
+                    )
+                    template_kwargs[name] = cont_from_url._build_tag
+            else:
+                ctr.prepare_container(
+                    container_runtime, rootdir, extra_build_args
+                )
+                template_kwargs[name] = ctr._build_tag
+
+        ctrfile = Template(self.containerfile).substitute(**template_kwargs)
+
+        build_args = tuple(*extra_build_args) if extra_build_args else ()
+        if self.target_stage:
+            build_args += ("--target", self.target_stage)
+
+        self.container_id, internal_tag = _run_container_build(
+            container_runtime,
+            rootdir,
+            ctrfile,
+            None,
+            build_args,
+            self.image_format,
+            self.add_build_tags,
+        )
+        assert self._build_tag == internal_tag
 
 
 @dataclass(frozen=True)
@@ -909,7 +1005,7 @@ class ContainerData:
     #: the testinfra connection to the running container
     connection: Any
     #: the container data class that has been used in this test
-    container: Union[Container, DerivedContainer]
+    container: Union[Container, DerivedContainer, MultiStageContainer]
     #: any ports that are exposed by this container
     forwarded_ports: List[PortForwarding]
 
@@ -956,50 +1052,65 @@ def container_to_pytest_param(
 def container_and_marks_from_pytest_param(
     ctr_or_param: Container,
 ) -> Tuple[Container, Literal[None]]:
-    ...
+    ...  # pragma: no cover
 
 
 @overload
 def container_and_marks_from_pytest_param(
     ctr_or_param: DerivedContainer,
 ) -> Tuple[DerivedContainer, Literal[None]]:
-    ...
+    ...  # pragma: no cover
+
+
+@overload
+def container_and_marks_from_pytest_param(
+    ctr_or_param: MultiStageContainer,
+) -> Tuple[MultiStageContainer, Literal[None]]:
+    ...  # pragma: no cover
 
 
 @overload
 def container_and_marks_from_pytest_param(
     ctr_or_param: _pytest.mark.ParameterSet,
 ) -> Tuple[
-    Union[Container, DerivedContainer],
+    Union[Container, DerivedContainer, MultiStageContainer],
     Optional[Collection[Union[_pytest.mark.MarkDecorator, _pytest.mark.Mark]]],
 ]:
-    ...
+    ...  # pragma: no cover
 
 
 def container_and_marks_from_pytest_param(
     ctr_or_param: Union[
-        _pytest.mark.ParameterSet, Container, DerivedContainer
+        _pytest.mark.ParameterSet,
+        Container,
+        DerivedContainer,
+        MultiStageContainer,
     ],
 ) -> Tuple[
-    Union[Container, DerivedContainer],
+    Union[Container, DerivedContainer, MultiStageContainer],
     Optional[Collection[Union[_pytest.mark.MarkDecorator, _pytest.mark.Mark]]],
 ]:
-    """Extracts the :py:class:`~pytest_container.container.Container` or
-    :py:class:`~pytest_container.container.DerivedContainer` and the
+    """Extracts the :py:class:`~pytest_container.container.Container`,
+    :py:class:`~pytest_container.container.DerivedContainer` or
+    :py:class:`~pytest_container.container.MultiStageContainer` and the
     corresponding marks from a `pytest.param
     <https://docs.pytest.org/en/stable/reference.html?#pytest.param>`_ and
     returns both.
 
     If ``param`` is either a :py:class:`~pytest_container.container.Container`
-    or a :py:class:`~pytest_container.container.DerivedContainer`, then param is
-    returned directly and the second return value is ``None``.
+    or a :py:class:`~pytest_container.container.DerivedContainer` or a
+    :py:class:`~pytest_container.container.MultiStageContainer`, then ``param``
+    is returned directly and the second return value is ``None``.
 
     """
-    if isinstance(ctr_or_param, (Container, DerivedContainer)):
+    if isinstance(
+        ctr_or_param, (Container, DerivedContainer, MultiStageContainer)
+    ):
         return ctr_or_param, None
 
     if len(ctr_or_param.values) > 0 and isinstance(
-        ctr_or_param.values[0], (Container, DerivedContainer)
+        ctr_or_param.values[0],
+        (Container, DerivedContainer, MultiStageContainer),
     ):
         return ctr_or_param.values[0], ctr_or_param.marks
 
@@ -1043,7 +1154,7 @@ class ContainerLauncher:
     """
 
     #: The container that will be launched
-    container: Union[Container, DerivedContainer]
+    container: Union[Container, DerivedContainer, MultiStageContainer]
 
     #: The container runtime via which the container will be launched
     container_runtime: OciRuntimeBase
@@ -1073,7 +1184,7 @@ class ContainerLauncher:
 
     @staticmethod
     def from_pytestconfig(
-        container: Union[Container, DerivedContainer],
+        container: Union[Container, DerivedContainer, MultiStageContainer],
         container_runtime: OciRuntimeBase,
         pytestconfig: pytest.Config,
         container_name: str = "",
