@@ -3,6 +3,9 @@ Next Release
 
 Breaking changes:
 
+- deprecate :py:class:`~pytest_container.build.MultiStageBuild` in favor
+  :py:class:`~pytest_container.container.MultiStageContainer`
+
 - change type of ``OciRuntimeBase.build_command`` from ``List[str]`` to
   ``Tuple[str, ...]``
 
