@@ -3,6 +3,7 @@ via :py:class:`GitRepositoryBuild` and to perform multistage containerfile
 builds via :py:class:`MultiStageBuild`.
 
 """
+import sys
 import tempfile
 from dataclasses import dataclass
 from os.path import basename
@@ -10,6 +11,7 @@ from os.path import join
 from pathlib import Path
 from string import Template
 from subprocess import check_output
+from typing import cast
 from typing import Dict
 from typing import List
 from typing import Optional
@@ -18,12 +20,18 @@ from uuid import uuid4
 
 from _pytest.config import Config
 from _pytest.mark.structures import ParameterSet
+from deprecation import deprecated
 from pytest_container.container import Container
 from pytest_container.container import container_and_marks_from_pytest_param
 from pytest_container.container import DerivedContainer
 from pytest_container.logging import _logger
 from pytest_container.runtime import OciRuntimeBase
 from pytest_container.runtime import ToParamMixin
+
+if sys.version_info >= (3, 8):
+    from importlib import metadata
+else:
+    import importlib_metadata as metadata
 
 
 @dataclass(frozen=True)
@@ -81,6 +89,14 @@ class GitRepositoryBuild(ToParamMixin):
         if self.build_command:
             return f"{cd_cmd} && {self.build_command}"
         return cd_cmd
+
+
+_deprecated_multi_stage_build_kwargs = {
+    "deprecated_in": "0.5.0",
+    "removed_in": "0.6.0",
+    "current_version": metadata.version("pytest_container"),
+    "details": "use MultiStageContainer instead",
+}
 
 
 @dataclass
@@ -165,6 +181,7 @@ class MultiStageBuild:
             }
         )
 
+    @deprecated(**_deprecated_multi_stage_build_kwargs)  # type: ignore
     def prepare_build(
         self,
         tmp_path: Path,
@@ -197,6 +214,7 @@ class MultiStageBuild:
             containerfile.write(self.containerfile)
 
     @staticmethod
+    @deprecated(**_deprecated_multi_stage_build_kwargs)  # type: ignore
     def run_build_step(
         tmp_path: Path,
         runtime: OciRuntimeBase,
@@ -233,6 +251,7 @@ class MultiStageBuild:
             check_output(cmd)
             return runtime.get_image_id_from_iidfile(iidfile)
 
+    @deprecated(**_deprecated_multi_stage_build_kwargs)  # type: ignore
     def build(
         self,
         tmp_path: Path,
@@ -278,6 +297,9 @@ class MultiStageBuild:
             root,
             extra_build_args,
         )
-        return MultiStageBuild.run_build_step(
-            tmp_path, runtime, target, extra_build_args
+        return cast(
+            str,
+            MultiStageBuild.run_build_step(
+                tmp_path, runtime, target, extra_build_args
+            ),
         )
