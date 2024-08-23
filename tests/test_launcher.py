@@ -88,8 +88,8 @@ def test_launcher_creates_and_cleanes_up_volumes(
     pytestconfig: pytest.Config,
     container_runtime: OciRuntimeBase,
 ) -> None:
-    with ContainerLauncher(
-        cont, container_runtime, pytestconfig.rootpath
+    with ContainerLauncher.from_pytestconfig(
+        cont, container_runtime, pytestconfig
     ) as launcher:
         launcher.launch_container()
 
@@ -130,8 +130,8 @@ def test_launcher_cleanes_up_volumes_from_image(
     container_runtime: OciRuntimeBase,
     host: Any,
 ) -> None:
-    with ContainerLauncher(
-        cont, container_runtime, pytestconfig.rootpath
+    with ContainerLauncher.from_pytestconfig(
+        cont, container_runtime, pytestconfig
     ) as launcher:
         launcher.launch_container()
 
@@ -158,8 +158,8 @@ def test_launcher_cleanes_up_volumes_from_image(
 def test_launcher_container_data_not_available_after_exit(
     container_runtime: OciRuntimeBase, pytestconfig: pytest.Config
 ) -> None:
-    with ContainerLauncher(
-        LEAP, container_runtime, pytestconfig.rootpath
+    with ContainerLauncher.from_pytestconfig(
+        LEAP, container_runtime, pytestconfig
     ) as launcher:
         launcher.launch_container()
         assert launcher.container_data
@@ -175,10 +175,10 @@ def test_launcher_fails_on_failing_healthcheck(
 ):
     container_name = "container_with_failing_healthcheck"
     with pytest.raises(RuntimeError) as runtime_err_ctx:
-        with ContainerLauncher(
+        with ContainerLauncher.from_pytestconfig(
             container=CONTAINER_THAT_FAILS_TO_LAUNCH,
             container_runtime=container_runtime,
-            rootdir=pytestconfig.rootpath,
+            pytestconfig=pytestconfig,
             container_name=container_name,
         ) as launcher:
             launcher.launch_container()
@@ -252,8 +252,8 @@ def test_derived_container_pulls_base(
     host.run(f"{container_runtime.runner_binary} rmi {registry_url}")
 
     reg = DerivedContainer(base=registry_url)
-    with ContainerLauncher(
-        reg, container_runtime, pytestconfig.rootpath
+    with ContainerLauncher.from_pytestconfig(
+        reg, container_runtime, pytestconfig
     ) as launcher:
         launcher.launch_container()
         assert launcher.container_data.container_id
@@ -333,10 +333,10 @@ def test_launcher_unlocks_on_preparation_failure(
 
     def try_launch():
         with pytest.raises(subprocess.CalledProcessError):
-            with ContainerLauncher(
+            with ContainerLauncher.from_pytestconfig(
                 container_with_wrong_url,
                 container_runtime,
-                pytestconfig.rootpath,
+                pytestconfig,
             ) as launcher:
                 launcher.launch_container()
                 assert False, "The container must not have launched"

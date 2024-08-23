@@ -12,12 +12,16 @@ from typing import Type
 from typing import Union
 
 from _pytest.mark import ParameterSet
+from pytest import Config
 from pytest_container.container import Container
 from pytest_container.container import ContainerData
 from pytest_container.container import ContainerLauncher
 from pytest_container.container import create_host_port_port_forward
 from pytest_container.container import DerivedContainer
 from pytest_container.container import lock_host_port_search
+from pytest_container.helpers import get_extra_build_args
+from pytest_container.helpers import get_extra_pod_create_args
+from pytest_container.helpers import get_extra_run_args
 from pytest_container.inspect import PortForwarding
 from pytest_container.logging import _logger
 from pytest_container.runtime import get_selected_runtime
@@ -127,6 +131,19 @@ class PodLauncher:
     _infra_container_id: Optional[str] = None
 
     _stack: contextlib.ExitStack = field(default_factory=contextlib.ExitStack)
+
+    @staticmethod
+    def from_pytestconfig(
+        pod: Pod, pytestconfig: Config, pod_name: str = ""
+    ) -> "PodLauncher":
+        return PodLauncher(
+            pod,
+            pytestconfig.rootpath,
+            extra_build_args=get_extra_build_args(pytestconfig),
+            extra_run_args=get_extra_run_args(pytestconfig),
+            extra_pod_create_args=get_extra_pod_create_args(pytestconfig),
+            pod_name=pod_name,
+        )
 
     def __enter__(self) -> "PodLauncher":
         runtime = get_selected_runtime()

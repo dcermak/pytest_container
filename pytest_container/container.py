@@ -44,8 +44,11 @@ import deprecation
 import testinfra
 from filelock import BaseFileLock
 from filelock import FileLock
+from pytest import Config
 from pytest import param
 from pytest_container.helpers import get_always_pull_option
+from pytest_container.helpers import get_extra_build_args
+from pytest_container.helpers import get_extra_run_args
 from pytest_container.inspect import ContainerHealth
 from pytest_container.inspect import ContainerInspect
 from pytest_container.inspect import PortForwarding
@@ -1045,6 +1048,22 @@ class ContainerLauncher:
     _cidfile: str = field(
         default_factory=lambda: join(tempfile.gettempdir(), str(uuid4()))
     )
+
+    @staticmethod
+    def from_pytestconfig(
+        container: Union[Container, DerivedContainer],
+        container_runtime: OciRuntimeBase,
+        pytestconfig: Config,
+        container_name: str = "",
+    ) -> "ContainerLauncher":
+        return ContainerLauncher(
+            container=container,
+            container_runtime=container_runtime,
+            rootdir=pytestconfig.rootpath,
+            extra_build_args=get_extra_build_args(pytestconfig),
+            extra_run_args=get_extra_run_args(pytestconfig),
+            container_name=container_name,
+        )
 
     def __enter__(self) -> "ContainerLauncher":
         return self

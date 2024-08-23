@@ -78,7 +78,9 @@ def test_pod_launcher_pod_data_not_ready(
     if container_runtime != PodmanRuntime():
         pytest.skip("pods only work with podman")
 
-    with PodLauncher(pod=TEST_POD, rootdir=pytestconfig.rootpath) as launcher:
+    with PodLauncher.from_pytestconfig(
+        pod=TEST_POD, pytestconfig=pytestconfig
+    ) as launcher:
         with pytest.raises(RuntimeError) as rt_err_ctx:
             _ = launcher.pod_data
 
@@ -97,9 +99,9 @@ def test_pod_launcher_cleanup(
     name = "i_will_fail_to_launch"
 
     with pytest.raises(RuntimeError) as rt_err_ctx:
-        with PodLauncher(
+        with PodLauncher.from_pytestconfig(
             pod=Pod(containers=[LEAP, CONTAINER_THAT_FAILS_TO_LAUNCH]),
-            rootdir=pytestconfig.rootpath,
+            pytestconfig=pytestconfig,
             pod_name=name,
         ) as launcher:
             launcher.launch_pod()
@@ -121,7 +123,7 @@ def test_pod_launcher_fails_with_non_podman(
         pytest.skip("pods work with podman")
 
     with pytest.raises(RuntimeError) as rt_err_ctx:
-        with PodLauncher(pod=TEST_POD, rootdir=Path("/")) as _:
+        with PodLauncher(pod=TEST_POD, rootdir=Path("/tmp")) as _:
             pass
 
     assert "pods can only be created with podman" in str(rt_err_ctx.value)
