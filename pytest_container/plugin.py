@@ -10,6 +10,7 @@ from typing import Generator
 
 from pytest_container.container import container_and_marks_from_pytest_param
 from pytest_container.container import ContainerData
+from pytest_container.container import ContainerImageData
 from pytest_container.container import ContainerLauncher
 from pytest_container.logging import _logger
 from pytest_container.pod import pod_from_pytest_param
@@ -173,3 +174,31 @@ pod = _create_auto_pod_fixture("session")
 
 #: Same as :py:func:`pod`, except that it creates a pod for each test function.
 pod_per_test = _create_auto_pod_fixture("function")
+
+
+@fixture(scope="session")
+def container_image(
+    request: SubRequest,
+    # we must call this parameter container runtime, so that pytest will
+    # treat it as a fixture, but that causes pylint to complain…
+    # pylint: disable=redefined-outer-name
+    container_runtime: OciRuntimeBase,
+    pytestconfig: Config,
+) -> Generator[ContainerImageData, None, None]:
+    """Fixture that has to be parametrized with an instance of
+    :py:class:`~pytest_container.container.Container`,
+    :py:class:`~pytest_container.container.DerivedContainer` or
+    :py:class:`~pytest_container.container.MultiStageContainer` with
+    ``indirect=True``. It builds the container image passed as the parameter and
+    yields an instance of
+    :py:class:`~pytest_container.container.ContainerImageData` to the test
+    function.
+
+    """
+
+    container, _ = container_and_marks_from_pytest_param(request.param)
+    with ContainerLauncher.from_pytestconfig(
+        container, container_runtime, pytestconfig
+    ) as launcher:
+        launcher.prepare_container_image()
+        yield launcher.container_image_data

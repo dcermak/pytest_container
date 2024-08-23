@@ -526,12 +526,29 @@ class ContainerBase:
         self,
         container_runtime: OciRuntimeBase,
         extra_run_args: Optional[List[str]] = None,
+        detach: bool = True,
+        interactive_tty: bool = True,
+        remove: bool = False,
     ) -> List[str]:
         """Returns the command to launch this container image.
 
         Args:
+            container_runtime: The container runtime to be used to launch this
+                container
+
             extra_run_args: optional list of arguments that are added to the
                 launch command directly after the ``run -d``.
+
+            detach: flag whether to launch the container with ``-d``
+                (i.e. in the background). Defaults to ``True``.
+
+            interactive: flag whether to launch the container with ``--it``
+                (i.e. in interactive mode and attach a pseudo TTY). Defaults to
+                ``True``.
+
+            remove: flag whether to launch the container with the ``--rm`` flag
+                (i.e. it will be auto-removed on after stopping). Defaults to
+                ``False``.
 
         Returns:
             The command to launch the container image described by this class
@@ -539,7 +556,9 @@ class ContainerBase:
             :py:class:`subprocess.Popen` as the ``args`` parameter.
         """
         cmd = (
-            [container_runtime.runner_binary, "run", "-d"]
+            [container_runtime.runner_binary, "run"]
+            + (["-d"] if detach else [])
+            + (["--rm"] if remove else [])
             + (extra_run_args or [])
             + self.extra_launch_args
             + (
@@ -558,7 +577,9 @@ class ContainerBase:
         )
 
         id_or_url = self.container_id or self.url
-        container_launch = ("-it", id_or_url)
+        container_launch: Tuple[str, ...] = (
+            ("-it", id_or_url) if interactive_tty else (id_or_url,)
+        )
         bash_launch_end = (
             *_CONTAINER_STOPSIGNAL,
             *container_launch,
@@ -990,7 +1011,47 @@ class MultiStageContainer(_ContainerForBuild, _ContainerPrepareABC):
 
 
 @dataclass(frozen=True)
-class ContainerData:
+class ContainerImageData:
+    """Class returned by the ``container_image`` fixture to the test
+    function. It contains a reference to the container image that has been used
+    in the test and has properties that provide the full command to launch the
+    entrypoint of the container image under test.
+
+    """
+
+    #: the container data class that has been used in this test
+    container: Union[Container, DerivedContainer, MultiStageContainer]
+
+    _container_runtime: OciRuntimeBase
+
+    @property
+    def run_command_list(self) -> List[str]:
+        """The full command (including the container runtime) to launch this
+        container image's entrypoint in the foreground. A list of the individual
+        arguments is returned that can be passed directly into
+        :py:func:`subprocess.run`.
+
+        """
+        return self.container.get_launch_cmd(
+            self._container_runtime,
+            detach=False,
+            remove=True,
+            # -it breaks testinfra.host.check_output() with docker
+            interactive_tty=self._container_runtime.runner_binary == "podman",
+        )
+
+    @property
+    def run_command(self) -> str:
+        """The full command (including the container runtime) to launch this
+        container image's entrypoint in the foreground. The command is returned
+        as a single string that has to be invoked via a shell.
+
+        """
+        return " ".join(self.run_command_list)
+
+
+@dataclass(frozen=True)
+class ContainerData(ContainerImageData):
     """Class returned by the ``*container*`` fixtures to the test function. It
     contains information about the launched container and the testinfra
     :py:attr:`connection` to the running container.
@@ -1004,12 +1065,8 @@ class ContainerData:
     container_id: str
     #: the testinfra connection to the running container
     connection: Any
-    #: the container data class that has been used in this test
-    container: Union[Container, DerivedContainer, MultiStageContainer]
     #: any ports that are exposed by this container
     forwarded_ports: List[PortForwarding]
-
-    _container_runtime: OciRuntimeBase
 
     @property
     def inspect(self) -> ContainerInspect:
@@ -1206,11 +1263,13 @@ class ContainerLauncher:
     def __enter__(self) -> "ContainerLauncher":
         return self
 
-    def launch_container(self) -> None:
-        """This function performs the actual heavy lifting of launching the
-        container, creating all the volumes, port bindings, etc.pp.
+    def prepare_container_image(self) -> None:
+        """Prepares the container image for launching containers. This includes
+        building the container image and all its dependents and creating volume
+        mounts.
 
         """
+
         # Lock guarding the container preparation, so that only one process
         # tries to pull/build it at the same time.
         # If this container is a singleton, then we use it as a lock until
@@ -1252,6 +1311,13 @@ class ContainerLauncher:
                 get_volume_creator(cont_vol, self.container_runtime)
             )
 
+    def launch_container(self) -> None:
+        """This function performs the actual heavy lifting of launching the
+        container, creating all the volumes, port bindings, etc.pp.
+
+        """
+        self.prepare_container_image()
+
         forwarded_ports = self.container.forwarded_ports
 
         extra_run_args = self.extra_run_args
@@ -1290,6 +1356,23 @@ class ContainerLauncher:
             self._container_id = cidfile.read(-1).strip()
 
         self._wait_for_container_to_become_healthy()
+
+    @property
+    def container_image_data(self) -> ContainerImageData:
+        """The :py:class:`ContainerImageData` belonging to this container
+        image.
+
+        .. warning::
+
+           This property will always be set, even if the container image has not
+           been prepared yet. Only use it after calling
+           :py:func:`ContainerLauncher.prepare_container_image`.
+
+        """
+        # FIXME: check if container is prepared
+        return ContainerImageData(
+            container=self.container, _container_runtime=self.container_runtime
+        )
 
     @property
     def container_data(self) -> ContainerData:
