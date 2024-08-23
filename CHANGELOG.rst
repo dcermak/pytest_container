@@ -227,12 +227,12 @@ Improvements and new features:
   Container Images exposing the same ports in parallel without marking them as
   ``singleton=True``.
 
-- The attribute :py:attr:`~pytest_container.container.ContainerData.container`
-  was added to :py:class:`~pytest_container.container.ContainerData` (the
-  datastructure that is passed to test functions via the ``*container*``
-  fixtures). This attribute contains the
-  :py:class:`~pytest_container.container.ContainerBase` that was used to
-  parametrize this test run.
+- The attribute ``ContainerData.container`` (is now
+  :py:attr:`~pytest_container.container.ContainerImageData.container`) was added
+  to :py:class:`~pytest_container.container.ContainerData` (the datastructure
+  that is passed to test functions via the ``*container*`` fixtures). This
+  attribute contains the :py:class:`~pytest_container.container.ContainerBase`
+  that was used to parametrize this test run.
 
 - Add support to add tags to container images via
   ``DerivedContainer.add_build_tags`` (is now called
