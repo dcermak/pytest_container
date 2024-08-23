@@ -276,7 +276,7 @@ def test_pod_bind_to_host_port(
                 ],
             )
 
-    with PodLauncher(pod=pod, rootdir=pytestconfig.rootpath) as launcher:
+    with PodLauncher.from_pytestconfig(pod, pytestconfig) as launcher:
         launcher.launch_pod()
 
         assert launcher.pod_data.forwarded_ports[0].host_port == PORT

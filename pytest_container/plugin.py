@@ -11,9 +11,6 @@ from typing import Generator
 from pytest_container.container import container_and_marks_from_pytest_param
 from pytest_container.container import ContainerData
 from pytest_container.container import ContainerLauncher
-from pytest_container.helpers import get_extra_build_args
-from pytest_container.helpers import get_extra_pod_create_args
-from pytest_container.helpers import get_extra_run_args
 from pytest_container.logging import _logger
 from pytest_container.pod import pod_from_pytest_param
 from pytest_container.pod import PodData
@@ -91,27 +88,10 @@ def _create_auto_container_fixture(
                 f"A singleton container ({container}) cannot be used in a session level fixture"
             )
 
-        add_labels = [
-            "--label",
-            f"pytest_container.request={request}",
-            "--label",
-            f"pytest_container.node.name={request.node.name}",
-            "--label",
-            f"pytest_container.scope={request.scope}",
-        ]
-        try:
-            add_labels.extend(
-                ["--label", f"pytest_container.path={request.path}"]
-            )
-        except AttributeError:
-            pass
-
-        with ContainerLauncher(
+        with ContainerLauncher.from_pytestconfig(
             container=container,
             container_runtime=container_runtime,
-            rootdir=pytestconfig.rootpath,
-            extra_build_args=get_extra_build_args(pytestconfig),
-            extra_run_args=get_extra_run_args(pytestconfig) + add_labels,
+            pytestconfig=pytestconfig,
         ) as launcher:
             # we want to ensure that the container's logs are saved at "all
             # cost", especially when the container fails to launch for some
@@ -146,13 +126,7 @@ def _create_auto_pod_fixture(
             skip("Pods are only supported in podman")
 
         pod = pod_from_pytest_param(request.param)
-        with PodLauncher(
-            pod,
-            rootdir=pytestconfig.rootpath,
-            extra_build_args=get_extra_build_args(pytestconfig),
-            extra_run_args=get_extra_run_args(pytestconfig),
-            extra_pod_create_args=get_extra_pod_create_args(pytestconfig),
-        ) as launcher:
+        with PodLauncher.from_pytestconfig(pod, pytestconfig) as launcher:
             try:
                 launcher.launch_pod()
                 pod_data = launcher.pod_data
