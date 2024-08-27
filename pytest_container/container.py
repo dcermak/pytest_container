@@ -1149,7 +1149,7 @@ class ContainerLauncher:
             _logger.debug("Launching container via: %s", launch_cmd)
             check_output(launch_cmd)
 
-        with open(self._cidfile, "r") as cidfile:
+        with open(self._cidfile, "r", encoding="utf8") as cidfile:
             self._container_id = cidfile.read(-1).strip()
 
         self._wait_for_container_to_become_healthy()
