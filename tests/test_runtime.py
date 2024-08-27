@@ -31,9 +31,10 @@ def container_runtime_envvar(request):
     ],
     indirect=["container_runtime_envvar"],
 )
-# pylint: disable-next=redefined-outer-name,unused-argument
 def test_runtime_selection(
-    container_runtime_envvar: None, runtime: OciRuntimeBase
+    # pylint: disable-next=redefined-outer-name,unused-argument
+    container_runtime_envvar: None,
+    runtime: OciRuntimeBase,
 ):
     assert get_selected_runtime() == runtime
 
@@ -43,8 +44,8 @@ def test_runtime_selection(
     ["foobar"],
     indirect=["container_runtime_envvar"],
 )
-# pylint: disable-next=redefined-outer-name,unused-argument
 def test_errors_out_when_invalid_runtime_selected(
+    # pylint: disable-next=redefined-outer-name,unused-argument
     container_runtime_envvar: None,
 ) -> None:
     with pytest.raises(ValueError) as val_err_ctx:

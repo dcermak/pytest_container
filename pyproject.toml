@@ -42,7 +42,10 @@ deprecation = "^2.1"
 [tool.poetry.dev-dependencies]
 black = ">=21.9b0"
 mypy = ">=0.942"
-pylint = ">=2.10.2"
+pylint = [
+    { version = ">=2.10.2", python = "< 3.8" },
+    { version = ">=3", python = ">= 3.8" },
+]
 reorder-python-imports = ">=2.6.0"
 pytest-xdist = ">=2.4.0"
 Sphinx = ">=5.0"
