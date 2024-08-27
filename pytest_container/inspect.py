@@ -186,6 +186,11 @@ class HealthCheck:
 
 @dataclass(frozen=True)
 class ContainerState:
+    """State of the container, it is populated from the ``State`` attribute in
+    the inspect of a container.
+
+    """
+
     #: status of the container, e.g. ``running``, ``stopped``, etc.
     status: str
     #: True if the container is running
@@ -206,6 +211,12 @@ class ContainerState:
 
 @dataclass(frozen=True)
 class Config:
+    """Container configuration obtained from the ``Config`` attribute in the
+    inspect of a container. It features the most useful attributes and those
+    that are common to both :command:`podman` and :command:`docker`.
+
+    """
+
     #: User defined in the container image
     user: str
 
@@ -229,7 +240,6 @@ class Config:
 
     #: Signal that will be sent to the container when it is stopped. If the
     #: container does not terminate, ``SIGKILL`` will be used afterwards.
-    #:
     stop_signal: Union[int, str]
 
     #: The working directory of the container
