@@ -32,6 +32,22 @@ def test_adds_selinux(volume: ContainerVolumeBase, expected_flag: VolumeFlag):
 
 
 @pytest.mark.parametrize(
+    "volume,flags",
+    [
+        (ContainerVolume("/foo", flags=[]), []),
+        (
+            ContainerVolume("/bar/", flags=[VolumeFlag.READ_ONLY]),
+            [VolumeFlag.READ_ONLY],
+        ),
+    ],
+)
+def test_does_not_add_selinux_if_flags_is_list(
+    volume: ContainerVolumeBase, flags: List[VolumeFlag]
+) -> None:
+    assert volume.flags == flags
+
+
+@pytest.mark.parametrize(
     "flags",
     [
         [VolumeFlag.SELINUX_SHARED, VolumeFlag.SELINUX_PRIVATE],

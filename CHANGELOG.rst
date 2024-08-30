@@ -3,6 +3,8 @@ Next Release
 
 Breaking changes:
 
+- Change addition of SELinux flags to volumes: SELinux flags are only added if
+  :py:attr:`~pytest_container.container.ContainerVolumeBase.flags` is ``None``.
 
 Improvements and new features:
 
