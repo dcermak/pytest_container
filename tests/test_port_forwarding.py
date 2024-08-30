@@ -128,10 +128,9 @@ def test_port_forward_set_up(auto_container: ContainerData, host):
     ), "host port must be set"
 
     assert (
-        host.run_expect(
-            [0],
+        host.check_output(
             f"{_CURL} localhost:{auto_container.forwarded_ports[0].host_port}",
-        ).stdout.strip()
+        ).strip()
         == "Hello Green World!"
     )
 
@@ -161,23 +160,16 @@ def test_multiple_open_ports(container: ContainerData, number: int, host):
         container.forwarded_ports[0].protocol == NetworkProtocol.TCP
         and container.forwarded_ports[0].container_port == 80
     )
-    assert (
-        f"Test page {number}"
-        in host.run_expect(
-            [0], f"{_CURL} localhost:{container.forwarded_ports[0].host_port}"
-        ).stdout
+    assert f"Test page {number}" in host.check_output(
+        f"{_CURL} localhost:{container.forwarded_ports[0].host_port}"
     )
 
     assert (
         container.forwarded_ports[1].protocol == NetworkProtocol.TCP
         and container.forwarded_ports[1].container_port == 443
     )
-    assert (
-        f"Test page {number}"
-        in host.run_expect(
-            [0],
-            f"curl --insecure https://localhost:{container.forwarded_ports[1].host_port}",
-        ).stdout
+    assert f"Test page {number}" in host.check_output(
+        f"curl --insecure https://localhost:{container.forwarded_ports[1].host_port}",
     )
 
 
@@ -216,10 +208,7 @@ def test_bind_to_address(addr: str, container: ContainerData, host) -> None:
     for host_addr in _ADDRESSES:
         cmd = f"{_CURL} http://{host_addr}:{container.forwarded_ports[0].host_port}"
         if addr == host_addr:
-            assert (
-                host.run_expect([0], cmd).stdout.strip()
-                == "Hello Green World!"
-            )
+            assert host.check_output(cmd).strip() == "Hello Green World!"
         else:
             assert host.run_expect([7], cmd)
 
@@ -249,9 +238,7 @@ def test_container_bind_to_host_port(
 
         assert launcher.container_data.forwarded_ports[0].host_port == PORT
         assert (
-            host.run_expect(
-                [0], f"{_CURL} http://localhost:{PORT}"
-            ).stdout.strip()
+            host.check_output(f"{_CURL} http://localhost:{PORT}").strip()
             == "Hello Green World!"
         )
 
@@ -281,8 +268,6 @@ def test_pod_bind_to_host_port(
 
         assert launcher.pod_data.forwarded_ports[0].host_port == PORT
         assert (
-            host.run_expect(
-                [0], f"{_CURL} http://localhost:{PORT}"
-            ).stdout.strip()
+            host.check_output(f"{_CURL} http://localhost:{PORT}").strip()
             == "Hello Green World!"
         )
