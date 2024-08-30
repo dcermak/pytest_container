@@ -15,11 +15,12 @@ LEAP = Container(url=LEAP_URL)
 WEB_SERVER = DerivedContainer(
     base=LEAP,
     containerfile="""
-RUN zypper -n in python3 curl && echo "Hello Green World!" > index.html
-ENTRYPOINT ["/usr/bin/python3", "-m", "http.server"]
+RUN zypper -n in python311 curl && echo "Hello Green World!" > index.html
+ENTRYPOINT ["/usr/bin/python3.11", "-m", "http.server", "--bind", "::"]
 HEALTHCHECK --interval=5s --timeout=1s CMD curl --fail http://0.0.0.0:8000
 EXPOSE 8000
 """,
+    image_format=ImageFormat.DOCKER,
     forwarded_ports=[PortForwarding(container_port=8000)],
 )
 
