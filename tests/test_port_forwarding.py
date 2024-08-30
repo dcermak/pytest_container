@@ -206,7 +206,10 @@ _ADDRESSES = [
 def test_bind_to_address(addr: str, container: ContainerData, host) -> None:
     """address"""
     for host_addr in _ADDRESSES:
-        cmd = f"{_CURL} http://{host_addr}:{container.forwarded_ports[0].host_port}"
+        # need to surround a ipv6 address in [] so that it can be distinguished
+        # from a port
+        formated_ip = f"[{host_addr}]" if ":" in host_addr else host_addr
+        cmd = f"{_CURL} http://{formated_ip}:{container.forwarded_ports[0].host_port}"
         if addr == host_addr:
             assert host.check_output(cmd).strip() == "Hello Green World!"
         else:
