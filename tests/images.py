@@ -20,6 +20,7 @@ ENTRYPOINT ["/usr/bin/python3.11", "-m", "http.server", "--bind", "::"]
 HEALTHCHECK --interval=5s --timeout=1s CMD curl --fail http://0.0.0.0:8000
 EXPOSE 8000
 """,
+    image_format=ImageFormat.DOCKER,
     forwarded_ports=[PortForwarding(container_port=8000)],
 )
 
