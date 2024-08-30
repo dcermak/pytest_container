@@ -175,9 +175,13 @@ class ContainerVolumeBase:
     #:
     #: Note that some flags are mutually exclusive and potentially not supported
     #: by all container runtimes.
+    #:
     #: The :py:attr:`VolumeFlag.SELINUX_PRIVATE` flag will be added by default
-    #: to the flags unless :py:attr:`ContainerVolumeBase.shared` is ``True``.
-    flags: List[VolumeFlag] = field(default_factory=list)
+    #: if flags is ``None``, unless :py:attr:`ContainerVolumeBase.shared` is
+    #: ``True``, then :py:attr:`VolumeFlag.SELINUX_SHARED` is added.
+    #:
+    #: If flags is a list (even an empty one), then no flags are added.
+    flags: Optional[List[VolumeFlag]] = None
 
     #: Define whether this volume should can be shared between
     #: containers. Defaults to ``False``.
@@ -191,15 +195,12 @@ class ContainerVolumeBase:
     _vol_name: str = ""
 
     def __post_init__(self) -> None:
-        if (
-            VolumeFlag.SELINUX_PRIVATE not in self.flags
-            and VolumeFlag.SELINUX_SHARED not in self.flags
-        ):
-            self.flags.append(
+        if self.flags is None:
+            self.flags = [
                 VolumeFlag.SELINUX_SHARED
                 if self.shared
                 else VolumeFlag.SELINUX_PRIVATE
-            )
+            ]
 
         for mutually_exclusive_flags in (
             (VolumeFlag.READ_ONLY, VolumeFlag.READ_WRITE),
