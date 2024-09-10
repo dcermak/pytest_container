@@ -1,9 +1,12 @@
 # pylint: disable=missing-function-docstring,missing-module-docstring
 import pytest
 from pytest_container.container import ContainerImageData
+from pytest_container.container import ContainerLauncher
 from pytest_container.container import DerivedContainer
+from pytest_container.runtime import OciRuntimeBase
 
 from tests.images import LEAP
+from tests.test_volumes import LEAP_WITH_BIND_MOUNT_AND_VOLUME
 
 
 @pytest.mark.parametrize("container_image", [LEAP], indirect=True)
@@ -37,3 +40,26 @@ def test_entrypoint_respected_in_run(
     assert "foobar" in host.check_output(
         f"{container_image.run_command} foobar"
     )
+
+
+@pytest.mark.parametrize(
+    "container_image", [LEAP_WITH_BIND_MOUNT_AND_VOLUME], indirect=True
+)
+def test_volume_created_on_enter(
+    container_image: ContainerImageData, host
+) -> None:
+    host.check_output(f"{container_image.run_command} stat /foo")
+    host.check_output(f"{container_image.run_command} stat /bar")
+
+
+def test_volume_destroyed_on_exit(
+    host, pytestconfig: pytest.Config, container_runtime: OciRuntimeBase
+) -> None:
+    with ContainerLauncher.from_pytestconfig(
+        LEAP_WITH_BIND_MOUNT_AND_VOLUME, container_runtime, pytestconfig
+    ) as launcher:
+        launcher.prepare_container_image()
+
+        cid = launcher.container_image_data
+        host.check_output(f"{cid.run_command} stat /foo")
+        host.check_output(f"{cid.run_command} stat /bar")
