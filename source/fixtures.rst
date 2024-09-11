@@ -45,5 +45,5 @@ directive is only supported for docker images. While this is the default with
 :command:`docker`, :command:`buildah` will by default build images in the
 ``OCIv1`` format which does **not** support ``HEALTHCHECK``. To ensure that your
 created container includes the ``HEALTHCHECK``, set the attribute
-:py:attr:`~pytest_container.container.DerivedContainer.image_format` to
+:py:attr:`~pytest_container.container._ContainerForBuild.image_format` to
 :py:attr:`~pytest_container.container.ImageFormat.DOCKER`.

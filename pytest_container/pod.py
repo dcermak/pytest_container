@@ -19,6 +19,7 @@ from pytest_container.container import ContainerLauncher
 from pytest_container.container import create_host_port_port_forward
 from pytest_container.container import DerivedContainer
 from pytest_container.container import lock_host_port_search
+from pytest_container.container import MultiStageContainer
 from pytest_container.helpers import get_extra_build_args
 from pytest_container.helpers import get_extra_pod_create_args
 from pytest_container.helpers import get_extra_run_args
@@ -39,7 +40,7 @@ class Pod:
     """
 
     #: containers belonging to the pod
-    containers: List[Union[DerivedContainer, Container]]
+    containers: List[Union[MultiStageContainer, DerivedContainer, Container]]
 
     #: ports exposed by the pod
     forwarded_ports: List[PortForwarding] = field(default_factory=list)

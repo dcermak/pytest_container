@@ -1,6 +1,80 @@
 Usage Tips
 ==========
 
+
+Running multi-stage builds
+--------------------------
+
+``pytest_container`` has builtin support for testing containers that are built
+as part of multi-stage builds. More specifically, it supports using containers
+defined via the :py:class:`~pytest_container.container.Container` and
+:py:class:`~pytest_container.container.DerivedContainer` classes. This is
+achieved by providing a :file:`Containerfile` and inserting template strings
+instead of the specific container URIs or IDs, e.g.:
+
+.. code-block:: python
+
+   # the "base" of the final stage
+   FINAL_BASE = DerivedContainer(...)
+
+   MULTI_STAGE_CTR = MultiStageContainer(
+       containers={
+           "final": FINAL_BASE,
+           "base": "registry.opensuse.org/opensuse/leap:latest",
+       },
+       containerfile="""FROM $base as base
+   WORKDIR /src/
+   RUN # build something here
+
+   FROM $final as deploy
+   COPY --from=base /src/binary /usr/bin/binary
+   """,
+   )
+
+
+Such a defined container can be used in a similar fashion to the
+:py:class:`~pytest_container.container.Container` and
+:py:class:`~pytest_container.container.DerivedContainer` classes in tests as
+follows:
+
+.. code-block:: python
+
+   @pytest.mark.parametrize("container", [MULTI_STAGE_CTR], indirect=True)
+   def test_multistage_binary_in_final_stage(container: ContainerData):
+       binary = container.connection.file("/usr/bin/binary")
+       assert binary.exists and binary.is_executable
+
+
+It is also possible to define which stage of a multi-stage container should be
+built. By default the last stage is built. To built a different stage, set
+:py:attr:`~pytest_container.container.MultiStageContainer.target_stage` to the
+stage to build to (this is equivalent to the ``--target`` setting supplied to
+:command:`buildah bud` or :command:`docker build`):
+
+.. code-block:: python
+
+   MULTI_STAGE_CTR_W_STAGE = MultiStageContainer(
+       containers={
+           "final": FINAL_BASE,
+           "base": "registry.opensuse.org/opensuse/leap:latest",
+       },
+       containerfile="""FROM $base as base
+   WORKDIR /src/
+   RUN # build something here
+
+   FROM $final as deploy
+   COPY --from=base /src/binary /usr/bin/binary
+   """,
+       target_stage="base"
+   )
+
+   @pytest.mark.parametrize("container", [MULTI_STAGE_CTR_W_STAGE], indirect=True)
+   def test_multistage_binary_in_first_stage(container: ContainerData):
+       binary = container.connection.file("/src/binary")
+       assert binary.exists and binary.is_executable
+
+
+
 Adding global build, run or pod create arguments
 ------------------------------------------------
 
@@ -8,7 +82,7 @@ Sometimes it is necessary to customize the build, run or pod create parameters
 of the container runtime globally, e.g. to use the host's network with docker
 via ``--network=host``.
 
-The :py:meth:`~pytest_container.container.ContainerBaseABC.prepare_container`
+The :py:meth:`~pytest_container.container._ContainerPrepareABC.prepare_container`
 and :py:meth:`~pytest_container.container.ContainerBase.get_launch_cmd` methods
 support passing such additional arguments/flags, but this is rather cumbersome
 to use in practice. The ``*container*`` and ``pod*`` fixtures will therefore
