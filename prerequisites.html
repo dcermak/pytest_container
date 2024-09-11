@@ -45,9 +45,10 @@ runtime. Currently the following ones are supported:</p>
 <li><p><a class="reference external" href="https://podman.io/">podman</a> and <a class="reference external" href="https://buildah.io/">buildah</a></p></li>
 <li><p><a class="reference external" href="https://www.docker.com/">docker</a></p></li>
 </ul>
-<p id="runtime-selection-rules">The fixtures will default to using <strong class="command">podman</strong> and <strong class="command">buildah</strong>, if
-they are installed and work, otherwise <strong class="command">docker</strong> will be used. You can
-also customize which runtime will be used via the environment variable
+<p id="runtime-selection-rules">The fixtures will default to using <strong class="command">podman</strong> (and optionally
+<strong class="command">buildah</strong> for building or fallback to <strong class="command">podman</strong>), if they are
+installed and work, otherwise <strong class="command">docker</strong> will be used. You can also
+customize which runtime will be used via the environment variable
 <code class="docutils literal notranslate"><span class="pre">CONTAINER_RUNTIME</span></code> <a class="footnote-reference brackets" href="#id2" id="id1" role="doc-noteref"><span class="fn-bracket">[</span>1<span class="fn-bracket">]</span></a>.</p>
 <aside class="footnote-list brackets">
 <aside class="footnote brackets" id="id2" role="note">
