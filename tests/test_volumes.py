@@ -151,7 +151,7 @@ def test_container_volume_host_writing(container_per_test: ContainerData):
 
 - there is nothing to see, please carry on"""
 
-    with open(join(vol.host_path, "test"), "w") as testfile:
+    with open(join(vol.host_path, "test"), "w", encoding="utf8") as testfile:
         testfile.write(contents)
 
     testfile_in_container = container_per_test.connection.file(

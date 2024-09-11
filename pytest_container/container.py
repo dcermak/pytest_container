@@ -41,11 +41,10 @@ from uuid import uuid4
 
 import _pytest.mark
 import deprecation
+import pytest
 import testinfra
 from filelock import BaseFileLock
 from filelock import FileLock
-from pytest import Config
-from pytest import param
 from pytest_container.helpers import get_always_pull_option
 from pytest_container.helpers import get_extra_build_args
 from pytest_container.helpers import get_extra_run_args
@@ -928,7 +927,7 @@ def container_to_pytest_param(
     :py:attr:`~pytest_container.container.ContainerBase.container_id`)
 
     """
-    return param(container, marks=marks or [], id=str(container))
+    return pytest.param(container, marks=marks or [], id=str(container))
 
 
 @overload
@@ -1054,9 +1053,14 @@ class ContainerLauncher:
     def from_pytestconfig(
         container: Union[Container, DerivedContainer],
         container_runtime: OciRuntimeBase,
-        pytestconfig: Config,
+        pytestconfig: pytest.Config,
         container_name: str = "",
     ) -> "ContainerLauncher":
+        """Constructor of :py:class:`ContainerLauncher` that obtains the
+        attributes :py:attr:`rootdir`, :py:attr:`extra_build_args` and
+        :py:attr:`extra_run_args` from the pytest configuration object.
+
+        """
         return ContainerLauncher(
             container=container,
             container_runtime=container_runtime,
@@ -1149,7 +1153,7 @@ class ContainerLauncher:
             _logger.debug("Launching container via: %s", launch_cmd)
             check_output(launch_cmd)
 
-        with open(self._cidfile, "r") as cidfile:
+        with open(self._cidfile, "r", encoding="utf8") as cidfile:
             self._container_id = cidfile.read(-1).strip()
 
         self._wait_for_container_to_become_healthy()

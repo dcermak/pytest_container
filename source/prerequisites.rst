@@ -14,9 +14,10 @@ runtime. Currently the following ones are supported:
 
 .. _runtime selection rules:
 
-The fixtures will default to using :command:`podman` and :command:`buildah`, if
-they are installed and work, otherwise :command:`docker` will be used. You can
-also customize which runtime will be used via the environment variable
+The fixtures will default to using :command:`podman` (and optionally
+:command:`buildah` for building or fallback to :command:`podman`), if they are
+installed and work, otherwise :command:`docker` will be used. You can also
+customize which runtime will be used via the environment variable
 ``CONTAINER_RUNTIME`` [#]_.
 
 .. [#] When running tests with `tox <http://tox.readthedocs.org/>`_ keep in mind

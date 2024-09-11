@@ -136,6 +136,12 @@ class PodLauncher:
     def from_pytestconfig(
         pod: Pod, pytestconfig: Config, pod_name: str = ""
     ) -> "PodLauncher":
+        """Constructor of :py:class:`PodLauncher` that obtains the attributes
+        :py:attr:`rootdir`, :py:attr:`extra_build_args`,
+        :py:attr:`extra_run_args` and :py:attr:`extra_pod_create_args` from the
+        pytest configuration object.
+
+        """
         return PodLauncher(
             pod,
             pytestconfig.rootpath,
