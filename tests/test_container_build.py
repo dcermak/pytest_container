@@ -8,6 +8,7 @@ from pytest_container import Container
 from pytest_container import DerivedContainer
 from pytest_container import get_extra_build_args
 from pytest_container.build import MultiStageBuild
+from pytest_container.container import BindMount
 from pytest_container.container import ContainerData
 from pytest_container.container import ContainerLauncher
 from pytest_container.container import EntrypointSelection
@@ -323,3 +324,30 @@ LEAP_THAT_ECHOES_STUFF = DerivedContainer(
 @pytest.mark.parametrize("container", [LEAP_THAT_ECHOES_STUFF], indirect=True)
 def test_container_logs(container: ContainerData) -> None:
     assert "foobar" in container.read_container_logs()
+
+
+def test_container_stops_on_exit(
+    container_runtime: OciRuntimeBase,
+    pytestconfig: Config,
+    tmp_path: Path,
+):
+    _CONTAINER_THAT_TRAPS_SIGTERM = DerivedContainer(
+        base=BUSYBOX_WITH_ENTRYPOINT,
+        containerfile="""COPY tests/files/entrypoint.sh /usr/local/bin/entrypoint.sh
+RUN chmod +x /usr/local/bin/entrypoint.sh
+CMD ["/usr/local/bin/entrypoint.sh"]
+""",
+        volume_mounts=[
+            BindMount(host_path=tmp_path, container_path="/var/volume")
+        ],
+    )
+    with ContainerLauncher(
+        _CONTAINER_THAT_TRAPS_SIGTERM,
+        container_runtime,
+        pytestconfig.rootpath,
+    ) as launcher:
+        launcher.launch_container()
+        connection = launcher.container_data.connection
+        assert connection.file("/var/volume/cleanup_confirmed").exists
+
+    assert (tmp_path / "cleanup_confirmed").read_text().strip() == "1"

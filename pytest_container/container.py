@@ -1235,6 +1235,19 @@ class ContainerLauncher:
             mounts = self.container_runtime.inspect_container(
                 self._container_id
             ).mounts
+
+            _logger.debug(
+                "Stopping container %s via %s",
+                self._container_id,
+                self.container_runtime.runner_binary,
+            )
+            check_output(
+                [
+                    self.container_runtime.runner_binary,
+                    "stop",
+                    self._container_id,
+                ]
+            )
             _logger.debug(
                 "Removing container %s via %s",
                 self._container_id,
