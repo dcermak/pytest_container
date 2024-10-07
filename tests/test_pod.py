@@ -142,7 +142,7 @@ def test_proxy_pod(pod_per_test: PodData, host) -> None:
         "Hello Green World"
         in host.run_expect(
             [0],
-            f"curl --fail http://localhost:{pod_per_test.forwarded_ports[0].host_port}",
+            f"curl --fail http://0.0.0.0:{pod_per_test.forwarded_ports[0].host_port}",
         ).stdout
     )
 

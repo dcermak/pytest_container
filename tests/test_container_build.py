@@ -44,7 +44,10 @@ BUSYBOX_WITH_GARBAGE = DerivedContainer(
 
 SLEEP_CONTAINER = DerivedContainer(
     base=LEAP_URL,
-    containerfile="""ENTRYPOINT ["/usr/bin/sleep", "3600"]""",
+    containerfile="""
+# ps is needed for the tests to filter processes
+RUN zypper -n in ps
+ENTRYPOINT ["/usr/bin/sleep", "3600"]""",
 )
 
 LEAP2 = DerivedContainer(base=LEAP)
