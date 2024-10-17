@@ -11,6 +11,6 @@ You will need the following tools to start contributing code:
 Before submitting your changes, please ensure that:
 
 - your code is properly formatted via :command:`nox -s format`
-- it passes the test suite (:command:`nox -s py`)
+- it passes the test suite (:command:`nox -s test`)
 - the documentation can be build (:command:`nox -s doc`)
 - it passes the mypy and pylint checks (:command:`nox -s lint`)
