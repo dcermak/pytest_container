@@ -163,7 +163,7 @@ changes compared to 0.1.0.</p>
 <ul class="simple">
 <li><p><code class="docutils literal notranslate"><span class="pre">ContainerBase.healtcheck_timeout_ms</span></code> got renamed to
 <a class="reference internal" href="api.html#pytest_container.container.ContainerBase.healthcheck_timeout" title="pytest_container.container.ContainerBase.healthcheck_timeout"><code class="xref py py-attr docutils literal notranslate"><span class="pre">healthcheck_timeout</span></code></a> and was
-changed as follows: it is now a <a class="reference external" href="https://docs.python.org/3/library/datetime.html#datetime.timedelta" title="(in Python v3.12)"><code class="xref py py-class docutils literal notranslate"><span class="pre">timedelta</span></code></a> with the
+changed as follows: it is now a <a class="reference external" href="https://docs.python.org/3/library/datetime.html#datetime.timedelta" title="(in Python v3.13)"><code class="xref py py-class docutils literal notranslate"><span class="pre">timedelta</span></code></a> with the
 default value being <code class="docutils literal notranslate"><span class="pre">None</span></code> and implies that <code class="docutils literal notranslate"><span class="pre">pytest_container</span></code> figures the
 maximum timeout out itself. If a positive timedelta is provided, then that
 timeout is used instead of the inferred default and if it is negative, then no
