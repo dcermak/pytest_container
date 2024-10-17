@@ -1,5 +1,7 @@
 # pylint: disable=missing-function-docstring,missing-module-docstring
+import subprocess
 from pathlib import Path
+from typing import Optional
 from typing import Union
 
 import pytest
@@ -13,7 +15,6 @@ from pytest_container.container import ContainerData
 from pytest_container.container import ContainerLauncher
 from pytest_container.container import EntrypointSelection
 from pytest_container.inspect import PortForwarding
-from pytest_container.runtime import LOCALHOST
 from pytest_container.runtime import OciRuntimeBase
 
 from .images import LEAP
@@ -100,9 +101,9 @@ CONTAINER_THAT_STOPS = DerivedContainer(
 
 @pytest.mark.parametrize("container", [LEAP], indirect=["container"])
 def test_leap(container: ContainerData):
-    assert container.connection.file("/etc/os-release").exists
-    assert not container.connection.exists("man")
-    assert not container.connection.exists("lua")
+    assert container.remote.file("/etc/os-release").exists
+    assert not container.remote.exists("man")
+    assert not container.remote.exists("lua")
 
 
 @pytest.mark.parametrize("container", [LEAP], indirect=["container"])
@@ -124,18 +125,18 @@ def test_local_container_image_ref(
         local_container, container_runtime, pytestconfig.rootpath
     ) as launcher:
         launcher.launch_container()
-        connection = launcher.container_data.connection
-        assert connection.file("/etc/os-release").exists
+        remote = launcher.container_data.remote
+        assert remote.file("/etc/os-release").exists
         assert (
             'ID="opensuse-leap"'
-            in connection.file("/etc/os-release").content_string
+            in remote.file("/etc/os-release").content_string
         )
 
 
 @pytest.mark.parametrize("container", [LEAP_WITH_MAN], indirect=["container"])
 def test_leap_with_man(container: ContainerData):
-    assert container.connection.exists("man")
-    assert not container.connection.exists("lua")
+    assert container.remote.exists("man")
+    assert not container.remote.exists("lua")
 
 
 @pytest.mark.parametrize("container", [LEAP_WITH_MAN], indirect=["container"])
@@ -176,8 +177,8 @@ def test_container_without_containerfile_but_with_tags_is_rebuild(
     "container", [LEAP_WITH_MAN_AND_LUA], indirect=["container"]
 )
 def test_leap_with_man_and_lua(container: ContainerData):
-    assert container.connection.exists("man")
-    assert container.connection.exists("lua")
+    assert container.remote.exists("man")
+    assert container.remote.exists("lua")
 
 
 @pytest.mark.parametrize(
@@ -191,29 +192,28 @@ def test_container_objects(
 
 
 def test_auto_container_fixture(auto_container: ContainerData):
-    assert auto_container.connection.file("/etc/os-release").exists
+    assert auto_container.remote.file("/etc/os-release").exists
 
 
 @pytest.mark.parametrize(
     "container", [BUSYBOX_WITH_ENTRYPOINT], indirect=["container"]
 )
 def test_custom_entry_point(container: ContainerData):
-    container.connection.check_output("true")
+    container.remote.check_output("true")
 
 
 @pytest.mark.parametrize(
     "container", [SLEEP_CONTAINER], indirect=["container"]
 )
 def test_default_entry_point(container: ContainerData):
-    sleep = container.connection.process.filter(comm="sleep")
-    assert len(sleep) == 1
-    assert "/usr/bin/sleep 3600" == sleep[0].args
+    output = container.remote.check_output("ps -Aww -o args").splitlines()[1:]
+    assert "/usr/bin/sleep 3600" in output
 
 
 @pytest.mark.parametrize("container", [CONTAINER_THAT_STOPS], indirect=True)
 def test_container_that_stops(container: ContainerData) -> None:
     # it should just be alive
-    container.connection.check_output("true")
+    container.remote.check_output("true")
 
 
 def test_container_size(
@@ -240,7 +240,7 @@ def test_container_size(
 def test_derived_containers_use_correct_user(
     container: ContainerData,
 ) -> None:
-    assert container.connection.check_output("id -nu").strip() == "bin"
+    assert container.remote.check_output("id -nu").strip() == "bin"
     assert container.inspect.config.user == "bin"
 
 
@@ -255,7 +255,7 @@ def test_derived_containers_use_correct_user(
 def test_derived_container_respects_launch_args(
     container: ContainerData,
 ) -> None:
-    assert int(container.connection.check_output("id -u").strip()) == 0
+    assert int(container.remote.check_output("id -u").strip()) == 0
 
 
 def test_multistage_containerfile() -> None:
@@ -276,6 +276,16 @@ def test_multistage_build(
 def test_multistage_build_target(
     tmp_path: Path, pytestconfig: Config, container_runtime: OciRuntimeBase
 ):
+    def run_image(
+        image_sha: str, *args: str, entrypoint: Optional[str] = None
+    ) -> str:
+        cmd = [container_runtime.runner_binary, "run", "--rm"]
+        if entrypoint is not None:
+            cmd.extend(["--entrypoint", entrypoint])
+        cmd.append(image_sha)
+        cmd.extend(args)
+        return subprocess.check_output(cmd).strip().decode("utf-8")
+
     first_target = MULTI_STAGE_BUILD.build(
         tmp_path,
         pytestconfig.rootpath,
@@ -283,12 +293,7 @@ def test_multistage_build_target(
         "runner1",
         extra_build_args=get_extra_build_args(pytestconfig),
     )
-    assert (
-        LOCALHOST.check_output(
-            f"{container_runtime.runner_binary} run --rm {first_target}",
-        ).strip()
-        == "foobar"
-    )
+    assert "foobar" == run_image(first_target)
 
     second_target = MULTI_STAGE_BUILD.build(
         tmp_path,
@@ -299,24 +304,14 @@ def test_multistage_build_target(
     )
 
     assert first_target != second_target
-    assert (
-        LOCALHOST.check_output(
-            f"{container_runtime.runner_binary} run --rm {second_target} /bin/test.sh",
-        ).strip()
-        == "foobar"
-    )
+    assert "foobar" == run_image(second_target, "/bin/test.sh")
 
-    for (distro, target) in (
+    for distro, target in (
         ("Leap", first_target),
         ("Alpine", second_target),
     ):
-        assert (
-            distro
-            in LOCALHOST.check_output(
-                f"{container_runtime.runner_binary} run --rm --entrypoint= {target} "
-                "cat /etc/os-release",
-            ).strip()
-        )
+        output = run_image(target, "/etc/os-release", entrypoint="cat")
+        assert distro in output
 
 
 LEAP_THAT_ECHOES_STUFF = DerivedContainer(
@@ -350,7 +345,7 @@ CMD ["/usr/local/bin/entrypoint.sh"]
         pytestconfig.rootpath,
     ) as launcher:
         launcher.launch_container()
-        connection = launcher.container_data.connection
-        assert connection.file("/var/volume/cleanup_confirmed").exists
+        remote = launcher.container_data.remote
+        assert remote.file("/var/volume/cleanup_confirmed").exists
 
     assert (tmp_path / "cleanup_confirmed").read_text().strip() == "1"

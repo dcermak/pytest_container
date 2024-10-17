@@ -3,11 +3,11 @@ import os
 import re
 import subprocess
 import tempfile
-from contextlib import ExitStack
 from pathlib import Path
 from time import sleep
 from typing import Any
-from unittest.mock import patch
+from unittest.mock import call
+from unittest.mock import Mock
 
 import pytest
 from pytest_container import inspect
@@ -18,7 +18,6 @@ from pytest_container.container import ContainerLauncher
 from pytest_container.container import ContainerVolume
 from pytest_container.container import DerivedContainer
 from pytest_container.container import EntrypointSelection
-from pytest_container.runtime import LOCALHOST
 from pytest_container.runtime import OciRuntimeBase
 
 from .images import CMDLINE_APP_CONTAINER
@@ -60,19 +59,19 @@ CMD ["-m", "http.server"]
 
 def _test_func(con: Any) -> None:
     sleep(5)
-    assert "Leap" in con.run_expect([0], "cat /etc/os-release").stdout
+    assert "Leap" in con.check_output("cat /etc/os-release")
 
 
 @pytest.mark.parametrize("container", [LEAP], indirect=True)
 def test_cleanup_not_immediate(container: ContainerData) -> None:
-    _test_func(container.connection)
+    _test_func(container.remote)
 
 
 @pytest.mark.parametrize("container_per_test", [LEAP], indirect=True)
 def test_cleanup_not_immediate_per_test(
     container_per_test: ContainerData,
 ) -> None:
-    _test_func(container_per_test.connection)
+    _test_func(container_per_test.remote)
 
 
 @pytest.mark.parametrize(
@@ -97,14 +96,12 @@ def test_launcher_creates_and_cleanes_up_volumes(
         assert container.volume_mounts
 
         for vol in container.volume_mounts:
-
             if isinstance(vol, BindMount):
                 assert vol.host_path and os.path.exists(vol.host_path)
             elif isinstance(vol, ContainerVolume):
                 assert vol.volume_id
-                assert LOCALHOST.run_expect(
-                    [0],
-                    f"{container_runtime.runner_binary} volume inspect {vol.volume_id}",
+                assert container_runtime.run_command(
+                    "volume", "inspect", vol.volume_id
                 )
             else:
                 assert False, f"invalid volume type {type(vol)}"
@@ -128,7 +125,6 @@ def test_launcher_cleanes_up_volumes_from_image(
     cont: DerivedContainer,
     pytestconfig: pytest.Config,
     container_runtime: OciRuntimeBase,
-    host: Any,
 ) -> None:
     with ContainerLauncher.from_pytestconfig(
         cont, container_runtime, pytestconfig
@@ -146,13 +142,12 @@ def test_launcher_cleanes_up_volumes_from_image(
         )
 
         vol_name = mounts[0].name
-    assert (
-        "no such volume"
-        in host.run_expect(
-            [1, 125],
-            f"{container_runtime.runner_binary} volume inspect {vol_name}",
-        ).stderr.lower()
-    )
+
+    with pytest.raises(subprocess.CalledProcessError) as runtime_err_ctx:
+        container_runtime.run_command("volume", "inspect", vol_name)
+
+    assert runtime_err_ctx.value.returncode in [1, 125]
+    assert "no such volume" in runtime_err_ctx.value.stderr.lower()
 
 
 def test_launcher_container_data_not_available_after_exit(
@@ -171,7 +166,7 @@ def test_launcher_container_data_not_available_after_exit(
 
 
 def test_launcher_fails_on_failing_healthcheck(
-    container_runtime: OciRuntimeBase, pytestconfig: pytest.Config, host
+    container_runtime: OciRuntimeBase, pytestconfig: pytest.Config
 ):
     container_name = "container_with_failing_healthcheck"
     with pytest.raises(RuntimeError) as runtime_err_ctx:
@@ -195,10 +190,11 @@ def test_launcher_fails_on_failing_healthcheck(
     )
 
     # the container must not exist anymore
-    err_msg = host.run_expect(
-        [1, 125],
-        f"{container_runtime.runner_binary} inspect {container_name}",
-    ).stderr
+    with pytest.raises(subprocess.CalledProcessError) as runtime_err_ctx:
+        container_runtime.run_command("inspect", container_name)
+
+    assert runtime_err_ctx.value.returncode in [1, 125]
+    err_msg = runtime_err_ctx.value.stderr
     assert ("no such object" in err_msg.lower()) or (
         "error getting image" in err_msg
     )
@@ -241,17 +237,17 @@ def test_launcher_does_can_check_binaries_with_entrypoint(
     """Check that the we can check for installed binaries even if the container
     has an entrypoint specified that is not a shell and terminates immediately.
     """
-    assert container.connection.exists("bash")
+    assert container.remote.exists("bash")
 
 
 def test_derived_container_pulls_base(
-    container_runtime: OciRuntimeBase, host: Any, pytestconfig: pytest.Config
+    container_runtime: OciRuntimeBase, pytestconfig: pytest.Config
 ) -> None:
     registry_url = "registry.opensuse.org/opensuse/registry:latest"
 
     # remove the container image so that the preparation in the launcher must
     # pull the image
-    host.run(f"{container_runtime.runner_binary} rmi {registry_url}")
+    container_runtime.run_command("rmi", registry_url, ignore_errors=True)
 
     reg = DerivedContainer(base=registry_url)
     with ContainerLauncher.from_pytestconfig(
@@ -271,59 +267,49 @@ def test_pulls_container(
 
     """
     quay_busybox = "quay.io/libpod/busybox"
+    mock_runner = Mock()
+    mock_runner.return_value = "[]"
+    monkeypatch.setattr(container_runtime, "run_command", mock_runner)
 
-    with ExitStack() as stack:
-        # mock setup
-        mock_check_output = stack.enter_context(
-            patch("pytest_container.container.check_output")
+    def _pull():
+        Container(url=quay_busybox).prepare_container(
+            container_runtime, pytestconfig.rootpath
         )
-        mock_check_call = stack.enter_context(
-            patch("pytest_container.container.call")
-        )
-        mock_check_output.return_value = None
 
-        def _pull():
-            Container(url=quay_busybox).prepare_container(
-                container_runtime, pytestconfig.rootpath
-            )
+    # first test: should always pull the image
+    monkeypatch.setenv("PULL_ALWAYS", "1")
+    _pull()
 
-        # first test: should always pull the image
-        monkeypatch.setenv("PULL_ALWAYS", "1")
-        _pull()
+    mock_runner.assert_has_calls(
+        [
+            call("pull", quay_busybox),
+        ]
+    )
+    mock_runner.reset_mock()
 
-        mock_check_output.assert_called_once_with(
-            [container_runtime.runner_binary, "pull", quay_busybox]
-        )
-        mock_check_call.assert_not_called()
+    # second test: should only pull the image if inspect fails
+    # in this case we mock the inspect call to return 0, i.e. image is there
+    monkeypatch.setenv("PULL_ALWAYS", "0")
+    mock_runner.return_value = '[{"Id": "1234"}]'
+    _pull()
+    mock_runner.assert_has_calls(
+        [
+            call("inspect", quay_busybox, ignore_errors=True),
+        ]
+    )
+    mock_runner.reset_mock()
 
-        mock_check_output.reset_mock()
-        mock_check_call.reset_mock()
-
-        # second test: should only pull the image if inspect fails
-        # in this case we mock the inspect call to return 0, i.e. image is there
-        monkeypatch.setenv("PULL_ALWAYS", "0")
-        mock_check_call.return_value = 0
-
-        _pull()
-        mock_check_call.assert_called_once_with(
-            [container_runtime.runner_binary, "inspect", quay_busybox]
-        )
-        mock_check_output.assert_not_called()
-
-        mock_check_output.reset_mock()
-        mock_check_call.reset_mock()
-
-        # third test: pull the image if inspect fails, so we mock the inspect
-        # call to return 1
-        mock_check_call.return_value = 1
-
-        _pull()
-        mock_check_call.assert_called_once_with(
-            [container_runtime.runner_binary, "inspect", quay_busybox]
-        )
-        mock_check_output.assert_called_once_with(
-            [container_runtime.runner_binary, "pull", quay_busybox]
-        )
+    # third test: pull the image if inspect fails, so we mock the inspect
+    # call to return 1
+    mock_runner.return_value = "[]"
+    _pull()
+    mock_runner.assert_has_calls(
+        [
+            call("inspect", quay_busybox, ignore_errors=True),
+            call("pull", quay_busybox),
+        ]
+    )
+    mock_runner.reset_mock()
 
 
 def test_launcher_unlocks_on_preparation_failure(
@@ -365,6 +351,6 @@ def test_launcher_unlocks_on_preparation_failure(
     indirect=["container"],
 )
 def test_extra_command_args(container: ContainerData, port_num: int) -> None:
-    assert container.connection.check_output(
+    assert container.remote.check_output(
         f"curl -sf --retry 5 --retry-connrefused http://localhost:{port_num}"
     )

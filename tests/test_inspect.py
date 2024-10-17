@@ -44,7 +44,7 @@ CMD /bin/sh
     "container_per_test", [IMAGE_WITH_EVERYTHING], indirect=True
 )
 def test_inspect(
-    container_per_test: ContainerData, container_runtime: OciRuntimeBase, host
+    container_per_test: ContainerData, container_runtime: OciRuntimeBase
 ) -> None:
     inspect = container_per_test.inspect
 
@@ -62,7 +62,7 @@ def test_inspect(
     # (i.e. `pytest_container:$digest`), while docker just uses the digest
     expected_img = (
         str(container_per_test.container)
-        if container_runtime.runner_binary == "docker"
+        if container_runtime.family == "docker"
         else f"localhost/pytest_container:{container_per_test.container}"
     )
 
@@ -83,9 +83,11 @@ def test_inspect(
         and inspect.mounts[0].destination == "/src"
     )
 
-    assert inspect.network.ip_address or "" == host.check_output(
-        f"{container_runtime.runner_binary} inspect --format "
-        '"{{ .NetworkSettings.IPAddress }}" ' + _CTR_NAME
+    assert inspect.network.ip_address or "" == container_runtime.run_command(
+        "inspect",
+        "--format",
+        "{{ .NetworkSettings.IPAddress }}",
+        _CTR_NAME,
     )
 
 
@@ -701,7 +703,7 @@ def test_podman_inspect_parsing(
 ):
     monkeypatch.setattr(
         OciRuntimeBase,
-        "_get_container_inspect",
+        "_run_inspect",
         lambda _self, _unused: json.loads(inspect_output)[0],
     )
 

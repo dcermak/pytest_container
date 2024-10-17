@@ -187,9 +187,7 @@ The object ``CONTAINER1`` can now be used as any other container:
        indirect=True
    )
    def test_my_script(container_per_test, ...):
-       container_per_test.connection.run_expect(
-           [0], f"python3 {CDIR}/{FILE}"
-       )
+       container_per_test.remote.check_output(f"python3 {CDIR}/{FILE}")
 
 
 2. Copy the files at runtime into the running container
@@ -203,10 +201,9 @@ test, which is not that easily possible with the first approach.
 
 To successfully copy files, we need to undertake the following steps:
 
-1. Request the following fixtures: any of the ``(auto)_container_per_test``,
-   ``host``, ``container_runtime``.
+1. Request the following fixtures: any of the ``(auto)_container_per_test``, ``container_runtime``.
 2. Obtain the running container's hash.
-3. Use :command:`podman|docker cp command`, via testinfra's host fixture.
+3. Use ``remote.copy()`` of the container to copy the file into the container via ``podman cp`` or ``docker cp``.
 
 The above steps could be implemented as follows:
 
@@ -216,11 +213,8 @@ The above steps could be implemented as follows:
    FILE = "test.py"
    CDIR = "/dir/in/container"
 
-   def test_my_script(auto_container_per_test, host, container_runtime):
-       host.run_expect(
-         [0],
-         f"{container_runtime.runner_binary} cp {DIR}/{FILE} {auto_container_per_test.container_id}:{CDIR}"
-       )
+   def test_my_script(auto_container_per_test, container_runtime):
+       auto_container_per_test.remote.copy(f"{DIR}/{FILE}", "CDIR")
 
 Note that the same file location restrictions apply as when including the files
 in the container image directly.
@@ -255,11 +249,8 @@ the port that ``pytest_container`` used to expose the container's port:
 
 .. code-block:: python
 
-   def test_port_forward_set_up(auto_container: ContainerData, host):
-       res = host.run_expect(
-           [0],
-           f"curl localhost:{auto_container.forwarded_ports[0].host_port}",
-       ).stdout.strip()
+   def test_port_forward_set_up(auto_container: ContainerData):
+       res = auto_container.check_output(f"curl localhost:{auto_container.forwarded_ports[0].host_port}")
 
 
 Setting up bind mounts or container volumes
@@ -396,7 +387,7 @@ follows:
    )
 
    @pytest.mark.parametrize("pod_per_test", [PROXY_POD], indirect=True)
-   def test_proxy_pod(pod_per_test: PodData, host) -> None:
+   def test_proxy_pod(pod_per_test: PodData) -> None:
        assert pod_per_test.pod_id
 
        port_80_on_host = pod_per_test.forwarded_ports[0].host_port

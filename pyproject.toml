@@ -28,16 +28,21 @@ classifiers = [
 [tool.poetry.dependencies]
 python = ">=3.6.2,<4.0"
 pytest = ">= 3.10"
-pytest-testinfra = [
-    { version = ">=6.4.0", python = "< 3.7" },
-    { version = ">=7.0", python = ">= 3.7,< 3.8" },
-    { version = ">=8.0", python = ">= 3.8" }
-]
 dataclasses = { version = ">=0.8", python = "< 3.7" }
 typing-extensions = { version = ">=3.0", markers="python_version < '3.8'" }
 cached-property = { version = "^1.5", markers="python_version < '3.8'" }
 filelock = "^3.4"
 deprecation = "^2.1"
+
+pytest-testinfra = [
+    { version = ">=6.4.0", python = "< 3.7", optional = true },
+    { version = ">=7.0", python = ">= 3.7,< 3.8", optional = true },
+    { version = ">=8.0", python = ">= 3.8", optional = true }
+]
+
+
+[tool.poetry.extras]
+testinfra = ["pytest-testinfra"]
 
 [tool.poetry.dev-dependencies]
 black = ">=21.9b0"
@@ -51,6 +56,8 @@ pytest-xdist = ">=2.4.0"
 Sphinx = ">=5.0"
 pytest-rerunfailures = ">=10.2"
 typeguard = ">=2.13"
+ifaddr = "^0.2.0"
+
 
 [build-system]
 requires = ["poetry-core>=1.0.0"]
