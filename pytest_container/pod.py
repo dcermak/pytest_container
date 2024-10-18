@@ -25,7 +25,6 @@ from pytest_container.helpers import get_extra_run_args
 from pytest_container.inspect import PortForwarding
 from pytest_container.logging import _logger
 from pytest_container.runtime import get_selected_runtime
-from pytest_container.runtime import PodmanRuntime
 
 
 @dataclass
@@ -153,9 +152,9 @@ class PodLauncher:
 
     def __enter__(self) -> "PodLauncher":
         runtime = get_selected_runtime()
-        if runtime != PodmanRuntime():
+        if runtime.family != "podman":
             raise RuntimeError(
-                f"pods can only be created with podman, but got {runtime}"
+                f"pods can only be created with podman, but got {runtime.family}"
             )
         return self
 

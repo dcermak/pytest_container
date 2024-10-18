@@ -10,6 +10,7 @@ import itertools
 import operator
 import os
 import socket
+import subprocess
 import sys
 import tempfile
 import time
@@ -25,8 +26,6 @@ from os.path import exists
 from os.path import isabs
 from os.path import join
 from pathlib import Path
-from subprocess import call
-from subprocess import check_output
 from types import TracebackType
 from typing import Any
 from typing import Collection
@@ -42,7 +41,6 @@ from uuid import uuid4
 import _pytest.mark
 import deprecation
 import pytest
-import testinfra
 from filelock import BaseFileLock
 from filelock import FileLock
 from pytest_container.helpers import get_always_pull_option
@@ -62,6 +60,8 @@ if sys.version_info >= (3, 8):
 else:
     import importlib_metadata as metadata
     from typing_extensions import Literal
+
+from .compat import cached_property
 
 
 @enum.unique
@@ -196,9 +196,11 @@ class ContainerVolumeBase:
     def __post_init__(self) -> None:
         if self.flags is None:
             self.flags = [
-                VolumeFlag.SELINUX_SHARED
-                if self.shared
-                else VolumeFlag.SELINUX_PRIVATE
+                (
+                    VolumeFlag.SELINUX_SHARED
+                    if self.shared
+                    else VolumeFlag.SELINUX_PRIVATE
+                )
             ]
 
         for mutually_exclusive_flags in (
@@ -282,14 +284,9 @@ class VolumeCreator:
 
     def __enter__(self) -> "VolumeCreator":
         """Creates the container volume"""
-        vol_id = (
-            check_output(
-                [self.container_runtime.runner_binary, "volume", "create"]
-            )
-            .decode()
-            .strip()
+        self.volume._vol_name = self.container_runtime.run_command(
+            "volume", "create"
         )
-        self.volume._vol_name = vol_id
         return self
 
     def __exit__(
@@ -308,14 +305,12 @@ class VolumeCreator:
         )
 
         # Clean up container volume
-        check_output(
-            [
-                self.container_runtime.runner_binary,
-                "volume",
-                "rm",
-                "-f",
-                self.volume.volume_id,
-            ],
+        self.container_runtime.run_command(
+            "volume",
+            "rm",
+            "-f",
+            self.volume.volume_id,
+            ignore_errors=True,
         )
         self.volume._vol_name = ""
 
@@ -669,7 +664,7 @@ class Container(ContainerBase, ContainerBaseABC):
         _logger.debug(
             "Pulling %s via %s", self.url, container_runtime.runner_binary
         )
-        check_output([container_runtime.runner_binary, "pull", self.url])
+        container_runtime.run_command("pull", self.url)
 
     def prepare_container(
         self,
@@ -685,7 +680,8 @@ class Container(ContainerBase, ContainerBaseABC):
             self.pull_container(container_runtime)
             return
 
-        if call([container_runtime.runner_binary, "inspect", self.url]) != 0:
+        image = container_runtime._run_inspect(self.url)
+        if not image:
             self.pull_container(container_runtime)
 
     def get_base(self) -> "Container":
@@ -797,10 +793,10 @@ class DerivedContainer(ContainerBase, ContainerBaseABC):
                 )
                 containerfile.write(containerfile_contents)
 
-            cmd = runtime.build_command
-            if "podman" in runtime.runner_binary:
+            cmd: Tuple[str, ...] = runtime.build_command
+            if runtime.family == "podman":
                 if self.image_format is not None:
-                    cmd += ["--format", str(self.image_format)]
+                    cmd += ("--format", str(self.image_format))
                 else:
                     if not runtime.supports_healthcheck_inherit_from_base:
                         warnings.warn(
@@ -816,7 +812,7 @@ class DerivedContainer(ContainerBase, ContainerBaseABC):
                     # healthcheck is in newly build image as well
                     elif (
                         "<nil>"
-                        != check_output(
+                        != subprocess.check_output(
                             [
                                 runtime.runner_binary,
                                 "inspect",
@@ -828,9 +824,9 @@ class DerivedContainer(ContainerBase, ContainerBaseABC):
                         .decode()
                         .strip()
                     ):
-                        cmd += ["--format", str(ImageFormat.DOCKER)]
+                        cmd += ("--format", str(ImageFormat.DOCKER))
 
-            cmd += (
+            cmd += tuple(
                 (extra_build_args or [])
                 + (
                     functools.reduce(
@@ -849,13 +845,18 @@ class DerivedContainer(ContainerBase, ContainerBaseABC):
             )
 
             _logger.debug("Building image via: %s", cmd)
-            check_output(cmd)
+            try:
+                subprocess.check_output(cmd, stderr=subprocess.STDOUT)
+            except subprocess.CalledProcessError as e:
+                raise RuntimeError(
+                    f"Failed to build container image {self.base} with error: {e.output}"
+                ) from e
 
             self.container_id = runtime.get_image_id_from_iidfile(iidfile)
 
             assert self._build_tag.startswith("pytest_container:")
 
-            check_output(
+            subprocess.check_output(
                 (
                     runtime.runner_binary,
                     "tag",
@@ -872,10 +873,88 @@ class DerivedContainer(ContainerBase, ContainerBaseABC):
 
 
 @dataclass(frozen=True)
+class ContainerRemoteEndpoint:
+    _container_id: str
+    _runtime: OciRuntimeBase
+
+    def __post_init__(self) -> None:
+        assert self._container_id, "Container ID must not be empty"
+
+    def check_output(self, cmd: str, strip: bool = True) -> str:
+        """Run a command in the container and return its output."""
+        return self._runtime.run_command(
+            "exec",
+            self._container_id,
+            "/bin/sh",
+            "-c",
+            cmd,
+            strip=strip,
+        )
+
+    def exists(self, command: str) -> bool:
+        """Check if a command exists in the container."""
+        return (
+            self.check_output(f"command -v {command} || echo '<missing>'")
+            != "<missing>"
+        )
+
+    def file(self, path: str) -> "ContainerConnectionFile":
+        return ContainerConnectionFile(path=path, _remote=self)
+
+    def copy(
+        self, local: Union[str, Path], remote: str
+    ) -> "ContainerConnectionFile":
+        """Copy a file from the host to the container."""
+        if isinstance(local, Path):
+            local = str(local.absolute())
+        self._runtime.run_command(
+            "cp", local, f"{self._container_id}:{remote}"
+        )
+        return self.file(remote)
+
+
+@dataclass(frozen=True)
+class ContainerConnectionFile:
+    path: str
+    _remote: ContainerRemoteEndpoint
+
+    def _test(self, test: str) -> bool:
+        return (
+            self._remote.check_output(
+                f"test {test} {self.path} && echo 1 || echo 0"
+            )
+            == "1"
+        )
+
+    @property
+    def exists(self) -> bool:
+        return self._test("-e")
+
+    @property
+    def is_file(self) -> bool:
+        return self._test("-f")
+
+    @property
+    def is_directory(self) -> bool:
+        return self._test("-d")
+
+    @property
+    def content_string(self) -> str:
+        try:
+            return self._remote.check_output(f"cat {self.path}", strip=False)
+        except subprocess.CalledProcessError as e:
+            if "Is a directory" in e.stderr:
+                raise ValueError(f"{self.path} is a directory") from e
+            raise
+
+    def listdir(self) -> List[str]:
+        return self._remote.check_output(f"ls {self.path}").splitlines()
+
+
+@dataclass(frozen=True)
 class ContainerData:
     """Class returned by the ``*container*`` fixtures to the test function. It
-    contains information about the launched container and the testinfra
-    :py:attr:`connection` to the running container.
+    contains information about the launched container.
 
     """
 
@@ -884,8 +963,8 @@ class ContainerData:
     image_url_or_id: str
     #: ID of the started container
     container_id: str
-    #: the testinfra connection to the running container
-    connection: Any
+    #: remote endpoint to the container
+    remote: ContainerRemoteEndpoint
     #: the container data class that has been used in this test
     container: Union[Container, DerivedContainer]
     #: any ports that are exposed by this container
@@ -903,9 +982,20 @@ class ContainerData:
 
     def read_container_logs(self) -> str:
         """Returns the logs from the running container."""
-        return check_output(
+        return subprocess.check_output(
             [self._container_runtime.runner_binary, "logs", self.container_id]
         ).decode()
+
+    @cached_property
+    def connection(self) -> Optional[Any]:
+        try:
+            import testinfra
+
+            return testinfra.get_host(
+                f"{self._container_runtime.family}://{self.container_id}"
+            )
+        except ImportError:
+            return None
 
 
 def container_to_pytest_param(
@@ -1121,7 +1211,7 @@ class ContainerLauncher:
 
         forwarded_ports = self.container.forwarded_ports
 
-        extra_run_args = self.extra_run_args
+        extra_run_args = list(self.extra_run_args)
 
         if self.container_name:
             extra_run_args.extend(("--name", self.container_name))
@@ -1144,14 +1234,14 @@ class ContainerLauncher:
                 )
 
                 _logger.debug("Launching container via: %s", launch_cmd)
-                check_output(launch_cmd)
+                subprocess.check_output(launch_cmd)
         else:
             launch_cmd = self.container.get_launch_cmd(
                 self.container_runtime, extra_run_args=extra_run_args
             )
 
             _logger.debug("Launching container via: %s", launch_cmd)
-            check_output(launch_cmd)
+            subprocess.check_output(launch_cmd)
 
         with open(self._cidfile, "r", encoding="utf8") as cidfile:
             self._container_id = cidfile.read(-1).strip()
@@ -1170,10 +1260,10 @@ class ContainerLauncher:
         return ContainerData(
             image_url_or_id=self.container.url or self.container.container_id,
             container_id=self._container_id,
-            connection=testinfra.get_host(
-                f"{self.container_runtime.runner_binary}://{self._container_id}"
-            ),
             container=self.container,
+            remote=ContainerRemoteEndpoint(
+                self._container_id, self.container_runtime
+            ),
             forwarded_ports=self._new_port_forwards,
             _container_runtime=self.container_runtime,
         )
@@ -1241,26 +1331,19 @@ class ContainerLauncher:
                 self._container_id,
                 self.container_runtime.runner_binary,
             )
-            check_output(
-                [
-                    self.container_runtime.runner_binary,
-                    "stop",
-                    self._container_id,
-                ]
+            self.container_runtime.run_command(
+                "stop", self._container_id, ignore_errors=True
             )
+
             _logger.debug(
                 "Removing container %s via %s",
                 self._container_id,
                 self.container_runtime.runner_binary,
             )
-            check_output(
-                [
-                    self.container_runtime.runner_binary,
-                    "rm",
-                    "-f",
-                    self._container_id,
-                ]
+            self.container_runtime.run_command(
+                "rm", "-f", self._container_id, ignore_errors=True
             )
+
         self._stack.close()
         self._container_id = None
 
@@ -1270,12 +1353,6 @@ class ContainerLauncher:
         # complain that the volume doesn't exist
         for mount in mounts:
             if isinstance(mount, VolumeMount):
-                call(
-                    [
-                        self.container_runtime.runner_binary,
-                        "volume",
-                        "rm",
-                        "-f",
-                        mount.name,
-                    ]
+                self.container_runtime.run_command(
+                    "volume", "rm", "-f", mount.name, ignore_errors=True
                 )

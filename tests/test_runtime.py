@@ -1,6 +1,7 @@
 # pylint: disable=missing-function-docstring,missing-module-docstring
 import os
 from pathlib import Path
+from typing import Type
 from unittest.mock import patch
 
 import pytest
@@ -12,31 +13,33 @@ from pytest_container.runtime import PodmanRuntime
 
 @pytest.fixture
 def container_runtime_envvar(request):
-    with patch.dict(
-        os.environ,
-        {} if request.param is None else {"CONTAINER_RUNTIME": request.param},
-        clear=True,
-    ):
+    new_env = {
+        "PATH": os.environ["PATH"],
+    }
+    if request.param is not None:
+        new_env["CONTAINER_RUNTIME"] = request.param
+
+    with patch.dict(os.environ, new_env, clear=True):
         yield
 
 
 @pytest.mark.parametrize(
-    "container_runtime_envvar,runtime",
+    "container_runtime_envvar,runtime_class",
     [
-        ("podman", PodmanRuntime()),
-        ("docker", DockerRuntime()),
-        ("PODMAN", PodmanRuntime()),
-        ("DOCKER", DockerRuntime()),
-        (None, PodmanRuntime()),
+        ("podman", PodmanRuntime),
+        ("docker", DockerRuntime),
+        ("PODMAN", PodmanRuntime),
+        ("DOCKER", DockerRuntime),
+        (None, PodmanRuntime),
     ],
     indirect=["container_runtime_envvar"],
 )
 def test_runtime_selection(
     # pylint: disable-next=redefined-outer-name,unused-argument
     container_runtime_envvar: None,
-    runtime: OciRuntimeBase,
+    runtime_class: Type[OciRuntimeBase],
 ):
-    assert get_selected_runtime() == runtime
+    assert isinstance(get_selected_runtime(), runtime_class)
 
 
 @pytest.mark.parametrize(

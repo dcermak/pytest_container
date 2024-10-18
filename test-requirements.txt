@@ -9,4 +9,5 @@ sphinx
 black
 pylint
 reorder-python-imports
+ifaddr
 .

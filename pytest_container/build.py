@@ -3,13 +3,13 @@ via :py:class:`GitRepositoryBuild` and to perform multistage containerfile
 builds via :py:class:`MultiStageBuild`.
 
 """
+import subprocess
 import tempfile
 from dataclasses import dataclass
 from os.path import basename
 from os.path import join
 from pathlib import Path
 from string import Template
-from subprocess import check_output
 from typing import Dict
 from typing import List
 from typing import Optional
@@ -156,10 +156,12 @@ class MultiStageBuild:
         """
         return Template(self.containerfile_template).substitute(
             **{
-                k: v
-                if isinstance(v, str)
-                else str(
-                    container_and_marks_from_pytest_param(v)[0]._build_tag
+                k: (
+                    v
+                    if isinstance(v, str)
+                    else str(
+                        container_and_marks_from_pytest_param(v)[0]._build_tag
+                    )
                 )
                 for k, v in self.containers.items()
             }
@@ -222,15 +224,18 @@ class MultiStageBuild:
         # This is an ugly, duplication of the launcher code
         with tempfile.TemporaryDirectory() as tmp_dir:
             iidfile = join(tmp_dir, str(uuid4()))
-            cmd = (
-                runtime.build_command
-                + (extra_build_args or [])
-                + [f"--iidfile={iidfile}"]
-                + (["--target", target] if target else [])
-                + [str(tmp_path)]
-            )
+            cmd: List[str] = []
+            cmd.extend(runtime.build_command)
+            if extra_build_args:
+                cmd.extend(extra_build_args)
+            cmd.extend(["--iidfile", iidfile])
+            if target:
+                cmd.extend(["--target", target])
+            cmd.append(str(tmp_path))
             _logger.debug("Running multistage container build: %s", cmd)
-            check_output(cmd)
+            subprocess.check_call(
+                cmd, stdout=subprocess.DEVNULL, stderr=subprocess.PIPE
+            )
             return runtime.get_image_id_from_iidfile(iidfile)
 
     def build(

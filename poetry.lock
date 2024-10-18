@@ -315,6 +315,17 @@ files = [
 ]
 
 [[package]]
+name = "ifaddr"
+version = "0.2.0"
+description = "Cross-platform network interface and IP address enumeration library"
+optional = false
+python-versions = "*"
+files = [
+    {file = "ifaddr-0.2.0-py3-none-any.whl", hash = "sha256:085e0305cfe6f16ab12d72e2024030f5d52674afad6911bb1eee207177b8a748"},
+    {file = "ifaddr-0.2.0.tar.gz", hash = "sha256:cc0cbfcaabf765d44595825fb96a99bb12c79716b73b44330ea38ee2b0c4aed4"},
+]
+
+[[package]]
 name = "imagesize"
 version = "1.4.1"
 description = "Getting image size from png/jpeg/jpeg2000/gif file"
@@ -789,7 +800,7 @@ pytest = ">=5.3"
 name = "pytest-testinfra"
 version = "6.8.0"
 description = "Test infrastructures"
-optional = false
+optional = true
 python-versions = ">=3.6"
 files = [
     {file = "pytest-testinfra-6.8.0.tar.gz", hash = "sha256:07c8c2c472aca7d83099ebc5f850d383721cd654b66c60ffbb145e45e584ff99"},
@@ -809,7 +820,7 @@ winrm = ["pywinrm"]
 name = "pytest-testinfra"
 version = "7.0.0"
 description = "Test infrastructures"
-optional = false
+optional = true
 python-versions = ">=3.7"
 files = [
     {file = "pytest-testinfra-7.0.0.tar.gz", hash = "sha256:38c2ce2df4e25f685636c7db9ac15083a7cf3e4a8a997d5fa654e8a7bedeadce"},
@@ -829,7 +840,7 @@ winrm = ["pywinrm"]
 name = "pytest-testinfra"
 version = "8.1.0"
 description = "Test infrastructures"
-optional = false
+optional = true
 python-versions = ">=3.8"
 files = [
     {file = "pytest-testinfra-8.1.0.tar.gz", hash = "sha256:9b40828b58fb7ac2bff29cc1465934adf434f10dd5a108f60535dee52660a63d"},
@@ -1269,7 +1280,10 @@ files = [
 docs = ["jaraco.packaging (>=8.2)", "rst.linker (>=1.9)", "sphinx"]
 testing = ["func-timeout", "jaraco.itertools", "pytest (>=4.6)", "pytest-black (>=0.3.7)", "pytest-checkdocs (>=2.4)", "pytest-cov", "pytest-enabler (>=1.0.1)", "pytest-flake8", "pytest-mypy"]
 
+[extras]
+testinfra = ["pytest-testinfra", "pytest-testinfra", "pytest-testinfra"]
+
 [metadata]
 lock-version = "2.0"
 python-versions = ">=3.6.2,<4.0"
-content-hash = "102929861937499368a9f2c3c71533af949816aa8da41fa845dd51ed97af46b8"
+content-hash = "50e459665bbdf6d76e704771f89ac951ff19a43eddb7c89456add7583e0c0635"

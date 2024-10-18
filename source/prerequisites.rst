@@ -2,8 +2,7 @@ Prerequisites
 =============
 
 `pytest_container` works with Python 3.6 and later and requires `pytest
-<https://pytest.org/>`_ and `pytest-testinfra
-<https://testinfra.readthedocs.io/>`_. Additionally, for python 3.6, you'll need
+<https://pytest.org/>`_. Additionally, for python 3.6, you'll need
 the `dataclasses <https://pypi.org/project/dataclasses/>`_ module.
 
 Tests leveraging `pytest_container` need to have access to a container

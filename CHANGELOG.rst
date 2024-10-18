@@ -6,6 +6,10 @@ Breaking changes:
 - Change addition of SELinux flags to volumes: SELinux flags are only added if
   :py:attr:`~pytest_container.container.ContainerVolumeBase.flags` is ``None``.
 
+- Package does not depend on ``pytest-testinfra`` by default anymore. If you
+  want to use the :py:attr:`~pytest_container.container.ContainerData.connection``,
+  you have to add the ``[testinfra]`` extra to your ``pytest-containers`` dependency.
+
 Improvements and new features:
 
 - Add the function
@@ -28,6 +32,8 @@ Documentation:
 
 
 Internal changes:
+
+- The test suite now runs on OS X.
 
 
 0.4.2 (10 April 2024)

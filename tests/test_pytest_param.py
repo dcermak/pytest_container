@@ -75,11 +75,11 @@ def test_multistage_build_invalid_param(
     "container_per_test", [container_to_pytest_param(LEAP)], indirect=True
 )
 def test_container_build_with_param(container_per_test: ContainerData):
-    container_per_test.connection.run_expect([0], "true")
+    container_per_test.remote.check_output("true")
 
 
 def test_auto_container_build_with_param(auto_container: ContainerData):
-    auto_container.connection.run_expect([0], "true")
+    auto_container.remote.check_output("true")
 
 
 def test_container_to_pytest_param() -> None:
