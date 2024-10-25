@@ -1,11 +1,13 @@
 # pylint: disable=missing-function-docstring,missing-module-docstring
 from pathlib import Path
+from tempfile import gettempdir
 from typing import Optional
 from typing import Union
 
 import pytest
 from pytest_container import Container
 from pytest_container import DerivedContainer
+from pytest_container.container import ContainerLauncher
 from pytest_container.container import ImageFormat
 from pytest_container.runtime import OciRuntimeBase
 
@@ -74,6 +76,39 @@ def test_lockfile_unique() -> None:
         base=images.OPENSUSE_BUSYBOX_URL, containerfile="ENV foobar=1"
     )
     assert cont1.filelock_filename != cont2.filelock_filename
+
+
+def test_removed_lockfile_does_not_kill_launcher(
+    container_runtime: OciRuntimeBase, pytestconfig: pytest.Config
+) -> None:
+    """Test that the container launcher doesn't die if the container lockfile
+    got removed by another thread.
+
+    It can happen in certain scenarios that a ``Container`` is launched from two
+    concurrently running test functions. These test functions will use the same
+    lockfile. A nasty data race can occur, where both test functions unlock the
+    lockfile nearly at the same time, but then only one of them can succeed in
+    removing it and the other test inadvertently fails. This is a regression
+    test, that such a situation is tolerated and doesn't cause a failure.
+
+    In this test we create a singleton container where we utilize that the
+    lockfile is removed in ``__exit__()``. We hence already delete the lockfile
+    in the ``with`` block and provoke a failure in ``__exit__()``.
+
+    See also https://github.com/dcermak/pytest_container/issues/232.
+
+    """
+    cont = Container(url=images.LEAP_URL, singleton=True)
+
+    with ContainerLauncher.from_pytestconfig(
+        cont, container_runtime, pytestconfig
+    ) as launcher:
+        launcher.launch_container()
+
+        lockfile_abspath = Path(gettempdir()) / cont.filelock_filename
+        assert lockfile_abspath.exists
+
+        lockfile_abspath.unlink()
 
 
 def test_derived_container_build_tag(
