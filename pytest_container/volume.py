@@ -2,20 +2,30 @@
 and bind mounts.
 
 """
-
-from subprocess import check_output
-from types import TracebackType
-from typing import Iterable, List, Optional, Type, Union, overload
+import enum
+import sys
+import tempfile
+from dataclasses import dataclass
+from dataclasses import field
 from os.path import exists
 from os.path import isabs
-from typing_extensions import TypedDict
-import enum
-import tempfile
-import sys
-from dataclasses import KW_ONLY, dataclass
+from subprocess import check_output
+from types import TracebackType
+from typing import Callable
+from typing import List
+from typing import Optional
+from typing import overload
+from typing import Sequence
+from typing import Type
+from typing import Union
 
-from pytest_container.runtime import OciRuntimeBase
 from pytest_container.logging import _logger
+from pytest_container.runtime import OciRuntimeBase
+
+try:
+    from typing import TypedDict
+except ImportError:
+    from typing_extensions import TypedDict
 
 
 @enum.unique
@@ -60,16 +70,15 @@ class ContainerVolumeBase:
     #: Path inside the container where this volume will be mounted
     container_path: str
 
-    _: KW_ONLY
-
     #: Flags for mounting this volume.
     #:
     #: Note that some flags are mutually exclusive and potentially not supported
     #: by all container runtimes.
     #:
-    #: The :py:attr:`VolumeFlag.SELINUX_PRIVATE` flag will be added by default
+    #: The :py:attr:`VolumeFlag.SELINUX_PRIVATE` flag will be used by default
     #: if flags is ``None``, unless :py:attr:`ContainerVolumeBase.shared` is
-    #: ``True``, then :py:attr:`VolumeFlag.SELINUX_SHARED` is added.
+    #: ``True``, then :py:attr:`VolumeFlag.SELINUX_SHARED` is added to the list
+    #: of flags to use.
     #:
     #: If flags is a list (even an empty one), then no flags are added.
     flags: Optional[List[VolumeFlag]] = None
@@ -80,10 +89,6 @@ class ContainerVolumeBase:
     #: This affects only the addition of SELinux flags to
     #: :py:attr:`~ContainerVolumeBase.flags`.
     shared: bool = False
-
-    #: internal volume name via which the volume can be mounted, e.g. the
-    #: volume's ID or the path on the host
-    # _vol_name: str = ""
 
     def __post_init__(self) -> None:
 
@@ -102,22 +107,31 @@ class ContainerVolumeBase:
                 )
 
     @property
-    def _flags(self) -> Iterable[VolumeFlag]:
-        if self.flags:
+    def _flags(self) -> Sequence[VolumeFlag]:
+        """Internal sequence of flags to be used to mount this volume. If the
+        user supplied no flags, then this property gives you one of the SELinux
+        flags.
+
+        """
+        if self.flags is not None:
             return self.flags
 
         if self.shared:
             return (VolumeFlag.SELINUX_SHARED,)
-        else:
-            return (VolumeFlag.SELINUX_PRIVATE,)
+
+        return (VolumeFlag.SELINUX_PRIVATE,)
 
 
-def container_volume_cli_arg(
+def _container_volume_cli_arg(
     container_volume: ContainerVolumeBase, volume_name: str
 ) -> str:
-    """Command line argument to mount the supplied ``container_volume`` volume."""
+    """Command line argument to mount the supplied ``container_volume`` volume
+    via the "name" `volume_name` (can be a volume ID or a path on the host).
+
+    """
     res = f"-v={volume_name}:{container_volume.container_path}"
-    res += ":" + ",".join(str(f) for f in container_volume._flags)
+    if container_volume._flags:
+        res += ":" + ",".join(str(f) for f in container_volume._flags)
     return res
 
 
@@ -129,10 +143,29 @@ class ContainerVolume(ContainerVolumeBase):
     """
 
 
+def _create_required_parameter_factory(
+    parameter_name: str,
+) -> Callable[[], str]:
+    def _required_parameter() -> str:
+        raise ValueError(f"Parameter {parameter_name} is required")
+
+    return _required_parameter
+
+
 @dataclass(frozen=True)
 class CreatedContainerVolume(ContainerVolume):
+    """A container volume that exists and has a volume id assigned to it."""
 
-    volume_id: str
+    #: The hash/ID of the volume in the container runtime.
+    #: This parameter is required
+    volume_id: str = field(
+        default_factory=_create_required_parameter_factory("volume_id")
+    )
+
+    @property
+    def cli_arg(self) -> str:
+        """The command line argument to mount this volume."""
+        return _container_volume_cli_arg(self, self.volume_id)
 
 
 @dataclass(frozen=True)
@@ -144,19 +177,34 @@ class BindMount(ContainerVolumeBase):
     container via :py:attr:`~ContainerVolumeBase.container_path`. The
     ``container*`` fixtures will then create a temporary directory on the host
     for you that will be used as the mount point. Alternatively, you can also
-    specify the path on the host yourself via :py:attr:`host_path`.
+    specify the path on the host yourself via :py:attr:`BindMount.host_path`.
 
     """
 
-    #: Path on the host that will be mounted if absolute. if relative,
+    #: Path on the host that will be mounted if absolute. If relative,
     #: it refers to a volume to be auto-created. When omitted, a temporary
     #: directory will be created and the path will be saved in this attribute.
     host_path: Optional[str] = None
 
 
 @dataclass(frozen=True)
-class CreatedBindMount(ContainerVolumeBase):
-    host_path: str
+class CreatedBindMount(BindMount):
+    """An established bind mount of the directory :py:attr:`BindMount.host_path`
+    on the host to :py:attr:`~ContainerVolumeBase.container_path` in the
+    container.
+
+    """
+
+    #: Path on the host that is bind mounted into the container.
+    #: This parameter must be provided.
+    host_path: str = field(
+        default_factory=_create_required_parameter_factory("host_path")
+    )
+
+    @property
+    def cli_arg(self) -> str:
+        """The command line argument to mount this volume."""
+        return _container_volume_cli_arg(self, self.host_path)
 
 
 class _ContainerVolumeKWARGS(TypedDict, total=False):
@@ -174,8 +222,13 @@ class VolumeCreator:
     """Context Manager to create and remove a :py:class:`ContainerVolume`.
 
     This context manager creates a volume using the supplied
-    :py:attr:`container_runtime` When the ``with`` block is entered and removes
+    :py:attr:`container_runtime` when the ``with`` block is entered and removes
     it once it is exited.
+
+    The :py:class:`ContainerVolume` in :py:attr:`volume` is used as the
+    blueprint to create the volume, the actually created container volume is
+    saved in :py:attr:`created_volume`.
+
     """
 
     #: The volume to be created
@@ -184,7 +237,9 @@ class VolumeCreator:
     #: The container runtime, via which the volume is created & destroyed
     container_runtime: OciRuntimeBase
 
-    _created_volume: Optional[CreatedContainerVolume] = None
+    #: The created container volume once it has been setup & created. It's
+    #: ``None`` until then.
+    created_volume: Optional[CreatedContainerVolume] = None
 
     def __enter__(self) -> "VolumeCreator":
         """Creates the container volume"""
@@ -195,7 +250,7 @@ class VolumeCreator:
             .decode()
             .strip()
         )
-        self._created_volume = CreatedContainerVolume(
+        self.created_volume = CreatedContainerVolume(
             container_path=self.volume.container_path,
             flags=self.volume.flags,
             shared=self.volume.shared,
@@ -211,11 +266,11 @@ class VolumeCreator:
         __traceback: Optional[TracebackType],
     ) -> None:
         """Cleans up the container volume."""
-        assert self._created_volume and self._created_volume.volume_id
+        assert self.created_volume and self.created_volume.volume_id
 
         _logger.debug(
             "cleaning up volume %s via %s",
-            self._created_volume.volume_id,
+            self.created_volume.volume_id,
             self.container_runtime.runner_binary,
         )
 
@@ -226,7 +281,7 @@ class VolumeCreator:
                 "volume",
                 "rm",
                 "-f",
-                self._created_volume.volume_id,
+                self.created_volume.volume_id,
             ],
         )
 
@@ -244,7 +299,7 @@ class BindMountCreator:
     #: internal temporary directory
     _tmpdir: Optional[TEMPDIR_T] = None
 
-    _created_volume: Optional[CreatedBindMount] = None
+    created_volume: Optional[CreatedBindMount] = None
 
     def __post__init__(self) -> None:
         # the tempdir must not be set accidentally by the user
@@ -281,7 +336,7 @@ class BindMountCreator:
                 "was requested but the directory does not exist"
             )
 
-        self._created_volume = CreatedBindMount(**kwargs)
+        self.created_volume = CreatedBindMount(**kwargs)
 
         return self
 
@@ -292,13 +347,13 @@ class BindMountCreator:
         __traceback: Optional[TracebackType],
     ) -> None:
         """Cleans up the temporary host directory or the container volume."""
-        assert self._created_volume and self._created_volume.host_path
+        assert self.created_volume
 
         if self._tmpdir:
             _logger.debug(
                 "cleaning up directory %s for the container volume %s",
-                self.volume.host_path,
-                self.volume.container_path,
+                self.created_volume.host_path,
+                self.created_volume.container_path,
             )
             self._tmpdir.cleanup()
 

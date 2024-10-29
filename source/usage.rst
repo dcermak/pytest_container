@@ -265,6 +265,19 @@ the port that ``pytest_container`` used to expose the container's port:
 Setting up bind mounts or container volumes
 -------------------------------------------
 
+.. warning::
+
+   When obtaining the container volume id or the path of a bind mount on the
+   host, do **not** use the original
+   :py:class:`~pytest_container.volume.BindMount` and
+   :py:class:`~pytest_container.volume.ContainerVolume` instances that you fed
+   as parameters to
+   :py:attr:`~pytest_container.container.ContainerBase.volume_mounts`. The
+   ``*container*`` fixtures create new class instances and provide these in the
+   :py:attr:`~pytest_container.container.ContainerBase.volume_mounts` attribute
+   of the container available via the
+   :py:attr:`pytest_container.container.ContainerData.container` attribute.
+
 Some tests require that containers are launched with a bind mount or a container
 volume attached to the container. While this can be achieved by adding the
 respective mount command line arguments to
@@ -275,48 +288,48 @@ correctly clean up after the test runs and not leave stray volumes on the test
 runner.
 
 ``pytest_container`` offers a convenience class for creating bind mounts and
-container volumes via :py:class:`~pytest_container.container.BindMount` and
-:py:class:`~pytest_container.container.ContainerVolume`, respectively. Instances
+container volumes via :py:class:`~pytest_container.volume.BindMount` and
+:py:class:`~pytest_container.volume.ContainerVolume`, respectively. Instances
 of either of these two classes can be added to the list
 :py:attr:`~pytest_container.container.ContainerBase.volume_mounts` and will be
 automatically configured and mounted into the respective container. The volumes
 will also be cleaned up after the test run.
 
 `Container volumes <https://docs.docker.com/storage/volumes/>`_ are created
-using the :py:class:`~pytest_container.container.ContainerVolume` class. For the
+using the :py:class:`~pytest_container.volume.ContainerVolume` class. For the
 most basic use case, provide a mount point in the container as a parameter to
 the class. The ``*container*`` fixtures will then create a volume for you and
 remove it after the test finishes. Additionally, they set the attribute
-:py:attr:`~pytest_container.container.ContainerVolume.volume_id` to the id of
-the newly created volume. You can also add mount flags to the volume via
-:py:attr:`~pytest_container.container.ContainerVolumeBase.flags` and specify
+:py:attr:`~pytest_container.volume.CreatedContainerVolume.volume_id` to the id
+of the newly created volume. You can also add mount flags to the volume via
+:py:attr:`~pytest_container.volume.ContainerVolumeBase.flags` and specify
 whether the volume can be shared between containers or not via
-:py:attr:`~pytest_container.container.ContainerVolumeBase.shared`. Note that the
-:py:attr:`~pytest_container.container.ContainerVolumeBase.shared` attribute only
+:py:attr:`~pytest_container.volume.ContainerVolumeBase.shared`. Note that the
+:py:attr:`~pytest_container.volume.ContainerVolumeBase.shared` attribute only
 affects whether the SELinux mount flag ``Z`` or ``z`` will be used. It will not
 result in the same volume being available to multiple containers.
 
 `Bind mounts <https://docs.docker.com/storage/bind-mounts/>`_ are setup using
-:py:class:`~pytest_container.container.BindMount`. The user can either specify
-the :py:attr:`~pytest_container.container.BindMount.host_path` themselves with
+:py:class:`~pytest_container.volume.BindMount`. The user can either specify
+the :py:attr:`~pytest_container.volume.BindMount.host_path` themselves with
 the caveat that the directory must be created manually beforehand and your tests
 must be able to handle concurrency (if using `pytest-xdist
 <https://github.com/pytest-dev/pytest-xdist>`_). You can also omit the
-:py:attr:`~pytest_container.container.BindMount.host_path` attribute, in case an
+:py:attr:`~pytest_container.volume.BindMount.host_path` attribute, in case an
 ephemeral directory is sufficient. Then the ``*container*`` fixtures will create
 a unique temporary directory before the test and clean it up afterwards. The
 path to the temporary director is accessible via the
-:py:attr:`~pytest_container.container.BindMount.host_path` attribute during the
+:py:attr:`~pytest_container.volume.BindMount.host_path` attribute during the
 test. Flags can be added similarly to container volumes via
-:py:attr:`~pytest_container.container.ContainerVolumeBase.flags` as well as
+:py:attr:`~pytest_container.volume.ContainerVolumeBase.flags` as well as
 configuring sharing via
-:py:attr:`~pytest_container.container.ContainerVolumeBase.shared`.
+:py:attr:`~pytest_container.volume.ContainerVolumeBase.shared`.
 
 .. important::
 
    If you are using a bind mount with an existing directory on the host and want
    to run tests in parallel, then you **must** set the attribute
-   :py:attr:`~pytest_container.container.ContainerVolumeBase.shared` to
+   :py:attr:`~pytest_container.volume.ContainerVolumeBase.shared` to
    ``True``. Otherwise the directory will be relabeled to permit mounting from a
    single container only and will cause SELinux errors when two containers try
    to mount it at the same time.

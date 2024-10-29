@@ -18,6 +18,14 @@ The pod module
    :undoc-members:
 
 
+The volume module
+-----------------
+
+.. automodule:: pytest_container.volume
+   :members:
+   :undoc-members:
+
+
 The build module
 ----------------
 

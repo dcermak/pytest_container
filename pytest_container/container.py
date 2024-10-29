@@ -58,6 +58,7 @@ from pytest_container.volume import BindMount
 from pytest_container.volume import ContainerVolume
 from pytest_container.volume import get_volume_creator
 
+
 if sys.version_info >= (3, 8):
     from importlib import metadata
     from typing import Literal
@@ -273,7 +274,6 @@ class ContainerBase:
                 if self.extra_environment_variables
                 else []
             )
-            + [vol.cli_arg for vol in self.volume_mounts]
         )
 
         id_or_url = self.container_id or self.url
@@ -840,19 +840,25 @@ class ContainerLauncher:
         else:
             self._stack.callback(release_lock)
 
-        for cont_vol in self.container.volume_mounts:
-            self._stack.enter_context(
-                get_volume_creator(cont_vol, self.container_runtime)
-            )
-
-        forwarded_ports = self.container.forwarded_ports
-
         extra_run_args = self.extra_run_args
 
         if self.container_name:
             extra_run_args.extend(("--name", self.container_name))
 
         extra_run_args.append(f"--cidfile={self._cidfile}")
+
+        new_container_volumes = []
+        for cont_vol in self.container.volume_mounts:
+            vol_creator = get_volume_creator(cont_vol, self.container_runtime)
+            self._stack.enter_context(vol_creator)
+
+            new_volume = vol_creator.created_volume
+            assert new_volume
+            new_container_volumes.append(new_volume)
+
+            extra_run_args.append(new_volume.cli_arg)
+
+        forwarded_ports = self.container.forwarded_ports
 
         # Create a copy of the container which was used to parametrize this test
         cls = type(self.container)
@@ -864,6 +870,8 @@ class ContainerLauncher:
             for k, v in self.container.__dict__.items()
             if k in constructor.parameters
         }
+        kwargs["volume_mounts"] = new_container_volumes
+
         # We must perform the launches in separate branches, as containers with
         # port forwards must be launched while the lock is being held. Otherwise
         # another container could pick the same ports before this one launches.
