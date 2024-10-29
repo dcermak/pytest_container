@@ -1092,7 +1092,14 @@ class ContainerLauncher:
         def release_lock() -> None:
             _logger.debug("Releasing lock %s", lock.lock_file)
             lock.release()
-            os.unlink(lock.lock_file)
+            # we're fine with another process/thread having deleted the
+            # lockfile, as long as the locking was thread safe
+            try:
+                # no we can't use Path.unlink(missing_ok=True) here, as the kw
+                # argument is not present in Python < 3.8
+                os.unlink(lock.lock_file)
+            except FileNotFoundError:
+                pass
 
         # Container preparation can fail, but then we would never release the
         # lock as release_lock is not yet in self._stack. However, we do not
