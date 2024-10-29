@@ -6,6 +6,7 @@ using the fixtures provided by this plugin.
 import contextlib
 import enum
 import functools
+import inspect
 import itertools
 import operator
 import os
@@ -853,6 +854,16 @@ class ContainerLauncher:
 
         extra_run_args.append(f"--cidfile={self._cidfile}")
 
+        # Create a copy of the container which was used to parametrize this test
+        cls = type(self.container)
+        constructor = inspect.signature(cls.__init__)
+        constructor.parameters
+
+        kwargs = {
+            k: v
+            for k, v in self.container.__dict__.items()
+            if k in constructor.parameters
+        }
         # We must perform the launches in separate branches, as containers with
         # port forwards must be launched while the lock is being held. Otherwise
         # another container could pick the same ports before this one launches.
@@ -864,19 +875,25 @@ class ContainerLauncher:
                 for new_forward in self._new_port_forwards:
                     extra_run_args += new_forward.forward_cli_args
 
-                launch_cmd = self.container.get_launch_cmd(
+                kwargs["forwarded_ports"] = self._new_port_forwards
+                ctr = cls(**kwargs)
+
+                launch_cmd = ctr.get_launch_cmd(
                     self.container_runtime, extra_run_args=extra_run_args
                 )
 
                 _logger.debug("Launching container via: %s", launch_cmd)
                 check_output(launch_cmd)
         else:
-            launch_cmd = self.container.get_launch_cmd(
+            ctr = cls(**kwargs)
+            launch_cmd = ctr.get_launch_cmd(
                 self.container_runtime, extra_run_args=extra_run_args
             )
 
             _logger.debug("Launching container via: %s", launch_cmd)
             check_output(launch_cmd)
+
+        self.container = ctr
 
         with open(self._cidfile, "r", encoding="utf8") as cidfile:
             self._container_id = cidfile.read(-1).strip()

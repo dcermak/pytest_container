@@ -2,6 +2,33 @@ Fixtures
 ========
 
 
+Container class handling
+------------------------
+
+Containers are defined as instances of
+:py:class:`~pytest_container.container.Container` and
+:py:class:`~pytest_container.container.DerivedContainer`. These class instances
+are then "passed" via pytest's parametrization to the fixtures which expose the
+class instances via the
+:py:attr:`~pytest_container.container.ContainerData.container` attribute.
+
+The class instance exposed via this attribute is not guaranteed to be the
+**exact same** object as the one with which this test function was parametrized!
+The fixtures *might* only return copies, to prevent accidental mutation to
+cross-influence tests.
+
+For example, the following code is not guaranteed to work:
+
+.. code-block:: python
+
+   CTR = Container(url="registry.opensuse.org/opensuse/tumbleweed:latest")
+
+   @pytest.mark.parametrize("container", [CTR], indirect=True)
+   def test_tw_ids(container: ContainerData) -> None:
+       # this might or might not fail
+       assert id(CTR) == id(container.container)
+
+
 Handling Healthcheck
 --------------------
 
