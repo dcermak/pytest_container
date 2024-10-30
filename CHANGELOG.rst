@@ -4,7 +4,7 @@ Next Release
 Breaking changes:
 
 - Change addition of SELinux flags to volumes: SELinux flags are only added if
-  :py:attr:`~pytest_container.container.ContainerVolumeBase.flags` is ``None``.
+  :py:attr:`~pytest_container.volume.ContainerVolumeBase.flags` is ``None``.
 
 Improvements and new features:
 
@@ -233,8 +233,8 @@ Improvements and new features:
   and comparing versions.
 
 - Container volumes and bind mounts can now be automatically created via the
-  :py:class:`~pytest_container.container.ContainerVolume` and
-  :py:class:`~pytest_container.container.BindMount` classes and adding them to
+  :py:class:`~pytest_container.volume.ContainerVolume` and
+  :py:class:`~pytest_container.volume.BindMount` classes and adding them to
   the :py:attr:`~pytest_container.container.ContainerBase.volume_mounts`
   attribute.
 

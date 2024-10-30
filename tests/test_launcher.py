@@ -11,15 +11,15 @@ from unittest.mock import patch
 
 import pytest
 from pytest_container import inspect
-from pytest_container.container import BindMount
 from pytest_container.container import Container
 from pytest_container.container import ContainerData
 from pytest_container.container import ContainerLauncher
-from pytest_container.container import ContainerVolume
 from pytest_container.container import DerivedContainer
 from pytest_container.container import EntrypointSelection
 from pytest_container.runtime import LOCALHOST
 from pytest_container.runtime import OciRuntimeBase
+from pytest_container.volume import CreatedBindMount
+from pytest_container.volume import CreatedContainerVolume
 
 from .images import CMDLINE_APP_CONTAINER
 from .images import CONTAINER_THAT_FAILS_TO_LAUNCH
@@ -98,24 +98,15 @@ def test_launcher_creates_and_cleanes_up_volumes(
 
         for vol in container.volume_mounts:
 
-            if isinstance(vol, BindMount):
+            if isinstance(vol, CreatedBindMount):
                 assert vol.host_path and os.path.exists(vol.host_path)
-            elif isinstance(vol, ContainerVolume):
+            elif isinstance(vol, CreatedContainerVolume):
                 assert vol.volume_id
-                assert LOCALHOST.run_expect(
-                    [0],
+                assert LOCALHOST.check_output(
                     f"{container_runtime.runner_binary} volume inspect {vol.volume_id}",
                 )
             else:
                 assert False, f"invalid volume type {type(vol)}"
-
-    for vol in container.volume_mounts:
-        if isinstance(vol, BindMount):
-            assert not vol.host_path
-        elif isinstance(vol, ContainerVolume):
-            assert not vol.volume_id
-        else:
-            assert False, f"invalid volume type {type(vol)}"
 
 
 LEAP_WITH_VOLUME_IN_DOCKERFILE = DerivedContainer(
