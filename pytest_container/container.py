@@ -25,6 +25,7 @@ from os.path import exists
 from os.path import isabs
 from os.path import join
 from pathlib import Path
+from string import Template
 from subprocess import call
 from subprocess import check_output
 from types import TracebackType
@@ -53,7 +54,6 @@ from pytest_container.inspect import ContainerInspect
 from pytest_container.inspect import PortForwarding
 from pytest_container.inspect import VolumeMount
 from pytest_container.logging import _logger
-from pytest_container.runtime import get_selected_runtime
 from pytest_container.runtime import OciRuntimeBase
 
 if sys.version_info >= (3, 8):
@@ -526,12 +526,29 @@ class ContainerBase:
         self,
         container_runtime: OciRuntimeBase,
         extra_run_args: Optional[List[str]] = None,
+        detach: bool = True,
+        interactive_tty: bool = True,
+        remove: bool = False,
     ) -> List[str]:
         """Returns the command to launch this container image.
 
         Args:
+            container_runtime: The container runtime to be used to launch this
+                container
+
             extra_run_args: optional list of arguments that are added to the
                 launch command directly after the ``run -d``.
+
+            detach: flag whether to launch the container with ``-d``
+                (i.e. in the background). Defaults to ``True``.
+
+            interactive: flag whether to launch the container with ``--it``
+                (i.e. in interactive mode and attach a pseudo TTY). Defaults to
+                ``True``.
+
+            remove: flag whether to launch the container with the ``--rm`` flag
+                (i.e. it will be auto-removed on after stopping). Defaults to
+                ``False``.
 
         Returns:
             The command to launch the container image described by this class
@@ -539,7 +556,9 @@ class ContainerBase:
             :py:class:`subprocess.Popen` as the ``args`` parameter.
         """
         cmd = (
-            [container_runtime.runner_binary, "run", "-d"]
+            [container_runtime.runner_binary, "run"]
+            + (["-d"] if detach else [])
+            + (["--rm"] if remove else [])
             + (extra_run_args or [])
             + self.extra_launch_args
             + (
@@ -558,7 +577,9 @@ class ContainerBase:
         )
 
         id_or_url = self.container_id or self.url
-        container_launch = ("-it", id_or_url)
+        container_launch: Tuple[str, ...] = (
+            ("-it", id_or_url) if interactive_tty else (id_or_url,)
+        )
         bash_launch_end = (
             *_CONTAINER_STOPSIGNAL,
             *container_launch,
@@ -617,7 +638,7 @@ class ContainerBase:
             if isinstance(value, list):
                 all_elements.append("".join([str(elem) for elem in value]))
             elif isinstance(value, dict):
-                all_elements.append("".join(value.values()))
+                all_elements.append("".join(str(v) for v in value.values()))
             else:
                 all_elements.append(str(value))
 
@@ -628,9 +649,9 @@ class ContainerBase:
         return f"{sha3_256((''.join(all_elements)).encode()).hexdigest()}.lock"
 
 
-class ContainerBaseABC(ABC):
+class _ContainerPrepareABC(ABC):
     """Abstract base class defining the methods that must be implemented by the
-    classes fed to the ``*container*`` fixtures.
+    classes fed to the ``container_image`` fixture.
 
     """
 
@@ -642,6 +663,13 @@ class ContainerBaseABC(ABC):
         extra_build_args: Optional[List[str]],
     ) -> None:
         """Prepares the container so that it can be launched."""
+
+
+class _ContainerBaseABC(_ContainerPrepareABC):
+    """Abstract base class defining the methods that must be implemented by the
+    classes fed to the ``*container*`` fixtures.
+
+    """
 
     @abstractmethod
     def get_base(self) -> "Union[Container, DerivedContainer]":
@@ -660,7 +688,7 @@ class ContainerBaseABC(ABC):
 
 
 @dataclass(unsafe_hash=True)
-class Container(ContainerBase, ContainerBaseABC):
+class Container(ContainerBase, _ContainerBaseABC):
     """This class stores information about the Container Image under test."""
 
     def pull_container(self, container_runtime: OciRuntimeBase) -> None:
@@ -698,20 +726,103 @@ class Container(ContainerBase, ContainerBaseABC):
         return self.url
 
 
+def _run_container_build(
+    container_runtime: OciRuntimeBase,
+    rootdir: Path,
+    containerfile: str,
+    parent_image_id: Optional[str] = None,
+    extra_build_args: Optional[Tuple[str, ...]] = None,
+    image_format: Optional[ImageFormat] = None,
+    add_build_tags: Optional[List[str]] = None,
+) -> Tuple[str, str]:
+    with tempfile.TemporaryDirectory() as tmpdirname:
+        containerfile_path = join(tmpdirname, "Dockerfile")
+        iidfile = join(tmpdirname, str(uuid4()))
+        with open(containerfile_path, "w", encoding="utf8") as containerfile_f:
+            _logger.debug(
+                "Writing containerfile to %s: %s",
+                containerfile_path,
+                containerfile,
+            )
+            containerfile_f.write(containerfile)
+
+        cmd = container_runtime.build_command
+        if "podman" in container_runtime.runner_binary:
+            if image_format is not None:
+                cmd += ("--format", str(image_format))
+            else:
+                if (
+                    not container_runtime.supports_healthcheck_inherit_from_base
+                ):
+                    warnings.warn(
+                        UserWarning(
+                            "Runtime does not support inheriting HEALTHCHECK "
+                            "from base images, image format auto-detection "
+                            "will *not* work!"
+                        )
+                    )
+
+                # if the parent image has a healthcheck defined, then we
+                # have to use the docker image format, so that the
+                # healthcheck is in newly build image as well
+                elif parent_image_id and (
+                    "<nil>"
+                    != check_output(
+                        [
+                            container_runtime.runner_binary,
+                            "inspect",
+                            "-f",
+                            "{{.HealthCheck}}",
+                            parent_image_id,
+                        ]
+                    )
+                    .decode()
+                    .strip()
+                ):
+                    cmd += ("--format", str(ImageFormat.DOCKER))
+
+        cmd += extra_build_args or ()
+        if add_build_tags:
+            cmd += functools.reduce(
+                operator.add,
+                (("-t", tag) for tag in add_build_tags),
+            )
+
+        cmd += (f"--iidfile={iidfile}", "-f", containerfile_path, str(rootdir))
+
+        _logger.debug("Building image via: %s", cmd)
+        check_output(cmd)
+
+        container_image_id = container_runtime.get_image_id_from_iidfile(
+            iidfile
+        )
+
+        internal_build_tag = f"pytest_container:{container_image_id}"
+
+        check_output(
+            (
+                container_runtime.runner_binary,
+                "tag",
+                container_image_id,
+                internal_build_tag,
+            )
+        )
+
+        _logger.debug(
+            "Successfully build the container image %s and tagged it as %s",
+            container_image_id,
+            internal_build_tag,
+        )
+
+        return container_image_id, internal_build_tag
+
+
 @dataclass(unsafe_hash=True)
-class DerivedContainer(ContainerBase, ContainerBaseABC):
-    """Class for storing information about the Container Image under test, that
-    is build from a :file:`Containerfile`/:file:`Dockerfile` from a different
-    image (can be any image from a registry or an instance of
-    :py:class:`Container` or :py:class:`DerivedContainer`).
+class _ContainerForBuild(ContainerBase):
+    """Intermediate class for adding properties to :py:class:`DerivedContainer`
+    and :py:class:`MultiStageContainer`.
 
     """
-
-    base: Union[Container, "DerivedContainer", str] = ""
-
-    #: The :file:`Containerfile` that is used to build this container derived
-    #: from :py:attr:`base`.
-    containerfile: str = ""
 
     #: An optional image format when building images with :command:`buildah`. It
     #: is ignored when the container runtime is :command:`docker`.
@@ -725,6 +836,22 @@ class DerivedContainer(ContainerBase, ContainerBaseABC):
     #: Additional build tags/names that should be added to the container once it
     #: has been built
     add_build_tags: List[str] = field(default_factory=list)
+
+
+@dataclass(unsafe_hash=True)
+class DerivedContainer(_ContainerForBuild, _ContainerBaseABC):
+    """Class for storing information about the Container Image under test, that
+    is build from a :file:`Containerfile`/:file:`Dockerfile` from a different
+    image (can be any image from a registry or an instance of
+    :py:class:`Container` or :py:class:`DerivedContainer`).
+
+    """
+
+    base: Union[Container, "DerivedContainer", str] = ""
+
+    #: The :file:`Containerfile` that is used to build this container derived
+    #: from :py:attr:`base`.
+    containerfile: str = ""
 
     def __post_init__(self) -> None:
         super().__post_init__()
@@ -765,8 +892,6 @@ class DerivedContainer(ContainerBase, ContainerBaseABC):
                 container_runtime, rootdir, extra_build_args
             )
 
-        runtime = get_selected_runtime()
-
         # do not build containers without a containerfile and where no build
         # tags are added
         if not self.containerfile and not self.add_build_tags:
@@ -777,102 +902,156 @@ class DerivedContainer(ContainerBase, ContainerBaseABC):
             self.container_id, self.url = base.container_id, base.url
             return
 
-        with tempfile.TemporaryDirectory() as tmpdirname:
-            containerfile_path = join(tmpdirname, "Dockerfile")
-            iidfile = join(tmpdirname, str(uuid4()))
-            with open(containerfile_path, "w") as containerfile:
-                from_id = (
-                    self.base
-                    if isinstance(self.base, str)
-                    else (getattr(self.base, "url") or self.base._build_tag)
-                )
-                assert from_id
-                containerfile_contents = f"""FROM {from_id}
+        if isinstance(self.base, str):
+            from_id = self.base
+        else:
+            from_id = getattr(self.base, "url") or self.base._build_tag
+        assert from_id and isinstance(from_id, str)
+
+        containerfile_contents = f"""FROM {from_id}
 {self.containerfile}
 """
-                _logger.debug(
-                    "Writing containerfile to %s: %s",
-                    containerfile_path,
-                    containerfile_contents,
-                )
-                containerfile.write(containerfile_contents)
+        self.container_id, internal_build_tag = _run_container_build(
+            container_runtime,
+            rootdir,
+            containerfile_contents,
+            parent_image_id=from_id,
+            extra_build_args=(
+                tuple(*extra_build_args) if extra_build_args else ()
+            ),
+            image_format=self.image_format,
+            add_build_tags=self.add_build_tags,
+        )
 
-            cmd = runtime.build_command
-            if "podman" in runtime.runner_binary:
-                if self.image_format is not None:
-                    cmd += ["--format", str(self.image_format)]
-                else:
-                    if not runtime.supports_healthcheck_inherit_from_base:
-                        warnings.warn(
-                            UserWarning(
-                                "Runtime does not support inheriting HEALTHCHECK "
-                                "from base images, image format auto-detection "
-                                "will *not* work!"
-                            )
-                        )
+        assert self._build_tag == internal_build_tag
 
-                    # if the parent image has a healthcheck defined, then we
-                    # have to use the docker image format, so that the
-                    # healthcheck is in newly build image as well
-                    elif (
-                        "<nil>"
-                        != check_output(
-                            [
-                                runtime.runner_binary,
-                                "inspect",
-                                "-f",
-                                "{{.HealthCheck}}",
-                                from_id,
-                            ]
-                        )
-                        .decode()
-                        .strip()
-                    ):
-                        cmd += ["--format", str(ImageFormat.DOCKER)]
 
-            cmd += (
-                (extra_build_args or [])
-                + (
-                    functools.reduce(
-                        operator.add,
-                        (["-t", tag] for tag in self.add_build_tags),
+@dataclass
+class MultiStageContainer(_ContainerForBuild, _ContainerPrepareABC):
+    """Class representing a container built from a :file:`Containerfile`
+    containing multiple stages. The :py:attr:`MultiStageContainer.containerfile`
+    is templated using the builtin :py:class:`string.Template`, where container
+    image IDs are inserted from the containers in
+    :py:attr:`MultiStageContainer.containers` after these have been
+    built/pulled.
+
+    """
+
+    #: :file:`Containerfile` to built the container. If any stages require
+    #: images that are defined using a :py:class:`DerivedContainer` or a
+    #: :py:class:`Container`, then insert their ids as a template name and
+    #: provide that name and the class instance as the key & value into
+    #: :py:attr:`containers`.
+    containerfile: str = ""
+
+    #: Dictionary of container stages that are used to build the final
+    #: image. The keys are the template names used in :py:attr:`containerfile`
+    #: and will be replaced with the container image ids of the respective values.
+    containers: Dict[str, Union[Container, DerivedContainer, str]] = field(
+        default_factory=dict
+    )
+
+    #: Optional stage of the multistage container build that should be built.
+    #: The last stage is built by default.
+    target_stage: str = ""
+
+    def prepare_container(
+        self,
+        container_runtime: OciRuntimeBase,
+        rootdir: Path,
+        extra_build_args: Optional[List[str]],
+    ) -> None:
+        """Builds all intermediate containers and then builds the final
+        container up to :py:attr:`target_stage` or to the last stage.
+
+        """
+
+        template_kwargs: Dict[str, str] = {}
+
+        for name, ctr in self.containers.items():
+            if isinstance(ctr, str):
+                warnings.warn(
+                    UserWarning(
+                        "Putting container URLs or scratch into the containers "
+                        "dictionary is not required, just add them to the "
+                        "containerfile directly."
                     )
-                    if self.add_build_tags
-                    else []
                 )
-                + [
-                    f"--iidfile={iidfile}",
-                    "-f",
-                    containerfile_path,
-                    str(rootdir),
-                ]
-            )
 
-            _logger.debug("Building image via: %s", cmd)
-            check_output(cmd)
-
-            self.container_id = runtime.get_image_id_from_iidfile(iidfile)
-
-            assert self._build_tag.startswith("pytest_container:")
-
-            check_output(
-                (
-                    runtime.runner_binary,
-                    "tag",
-                    self.container_id,
-                    self._build_tag,
+                if ctr == "scratch":
+                    template_kwargs[name] = ctr
+                else:
+                    cont_from_url = Container(url=ctr)
+                    cont_from_url.prepare_container(
+                        container_runtime, rootdir, extra_build_args
+                    )
+                    template_kwargs[name] = cont_from_url._build_tag
+            else:
+                ctr.prepare_container(
+                    container_runtime, rootdir, extra_build_args
                 )
-            )
+                template_kwargs[name] = ctr._build_tag
 
-            _logger.debug(
-                "Successfully build the container image %s and tagged it as %s",
-                self.container_id,
-                self._build_tag,
-            )
+        ctrfile = Template(self.containerfile).substitute(**template_kwargs)
+
+        build_args = tuple(*extra_build_args) if extra_build_args else ()
+        if self.target_stage:
+            build_args += ("--target", self.target_stage)
+
+        self.container_id, internal_tag = _run_container_build(
+            container_runtime,
+            rootdir,
+            ctrfile,
+            None,
+            build_args,
+            self.image_format,
+            self.add_build_tags,
+        )
+        assert self._build_tag == internal_tag
 
 
 @dataclass(frozen=True)
-class ContainerData:
+class ContainerImageData:
+    """Class returned by the ``container_image`` fixture to the test
+    function. It contains a reference to the container image that has been used
+    in the test and has properties that provide the full command to launch the
+    entrypoint of the container image under test.
+
+    """
+
+    #: the container data class that has been used in this test
+    container: Union[Container, DerivedContainer, MultiStageContainer]
+
+    _container_runtime: OciRuntimeBase
+
+    @property
+    def run_command_list(self) -> List[str]:
+        """The full command (including the container runtime) to launch this
+        container image's entrypoint in the foreground. A list of the individual
+        arguments is returned that can be passed directly into
+        :py:func:`subprocess.run`.
+
+        """
+        return self.container.get_launch_cmd(
+            self._container_runtime,
+            detach=False,
+            remove=True,
+            # -it breaks testinfra.host.check_output() with docker
+            interactive_tty=self._container_runtime.runner_binary == "podman",
+        )
+
+    @property
+    def run_command(self) -> str:
+        """The full command (including the container runtime) to launch this
+        container image's entrypoint in the foreground. The command is returned
+        as a single string that has to be invoked via a shell.
+
+        """
+        return " ".join(self.run_command_list)
+
+
+@dataclass(frozen=True)
+class ContainerData(ContainerImageData):
     """Class returned by the ``*container*`` fixtures to the test function. It
     contains information about the launched container and the testinfra
     :py:attr:`connection` to the running container.
@@ -886,12 +1065,8 @@ class ContainerData:
     container_id: str
     #: the testinfra connection to the running container
     connection: Any
-    #: the container data class that has been used in this test
-    container: Union[Container, DerivedContainer]
     #: any ports that are exposed by this container
     forwarded_ports: List[PortForwarding]
-
-    _container_runtime: OciRuntimeBase
 
     @property
     def inspect(self) -> ContainerInspect:
@@ -934,50 +1109,65 @@ def container_to_pytest_param(
 def container_and_marks_from_pytest_param(
     ctr_or_param: Container,
 ) -> Tuple[Container, Literal[None]]:
-    ...
+    ...  # pragma: no cover
 
 
 @overload
 def container_and_marks_from_pytest_param(
     ctr_or_param: DerivedContainer,
 ) -> Tuple[DerivedContainer, Literal[None]]:
-    ...
+    ...  # pragma: no cover
+
+
+@overload
+def container_and_marks_from_pytest_param(
+    ctr_or_param: MultiStageContainer,
+) -> Tuple[MultiStageContainer, Literal[None]]:
+    ...  # pragma: no cover
 
 
 @overload
 def container_and_marks_from_pytest_param(
     ctr_or_param: _pytest.mark.ParameterSet,
 ) -> Tuple[
-    Union[Container, DerivedContainer],
+    Union[Container, DerivedContainer, MultiStageContainer],
     Optional[Collection[Union[_pytest.mark.MarkDecorator, _pytest.mark.Mark]]],
 ]:
-    ...
+    ...  # pragma: no cover
 
 
 def container_and_marks_from_pytest_param(
     ctr_or_param: Union[
-        _pytest.mark.ParameterSet, Container, DerivedContainer
+        _pytest.mark.ParameterSet,
+        Container,
+        DerivedContainer,
+        MultiStageContainer,
     ],
 ) -> Tuple[
-    Union[Container, DerivedContainer],
+    Union[Container, DerivedContainer, MultiStageContainer],
     Optional[Collection[Union[_pytest.mark.MarkDecorator, _pytest.mark.Mark]]],
 ]:
-    """Extracts the :py:class:`~pytest_container.container.Container` or
-    :py:class:`~pytest_container.container.DerivedContainer` and the
+    """Extracts the :py:class:`~pytest_container.container.Container`,
+    :py:class:`~pytest_container.container.DerivedContainer` or
+    :py:class:`~pytest_container.container.MultiStageContainer` and the
     corresponding marks from a `pytest.param
     <https://docs.pytest.org/en/stable/reference.html?#pytest.param>`_ and
     returns both.
 
     If ``param`` is either a :py:class:`~pytest_container.container.Container`
-    or a :py:class:`~pytest_container.container.DerivedContainer`, then param is
-    returned directly and the second return value is ``None``.
+    or a :py:class:`~pytest_container.container.DerivedContainer` or a
+    :py:class:`~pytest_container.container.MultiStageContainer`, then ``param``
+    is returned directly and the second return value is ``None``.
 
     """
-    if isinstance(ctr_or_param, (Container, DerivedContainer)):
+    if isinstance(
+        ctr_or_param, (Container, DerivedContainer, MultiStageContainer)
+    ):
         return ctr_or_param, None
 
     if len(ctr_or_param.values) > 0 and isinstance(
-        ctr_or_param.values[0], (Container, DerivedContainer)
+        ctr_or_param.values[0],
+        (Container, DerivedContainer, MultiStageContainer),
     ):
         return ctr_or_param.values[0], ctr_or_param.marks
 
@@ -1021,7 +1211,7 @@ class ContainerLauncher:
     """
 
     #: The container that will be launched
-    container: Union[Container, DerivedContainer]
+    container: Union[Container, DerivedContainer, MultiStageContainer]
 
     #: The container runtime via which the container will be launched
     container_runtime: OciRuntimeBase
@@ -1051,7 +1241,7 @@ class ContainerLauncher:
 
     @staticmethod
     def from_pytestconfig(
-        container: Union[Container, DerivedContainer],
+        container: Union[Container, DerivedContainer, MultiStageContainer],
         container_runtime: OciRuntimeBase,
         pytestconfig: pytest.Config,
         container_name: str = "",
@@ -1073,11 +1263,13 @@ class ContainerLauncher:
     def __enter__(self) -> "ContainerLauncher":
         return self
 
-    def launch_container(self) -> None:
-        """This function performs the actual heavy lifting of launching the
-        container, creating all the volumes, port bindings, etc.pp.
+    def prepare_container_image(self) -> None:
+        """Prepares the container image for launching containers. This includes
+        building the container image and all its dependents and creating volume
+        mounts.
 
         """
+
         # Lock guarding the container preparation, so that only one process
         # tries to pull/build it at the same time.
         # If this container is a singleton, then we use it as a lock until
@@ -1126,6 +1318,13 @@ class ContainerLauncher:
                 get_volume_creator(cont_vol, self.container_runtime)
             )
 
+    def launch_container(self) -> None:
+        """This function performs the actual heavy lifting of launching the
+        container, creating all the volumes, port bindings, etc.pp.
+
+        """
+        self.prepare_container_image()
+
         forwarded_ports = self.container.forwarded_ports
 
         extra_run_args = self.extra_run_args
@@ -1164,6 +1363,23 @@ class ContainerLauncher:
             self._container_id = cidfile.read(-1).strip()
 
         self._wait_for_container_to_become_healthy()
+
+    @property
+    def container_image_data(self) -> ContainerImageData:
+        """The :py:class:`ContainerImageData` belonging to this container
+        image.
+
+        .. warning::
+
+           This property will always be set, even if the container image has not
+           been prepared yet. Only use it after calling
+           :py:func:`ContainerLauncher.prepare_container_image`.
+
+        """
+        # FIXME: check if container is prepared
+        return ContainerImageData(
+            container=self.container, _container_runtime=self.container_runtime
+        )
 
     @property
     def container_data(self) -> ContainerData:

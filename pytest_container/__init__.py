@@ -10,6 +10,7 @@ __all__ = [
     "container_from_pytest_param",
     "container_to_pytest_param",
     "DerivedContainer",
+    "MultiStageContainer",
     "add_extra_run_and_build_args_options",
     "add_logging_level_options",
     "auto_container_parametrize",
@@ -31,6 +32,7 @@ from .container import container_and_marks_from_pytest_param
 from .container import container_from_pytest_param
 from .container import container_to_pytest_param
 from .container import DerivedContainer
+from .container import MultiStageContainer
 from .helpers import add_extra_run_and_build_args_options
 from .helpers import add_logging_level_options
 from .helpers import auto_container_parametrize

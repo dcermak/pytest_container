@@ -8,6 +8,8 @@ The container module
 .. automodule:: pytest_container.container
    :members:
    :undoc-members:
+   :private-members:
+   :show-inheritance:
 
 
 The pod module

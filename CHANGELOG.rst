@@ -3,10 +3,20 @@ Next Release
 
 Breaking changes:
 
+- deprecate :py:class:`~pytest_container.build.MultiStageBuild` in favor
+  :py:class:`~pytest_container.container.MultiStageContainer`
+
+- change type of ``OciRuntimeBase.build_command`` from ``List[str]`` to
+  ``Tuple[str, ...]``
+
 - Change addition of SELinux flags to volumes: SELinux flags are only added if
   :py:attr:`~pytest_container.container.ContainerVolumeBase.flags` is ``None``.
 
 Improvements and new features:
+
+- Add the class :py:class:`~pytest_container.container.MultiStageContainer` as a
+  replacement of :py:class:`~pytest_container.build.MultiStageBuild` to handle
+  container images built from a :file:`Containerfile` with multiple stages
 
 - Add the function
   :py:func:`~pytest_container.container.ContainerData.read_container_logs` to
@@ -70,15 +80,16 @@ Internal changes:
 Breaking changes:
 
 - add the parameter ``container_runtime`` to
-  :py:func:`~pytest_container.container.ContainerBaseABC.prepare_container` and
-  :py:func:`~pytest_container.build.MultiStageBuild.prepare_build`.
+  ``ContainerBaseABC.prepare_container`` (now called
+  :py:func:`~pytest_container.container._ContainerPrepareABC.prepare_container`)
+  and :py:func:`~pytest_container.build.MultiStageBuild.prepare_build`.
 
 - deprecate the function ``pytest_container.container_from_pytest_param``,
   please use
   :py:func:`~pytest_container.container.container_and_marks_from_pytest_param`
   instead.
 
-- :py:func:`~pytest_container.container.ContainerBaseABC.get_base` no longer
+- :py:func:`~pytest_container.container._ContainerBaseABC.get_base` no longer
   returns the recursive base but the immediate base.
 
 
@@ -126,7 +137,7 @@ Breaking changes:
 
 Improvements and new features:
 
-- Add :py:attr:`~pytest_container.container.ContainerBaseABC.baseurl` property
+- Add :py:attr:`~pytest_container.container._ContainerBaseABC.baseurl` property
   to get the registry url of the container on which any currently existing
   container is based on.
 
@@ -216,15 +227,16 @@ Improvements and new features:
   Container Images exposing the same ports in parallel without marking them as
   ``singleton=True``.
 
-- The attribute :py:attr:`~pytest_container.container.ContainerData.container`
-  was added to :py:class:`~pytest_container.container.ContainerData` (the
-  datastructure that is passed to test functions via the ``*container*``
-  fixtures). This attribute contains the
-  :py:class:`~pytest_container.container.ContainerBase` that was used to
-  parametrize this test run.
+- The attribute ``ContainerData.container`` (is now
+  :py:attr:`~pytest_container.container.ContainerImageData.container`) was added
+  to :py:class:`~pytest_container.container.ContainerData` (the datastructure
+  that is passed to test functions via the ``*container*`` fixtures). This
+  attribute contains the :py:class:`~pytest_container.container.ContainerBase`
+  that was used to parametrize this test run.
 
 - Add support to add tags to container images via
-  :py:attr:`~pytest_container.container.DerivedContainer.add_build_tags`.
+  ``DerivedContainer.add_build_tags`` (is now called
+  :py:attr:`~pytest_container.container._ContainerForBuild.add_build_tags`)
 
 - Lock container preparation so that only a single process is pulling & building
   a container image.
