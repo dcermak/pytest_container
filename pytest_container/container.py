@@ -499,9 +499,12 @@ class ContainerBase:
     _is_local: bool = False
 
     def __post_init__(self) -> None:
-        if self.url.split(":", maxsplit=1)[0] == "containers-storage":
+        local_prefix = "containers-storage:"
+        if self.url.startswith(local_prefix):
             self._is_local = True
-            self.url = self.url.replace("containers-storage:", "")
+            # returns before_separator, separator, after_separator
+            before, sep, self.url = self.url.partition(local_prefix)
+            assert before == "" and sep == local_prefix
 
     def __str__(self) -> str:
         return self.url or self.container_id
