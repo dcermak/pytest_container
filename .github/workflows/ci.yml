@@ -107,7 +107,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        python_version: ["3.7", "3.8", "3.9", "3.10", "3.11", "3.12"]
+        python_version: ["3.7", "3.8", "3.9", "3.10", "3.11", "3.12", "3.13"]
         container_runtime: ["podman", "docker"]
         update_runtime: [ true, false ]
         without_buildah: [ false ]
@@ -137,13 +137,17 @@ jobs:
             python_version: "3.12"
             update_runtime: true
             without_buildah: false
+          - container_runtime: "docker"
+            python_version: "3.13"
+            update_runtime: true
+            without_buildah: false
 
         include:
-          - python_version: "3.12"
+          - python_version: "3.13"
             container_runtime: "podman"
             update_runtime: true
             without_buildah: true
-          - python_version: "3.12"
+          - python_version: "3.13"
             container_runtime: "podman"
             update_runtime: false
             without_buildah: true
@@ -243,7 +247,7 @@ jobs:
       fail-fast: false
       matrix:
         os_version: ["ubuntu-latest"]
-        python_version: ["3.7", "3.8", "3.9", "3.10", "3.11"]
+        python_version: ["3.7", "3.8", "3.9", "3.10", "3.11", "3.12", "3.13"]
         include:
           - os_version: "ubuntu-20.04"
             python_version: "3.6"

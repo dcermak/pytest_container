@@ -136,3 +136,11 @@ def test_baseurl(
     container_instance: Union[DerivedContainer, Container], url: Optional[str]
 ) -> None:
     assert container_instance.baseurl == url
+
+
+def test_url_does_not_loose_containers_storage_part():
+    local_prefix = "containers-storage"
+    path = f"this/is/a/fake/image/with/{local_prefix}:latest"
+    ctr = Container(url=f"{local_prefix}:{path}")
+    assert ctr.local_image
+    assert ctr.url == path
