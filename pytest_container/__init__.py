@@ -22,11 +22,15 @@ __all__ = [
     "OciRuntimeBase",
     "PodmanRuntime",
     "Version",
+    "ContainerVolume",
+    "BindMount",
 ]
 
 from .build import GitRepositoryBuild
 from .build import MultiStageBuild
+from .container import BindMount
 from .container import Container
+from .container import ContainerVolume
 from .container import container_and_marks_from_pytest_param
 from .container import container_from_pytest_param
 from .container import container_to_pytest_param
