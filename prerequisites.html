@@ -42,7 +42,8 @@ the <a class="reference external" href="https://pypi.org/project/dataclasses/">d
 <p>Tests leveraging <cite>pytest_container</cite> need to have access to a container
 runtime. Currently the following ones are supported:</p>
 <ul class="simple">
-<li><p><a class="reference external" href="https://podman.io/">podman</a> and <a class="reference external" href="https://buildah.io/">buildah</a></p></li>
+<li><p><a class="reference external" href="https://podman.io/">podman</a> and <a class="reference external" href="https://buildah.io/">buildah</a> (buildah
+is optional and if missing, podman is leveraged for building container images)</p></li>
 <li><p><a class="reference external" href="https://www.docker.com/">docker</a></p></li>
 </ul>
 <p id="runtime-selection-rules">The fixtures will default to using <strong class="command">podman</strong> (and optionally
