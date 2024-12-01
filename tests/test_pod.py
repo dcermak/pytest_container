@@ -1,4 +1,5 @@
 # pylint: disable=missing-function-docstring,missing-module-docstring,line-too-long,trailing-whitespace
+import subprocess
 from pathlib import Path
 
 import pytest
@@ -10,7 +11,6 @@ from pytest_container.pod import Pod
 from pytest_container.pod import PodData
 from pytest_container.pod import PodLauncher
 from pytest_container.runtime import OciRuntimeBase
-from pytest_container.runtime import PodmanRuntime
 
 from .images import BUSYBOX
 from .images import CONTAINER_THAT_FAILS_TO_LAUNCH
@@ -40,13 +40,22 @@ PROXY_POD = Pod(
 )
 
 
+def skip_if_not_podman(container_runtime: OciRuntimeBase) -> None:
+    if container_runtime.family != "podman":
+        pytest.skip("pods only work with podman")
+
+
+def skip_if_podman(container_runtime: OciRuntimeBase) -> None:
+    if container_runtime.family == "podman":
+        pytest.skip("pods work with podman")
+
+
 def test_pod_launcher(
     tmp_path: Path,
     container_runtime: OciRuntimeBase,
     pytestconfig: pytest.Config,
 ) -> None:
-    if container_runtime != PodmanRuntime():
-        pytest.skip("pods only work with podman")
+    skip_if_not_podman(container_runtime)
 
     pidfile_path = str(tmp_path / "pidfile")
     with PodLauncher(
@@ -75,8 +84,7 @@ def test_pod_launcher(
 def test_pod_launcher_pod_data_not_ready(
     container_runtime: OciRuntimeBase, pytestconfig: pytest.Config
 ) -> None:
-    if container_runtime != PodmanRuntime():
-        pytest.skip("pods only work with podman")
+    skip_if_not_podman(container_runtime)
 
     with PodLauncher.from_pytestconfig(
         pod=TEST_POD, pytestconfig=pytestconfig
@@ -91,10 +99,9 @@ def test_pod_launcher_pod_data_not_ready(
 
 
 def test_pod_launcher_cleanup(
-    container_runtime: OciRuntimeBase, pytestconfig: pytest.Config, host
+    container_runtime: OciRuntimeBase, pytestconfig: pytest.Config
 ) -> None:
-    if container_runtime != PodmanRuntime():
-        pytest.skip("pods only work with podman")
+    skip_if_not_podman(container_runtime)
 
     name = "i_will_fail_to_launch"
 
@@ -110,17 +117,16 @@ def test_pod_launcher_cleanup(
     assert "did not become healthy" in str(rt_err_ctx.value)
 
     # the pod should be gone
-    assert (
-        name
-        in host.run_expect([125], f"podman pod inspect {name}").stderr.strip()
-    )
+    with pytest.raises(
+        RuntimeError, match=f"Container with id {name} not found"
+    ):
+        container_runtime.inspect_container(name)
 
 
 def test_pod_launcher_fails_with_non_podman(
     container_runtime: OciRuntimeBase,
 ) -> None:
-    if container_runtime == PodmanRuntime():
-        pytest.skip("pods work with podman")
+    skip_if_podman(container_runtime)
 
     with pytest.raises(RuntimeError) as rt_err_ctx:
         with PodLauncher(pod=TEST_POD, rootdir=Path("/tmp")) as _:
@@ -130,20 +136,22 @@ def test_pod_launcher_fails_with_non_podman(
 
 
 @pytest.mark.parametrize("pod_per_test", [PROXY_POD], indirect=True)
-def test_proxy_pod(pod_per_test: PodData, host) -> None:
+def test_proxy_pod(pod_per_test: PodData) -> None:
     assert (
         pod_per_test.forwarded_ports and len(pod_per_test.forwarded_ports) == 1
     )
-    assert host.socket(
-        f"tcp://0.0.0.0:{pod_per_test.forwarded_ports[0].host_port}"
-    ).is_listening
 
     assert (
-        "Hello Green World"
-        in host.run_expect(
-            [0],
-            f"curl --fail http://0.0.0.0:{pod_per_test.forwarded_ports[0].host_port}",
-        ).stdout
+        "Hello Green World!"
+        == subprocess.check_output(
+            [
+                "curl",
+                "--fail",
+                f"http://0.0.0.0:{pod_per_test.forwarded_ports[0].host_port}",
+            ]
+        )
+        .strip()
+        .decode()
     )
 
 
@@ -155,16 +163,14 @@ def test_pod_fixture(pod: PodData) -> None:
 
     for cont_data in pod.container_data:
         # leap has /etc/os-release
-        if cont_data.connection.file("/etc/os-release").exists:
+        if cont_data.remote.file("/etc/os-release").exists:
             assert (
                 "leap"
-                in cont_data.connection.run_expect([0], "cat /etc/os-release")
-                .stdout.strip()
-                .lower()
+                in cont_data.remote.check_output("cat /etc/os-release").lower()
             )
         # busybox doesn't, but it has /bin/busybox ;-)
         else:
-            assert cont_data.connection.file("/bin/busybox").exists
+            assert cont_data.remote.file("/bin/busybox").exists
 
 
 def test_launcher_pod_data_uninitialized() -> None:

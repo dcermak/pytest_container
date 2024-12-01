@@ -18,10 +18,14 @@ CONTAINER_IMAGES = [LEAP_WITH_CONFIG_FILE]
 def test_config_file_present(
     auto_container: ContainerData, pytestconfig: Config
 ):
-    assert auto_container.connection.file("/opt/app/pyproject.toml").exists
+    assert auto_container.remote.file("/opt/app/pyproject.toml").exists
+
     with open(
         pytestconfig.rootpath / "pyproject.toml", encoding="utf-8"
     ) as pyproject:
-        assert auto_container.connection.file(
-            "/opt/app/pyproject.toml"
-        ).content_string == pyproject.read(-1)
+        expected = pyproject.read(-1)
+
+    assert (
+        expected
+        == auto_container.remote.file("/opt/app/pyproject.toml").content_string
+    )

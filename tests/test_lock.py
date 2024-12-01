@@ -27,7 +27,7 @@ def actual_test(container_data: ContainerData, pytestconf: Config):
     runs in parallel during that time, it would error out.
 
     """
-    container_data.connection.check_output("true")
+    container_data.remote.check_output("true")
     lockfile = pytestconf.rootpath / (
         "leap.lock"
         if "leap" in container_data.image_url_or_id

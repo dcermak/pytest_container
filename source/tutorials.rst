@@ -96,7 +96,7 @@ the following test function along with a global variable:
    CONTAINER_IMAGES = [TW_WITH_PKG]
 
    def test_help_works(auto_container):
-       res = auto_container.connection.run_expect([0], "my-binary --help")
+       res = auto_container.remote.check_output("my-binary --help")
        assert "My cool project" in res.stdout
 
 
@@ -108,11 +108,6 @@ executed inside multiple container images, thus avoiding the task of
 parametrizing each of the test manually.
 
 The test function receives a
-:py:class:`~pytest_container.container.ContainerData` instance, where the
-:py:attr:`~pytest_container.container.ContainerData.connection` attribute
-provides a ``testinfra`` connection. The `run_expect
-<https://testinfra.readthedocs.io/en/latest/modules.html#testinfra.host.Host.run_expect>`_
-function is used to execute the binary and check that its exit code is
-``0``. Afterwards, we check that a search string is in the standard output.
+:py:class:`~pytest_container.container.ContainerData` instance.
 
 You can now execute this test via :command:`poetry run pytest`.

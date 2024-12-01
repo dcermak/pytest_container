@@ -21,8 +21,7 @@ Find the latest documentation on `dcermak.github.io/pytest_container
 <https://dcermak.github.io/pytest_container/>`_.
 
 ``pytest_container`` is a `pytest <https://pytest.org>`_ plugin
-to test container images via pytest fixtures and `testinfra
-<https://testinfra.readthedocs.io/en/latest/>`_. It takes care of all the boring
+to test container images via pytest fixtures. It takes care of all the boring
 tasks, like spinning up containers, finding free ports and cleaning up after
 tests, and allows you to focus on implementing the actual tests.
 
@@ -49,16 +48,24 @@ instantiating a ``Container`` and parametrizing a test function with the
 
    @pytest.mark.parametrize("container", [TW], indirect=["container"])
    def test_etc_os_release_present(container: ContainerData):
-       assert container.connection.file("/etc/os-release").exists
+        assert container.remote.check_output("test -f /etc/os-release")
 
 
 The fixture automatically pulls and spins up the container, stops it and removes
 it after the test is completed. Your test function receives an instance of
-``ContainerData`` with the ``ContainerData.connection`` attribute. The
-``ContainerData.connection`` attribute is a `testinfra
-<https://testinfra.readthedocs.io/en/latest/>`_ connection object. It can be
-used to run basic tests inside the container itself. For example, you can check
-whether files are present, packages are installed, etc.
+``ContainerData``.
+
+
+Testinfa
+--------
+
+You can optionally use the `testinfra <https://testinfra.readthedocs.io/en/latest/>`_
+library to interact with the container.  You need to install the ``pytest-testinfra``
+package directly or use the ``[testinfra]`` extra on this package.
+
+If test infra is installed, the ``ContainerData`` instance will have a
+``connection`` attribute that is an instance of ``testinfra.Connection``. Otherwise
+this attribute will be ``None``.
 
 
 Use cases
