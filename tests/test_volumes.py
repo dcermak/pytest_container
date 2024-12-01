@@ -3,18 +3,21 @@ import os
 from os.path import abspath
 from os.path import join
 from typing import List
+from typing import Union
 
 import pytest
-from pytest_container.container import BindMount
-from pytest_container.container import BindMountCreator
 from pytest_container.container import ContainerData
-from pytest_container.container import ContainerVolume
-from pytest_container.container import ContainerVolumeBase
 from pytest_container.container import DerivedContainer
-from pytest_container.container import get_volume_creator
-from pytest_container.container import VolumeFlag
 from pytest_container.runtime import LOCALHOST
 from pytest_container.runtime import OciRuntimeBase
+from pytest_container.volume import BindMount
+from pytest_container.volume import BindMountCreator
+from pytest_container.volume import ContainerVolume
+from pytest_container.volume import ContainerVolumeBase
+from pytest_container.volume import CreatedBindMount
+from pytest_container.volume import CreatedContainerVolume
+from pytest_container.volume import get_volume_creator
+from pytest_container.volume import VolumeFlag
 
 from .images import LEAP_URL
 
@@ -27,8 +30,8 @@ from .images import LEAP_URL
     ],
 )
 def test_adds_selinux(volume: ContainerVolumeBase, expected_flag: VolumeFlag):
-    assert len(volume.flags) == 1
-    assert volume.flags[0] == expected_flag
+    assert len(volume._flags) == 1
+    assert volume._flags[0] == expected_flag
 
 
 @pytest.mark.parametrize(
@@ -44,7 +47,7 @@ def test_adds_selinux(volume: ContainerVolumeBase, expected_flag: VolumeFlag):
 def test_does_not_add_selinux_if_flags_is_list(
     volume: ContainerVolumeBase, flags: List[VolumeFlag]
 ) -> None:
-    assert volume.flags == flags
+    assert list(volume._flags) == flags
 
 
 @pytest.mark.parametrize(
@@ -64,42 +67,59 @@ def test_errors_on_mutually_exclusive_flags(flags: List[VolumeFlag]):
 @pytest.mark.parametrize(
     "vol,expected_cli",
     [
-        (BindMount("/src", host_path="/bar"), "-v=/bar:/src:Z"),
+        (CreatedBindMount("/src", host_path="/bar"), "-v=/bar:/src:Z"),
         (
-            BindMount(
+            CreatedBindMount(
                 "/src",
                 host_path="/bar",
                 flags=[VolumeFlag.READ_ONLY, VolumeFlag.SELINUX_SHARED],
             ),
             "-v=/bar:/src:ro,z",
         ),
+        (
+            CreatedBindMount(
+                "/etc/zypp/credentials.d",
+                host_path="/var/secrets/zypp/credentials.d",
+                flags=[],
+            ),
+            "-v=/var/secrets/zypp/credentials.d:/etc/zypp/credentials.d",
+        ),
     ],
 )
-def test_cli_arg(vol: ContainerVolumeBase, expected_cli: str):
+def test_cli_arg(vol: CreatedBindMount, expected_cli: str):
     assert vol.cli_arg == expected_cli
 
 
 def test_bind_mount_host_path() -> None:
     vol = BindMount("/foo")
 
-    with BindMountCreator(vol) as _:
-        assert vol.host_path
+    with BindMountCreator(vol) as creator:
+        assert creator.created_volume and creator.created_volume.host_path
 
     assert not vol.host_path
 
 
 @pytest.mark.parametrize("vol", [BindMount("/foo"), ContainerVolume("/foo")])
 def test_volume_re_create(
-    vol: ContainerVolumeBase, container_runtime: OciRuntimeBase
+    vol: Union[BindMount, ContainerVolume], container_runtime: OciRuntimeBase
 ) -> None:
-    vol = BindMount("/foo")
 
     for _ in range(10):
-        with get_volume_creator(vol, container_runtime) as _:
+        with get_volume_creator(vol, container_runtime) as creator:
             if isinstance(vol, BindMount):
-                assert vol.host_path
+                assert (
+                    creator.created_volume
+                    and isinstance(creator.created_volume, CreatedBindMount)
+                    and creator.created_volume.host_path
+                )
             elif isinstance(vol, ContainerVolume):
-                assert vol.volume_id
+                assert (
+                    creator.created_volume
+                    and isinstance(
+                        creator.created_volume, CreatedContainerVolume
+                    )
+                    and creator.created_volume.volume_id
+                )
             else:
                 assert False
 
@@ -115,7 +135,7 @@ LEAP_WITH_VOLUMES = DerivedContainer(
 def test_container_host_volumes(container_per_test: ContainerData):
     assert len(container_per_test.container.volume_mounts) == 2
     for vol in container_per_test.container.volume_mounts:
-        assert isinstance(vol, BindMount)
+        assert isinstance(vol, CreatedBindMount)
         assert vol.host_path
         dir_on_host = LOCALHOST.file(vol.host_path)
         assert dir_on_host.exists and dir_on_host.is_directory
@@ -138,7 +158,7 @@ def test_does_not_add_selinux_flags_if_present(flags: List[VolumeFlag]):
 )
 def test_container_volume_host_writing(container_per_test: ContainerData):
     vol = container_per_test.container.volume_mounts[0]
-    assert isinstance(vol, BindMount)
+    assert isinstance(vol, CreatedBindMount)
     assert vol.host_path
 
     host_dir = LOCALHOST.file(vol.host_path)
@@ -193,7 +213,7 @@ def test_container_volumes(container_per_test: ContainerData):
 )
 def test_container_volume_writeable(container_per_test: ContainerData):
     vol = container_per_test.container.volume_mounts[0]
-    assert isinstance(vol, ContainerVolume) and vol.volume_id
+    assert isinstance(vol, CreatedContainerVolume) and vol.volume_id
 
     container_dir = container_per_test.connection.file(vol.container_path)
     assert not container_dir.listdir()
@@ -263,7 +283,7 @@ LEAP_WITH_ROOTDIR_BIND_MOUNTED = DerivedContainer(
 )
 def test_bind_mount_cwd(container: ContainerData):
     vol = container.container.volume_mounts[0]
-    assert isinstance(vol, BindMount)
+    assert isinstance(vol, CreatedBindMount)
     assert container.connection.file("/src/").exists and sorted(
         container.connection.file("/src/").listdir()
     ) == sorted(LOCALHOST.file(vol.host_path).listdir())
