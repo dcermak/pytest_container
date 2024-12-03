@@ -3,6 +3,21 @@ Next Release
 
 Breaking changes:
 
+
+Improvements and new features:
+
+
+Documentation:
+
+
+Internal changes:
+
+
+0.4.3 (December 4 2024)
+-----------------------
+
+Breaking changes:
+
 - Change addition of SELinux flags to volumes: SELinux flags are only added if
   :py:attr:`~pytest_container.container.ContainerVolumeBase.flags` is ``None``.
 
