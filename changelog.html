@@ -40,12 +40,20 @@
 <section id="next-release">
 <h2>Next Release<a class="headerlink" href="#next-release" title="Permalink to this heading">¶</a></h2>
 <p>Breaking changes:</p>
+<p>Improvements and new features:</p>
+<p>Documentation:</p>
+<p>Internal changes:</p>
+</section>
+<section id="december-4-2024">
+<h2>0.4.3 (December 4 2024)<a class="headerlink" href="#december-4-2024" title="Permalink to this heading">¶</a></h2>
+<p>Breaking changes:</p>
 <ul class="simple">
 <li><p>Change addition of SELinux flags to volumes: SELinux flags are only added if
 <a class="reference internal" href="api.html#pytest_container.container.ContainerVolumeBase.flags" title="pytest_container.container.ContainerVolumeBase.flags"><code class="xref py py-attr docutils literal notranslate"><span class="pre">flags</span></code></a> is <code class="docutils literal notranslate"><span class="pre">None</span></code>.</p></li>
 </ul>
 <p>Improvements and new features:</p>
 <ul class="simple">
+<li><p>Tolerate already deleted lockfiles (<a class="reference external" href="https://github.com/dcermak/pytest_container/pull/233">gh#233</a>)</p></li>
 <li><p>Add the function
 <a class="reference internal" href="api.html#pytest_container.container.ContainerData.read_container_logs" title="pytest_container.container.ContainerData.read_container_logs"><code class="xref py py-func docutils literal notranslate"><span class="pre">read_container_logs()</span></code></a> to
 get access to the logs of the running container</p></li>
@@ -278,6 +286,7 @@ robust.</p></li>
 <li class="toctree-l1"><a class="reference internal" href="usage.html">Usage Tips</a></li>
 <li class="toctree-l1 current"><a class="current reference internal" href="#">Changelog</a><ul>
 <li class="toctree-l2"><a class="reference internal" href="#next-release">Next Release</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#december-4-2024">0.4.3 (December 4 2024)</a></li>
 <li class="toctree-l2"><a class="reference internal" href="#april-2024">0.4.2 (10 April 2024)</a></li>
 <li class="toctree-l2"><a class="reference internal" href="#id1">0.4.1 (2 April 2024)</a></li>
 <li class="toctree-l2"><a class="reference internal" href="#march-2024">0.4.0 (27 March 2024)</a></li>
