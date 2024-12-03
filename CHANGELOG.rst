@@ -3,10 +3,28 @@ Next Release
 
 Breaking changes:
 
+
+Improvements and new features:
+
+
+Documentation:
+
+
+Internal changes:
+
+
+0.4.3 (December 4 2024)
+-----------------------
+
+Breaking changes:
+
 - Change addition of SELinux flags to volumes: SELinux flags are only added if
   :py:attr:`~pytest_container.container.ContainerVolumeBase.flags` is ``None``.
 
 Improvements and new features:
+
+- Tolerate already deleted lockfiles (`gh#233
+  <https://github.com/dcermak/pytest_container/pull/233>`_)
 
 - Add the function
   :py:func:`~pytest_container.container.ContainerData.read_container_logs` to
