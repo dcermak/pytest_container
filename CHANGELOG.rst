@@ -8,6 +8,9 @@ Breaking changes:
 
 Improvements and new features:
 
+- Tolerate already deleted lockfiles (`gh#233
+  <https://github.com/dcermak/pytest_container/pull/233>`_)
+
 - Add the function
   :py:func:`~pytest_container.container.ContainerData.read_container_logs` to
   get access to the logs of the running container
