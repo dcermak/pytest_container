@@ -131,7 +131,7 @@ def test_container_and_marks_from_pytest_param() -> None:
     )
     assert cont == LEAP and not marks
 
-    assert container_and_marks_from_pytest_param(LEAP) == (LEAP, None)
+    assert container_and_marks_from_pytest_param(LEAP) == (LEAP, LEAP.marks)
 
     derived = DerivedContainer(base=LEAP, containerfile="ENV foo=bar")
     cont, marks = container_and_marks_from_pytest_param(
@@ -139,7 +139,10 @@ def test_container_and_marks_from_pytest_param() -> None:
     )
     assert cont == derived and not marks
 
-    assert container_and_marks_from_pytest_param(derived) == (derived, None)
+    assert container_and_marks_from_pytest_param(derived) == (
+        derived,
+        derived.marks,
+    )
 
     with pytest.raises(ValueError) as val_err_ctx:
         container_and_marks_from_pytest_param(pytest.param(16, 45))

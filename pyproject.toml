@@ -58,3 +58,12 @@ ignore = [
 [tool.ruff.lint.isort]
 force-single-line = true
 case-sensitive = true
+
+[tool.pytest.ini_options]
+xfail_strict = true
+addopts = "--strict-markers"
+markers = [
+    'secretleapmark',
+    'othersecretmark',
+    'secretpodmark',
+]
