@@ -8,7 +8,7 @@ Sometimes it is necessary to customize the build, run or pod create parameters
 of the container runtime globally, e.g. to use the host's network with docker
 via ``--network=host``.
 
-The :py:meth:`~pytest_container.container.ContainerBaseABC.prepare_container`
+The :py:meth:`~pytest_container.container.ContainerBase.prepare_container`
 and :py:meth:`~pytest_container.container.ContainerBase.get_launch_cmd` methods
 support passing such additional arguments/flags, but this is rather cumbersome
 to use in practice. The ``*container*`` and ``pod*`` fixtures will therefore

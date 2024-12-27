@@ -7,13 +7,24 @@ from dataclasses import field
 from pathlib import Path
 from subprocess import check_output
 from types import TracebackType
+from typing import Any
+from typing import Collection
 from typing import List
 from typing import Optional
+from typing import TypeVar
+
+try:
+    from typing import Self
+except ImportError:
+    from typing_extensions import Self
+from typing import Tuple
 from typing import Type
 from typing import Union
 
 from _pytest.mark import ParameterSet
 from pytest import Config
+from pytest import Mark
+from pytest import MarkDecorator
 
 from pytest_container.container import Container
 from pytest_container.container import ContainerData
@@ -29,9 +40,10 @@ from pytest_container.logging import _logger
 from pytest_container.runtime import PodmanRuntime
 from pytest_container.runtime import get_selected_runtime
 
+T = TypeVar("T", bound="Pod")
 
-@dataclass
-class Pod:
+
+class Pod(ParameterSet):
     """A pod is a collection of containers that share the same network and port
     forwards. Currently only :command:`podman` supports creating pods.
 
@@ -40,11 +52,49 @@ class Pod:
 
     """
 
-    #: containers belonging to the pod
-    containers: List[Union[DerivedContainer, Container]]
+    def __new__(cls: Type[T], *args: Any, **kwargs: Any) -> T:
+        # Filter out all fields of ParameterSet and invoke object.__new__ only for the
+        # fields that it supports
+        parameter_set_fields = ParameterSet._fields
+        filtered_kwargs = {}
+        for f in parameter_set_fields:
+            filtered_kwargs[f] = kwargs.get(f, None)
 
-    #: ports exposed by the pod
-    forwarded_ports: List[PortForwarding] = field(default_factory=list)
+        return super().__new__(cls, *args, **filtered_kwargs)
+
+    def __init__(
+        self,
+        containers: List[Union[DerivedContainer, Container]],
+        forwarded_ports: Optional[List[PortForwarding]] = None,
+        marks: Optional[Collection[Union[MarkDecorator, Mark]]] = None,
+    ) -> None:
+        #: containers belonging to the pod
+        self.containers = containers
+
+        #: ports exposed by the pod
+        self.forwarded_ports = forwarded_ports or []
+
+        self._marks = marks or []
+
+    @property
+    def values(self) -> Tuple[Self]:
+        return (self,)
+
+    @property
+    def marks(self) -> Collection[Union[MarkDecorator, Mark]]:
+        marks = tuple(self._marks)
+        for ctr in self.containers:
+            marks += tuple(ctr.marks)
+        return marks
+
+    @property
+    def id(self) -> str:
+        return "Pod with containers: " + ",".join(
+            str(c) for c in self.containers
+        )
+
+    def __bool__(self) -> bool:
+        return True
 
 
 @dataclass(frozen=True)
