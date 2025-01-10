@@ -19,138 +19,98 @@ jobs:
           python-version: '3.x'
       - uses: actions/cache@v4
         with:
-          path: ~/.cache/pypoetry/virtualenvs
-          key: poetry-${{ hashFiles('poetry.lock') }}
+          path: ~/.tox
+          key: tox-${{ hashFiles('tox.ini') }}-${{ hashFiles('setup.cfg') }}-${{ hashFiles('test-requirements.txt') }}
 
-      - run: |
-          pip install --upgrade poetry nox nox-poetry
-          nox -s format -- --check
+      - run: pip install tox
 
-  generate_requirements:
-    name: Generate requirements.txt for Python 3.6 CI
-    runs-on: ubuntu-latest
-
-    steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
-        with:
-          python-version: '3.x'
-      - uses: actions/cache@v4
-        with:
-          path: ~/.cache/pypoetry/virtualenvs
-          key: poetry-${{ hashFiles('poetry.lock') }}
-
-      - run: |
-          pipx install poetry
-          poetry export --with=dev --without-hashes > requirements.txt
-
-      - uses: actions/upload-artifact@v4
-        with:
-          name: requirements
-          path: requirements.txt
-          if-no-files-found: error
-
-  ci_36:
-    name: Run the integration tests for Python 3.6
-    runs-on: ubuntu-20.04
-    needs: generate_requirements
-
-    strategy:
-      fail-fast: false
-      matrix:
-        container_runtime: ["podman", "docker"]
-
-    steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
-        with:
-          python-version: 3.6
-
-      - uses: actions/download-artifact@v4
-        with:
-          name: requirements
-          path: .
-
-      - run: pip install -r test-requirements.txt
-
-      - run: |
-          export CUR_USER="$(whoami)"
-          sudo loginctl enable-linger ${CUR_USER}
-
-      - run: |
-          mkdir ./tmp/
-          chmod 1777 ./tmp
-          export TMPDIR="$(pwd)/tmp"
-          # duplication of noxfile.py because we can't use that one with python 3.6 :-/
-          coverage run -m pytest -vv tests -p pytest_container -x -n auto --reruns 3 --pytest-container-log-level DEBUG
-          coverage run -m pytest -vv tests -p pytest_container -x --reruns 3 --pytest-container-log-level DEBUG
-          coverage combine
-          coverage report -m
-          coverage xml
-
-      - name: verify that no stray containers are left
-        run: |
-          [[ $(${{ matrix.container_runtime }} ps -aq|wc -l) = "0" ]]
-
-      - name: verify that no stray volumes are left
-        run: |
-          [[ $(${{ matrix.container_runtime }} volume ls -q|wc -l) = "0" ]]
-
-      - name: Upload coverage to Codecov
-        uses: codecov/codecov-action@v5
-        with:
-          token: ${{ secrets.CODECOV_TOKEN }}
+      - run: tox -e format -- --check
 
   ci:
     name: Run the integration tests
-    runs-on: "ubuntu-latest"
+    runs-on: ${{ matrix.os_version }}
     strategy:
       fail-fast: false
       matrix:
-        python_version: ["3.7", "3.8", "3.9", "3.10", "3.11", "3.12", "3.13"]
+        python_version: ["3.8", "3.9", "3.10", "3.11", "3.12", "3.13"]
         container_runtime: ["podman", "docker"]
         update_runtime: [ true, false ]
         without_buildah: [ false ]
+        os_version: ["ubuntu-latest"]
 
         exclude:
-          - container_runtime: "docker"
-            python_version: "3.7"
-            update_runtime: true
-            without_buildah: false
           - container_runtime: "docker"
             python_version: "3.8"
             update_runtime: true
             without_buildah: false
+            os_version: "ubuntu-latest"
           - container_runtime: "docker"
             python_version: "3.9"
             update_runtime: true
             without_buildah: false
+            os_version: "ubuntu-latest"
           - container_runtime: "docker"
             python_version: "3.10"
             update_runtime: true
             without_buildah: false
+            os_version: "ubuntu-latest"
           - container_runtime: "docker"
             python_version: "3.11"
             update_runtime: true
             without_buildah: false
+            os_version: "ubuntu-latest"
           - container_runtime: "docker"
             python_version: "3.12"
             update_runtime: true
             without_buildah: false
+            os_version: "ubuntu-latest"
           - container_runtime: "docker"
             python_version: "3.13"
             update_runtime: true
             without_buildah: false
+            os_version: "ubuntu-latest"
 
         include:
+          # include python 3.7 on ubuntu 22.04
+          - container_runtime: "podman"
+            python_version: "3.7"
+            update_runtime: true
+            without_buildah: false
+            os_version: "ubuntu-22.04"
+          - container_runtime: "podman"
+            python_version: "3.7"
+            update_runtime: false
+            without_buildah: false
+            os_version: "ubuntu-22.04"
+          - container_runtime: "docker"
+            python_version: "3.7"
+            update_runtime: false
+            without_buildah: false
+            os_version: "ubuntu-22.04"
+
+          # also test without buildah, but only on the latest python
           - python_version: "3.13"
             container_runtime: "podman"
             update_runtime: true
             without_buildah: true
+            os_version: "ubuntu-latest"
           - python_version: "3.13"
             container_runtime: "podman"
             update_runtime: false
             without_buildah: true
+            os_version: "ubuntu-latest"
+
+          # and test python3.6 on ubuntu 20.04
+          - python_version: "3.6"
+            container_runtime: "podman"
+            update_runtime: false
+            without_buildah: false
+            os_version: "ubuntu-20.04"
+          - python_version: "3.6"
+            container_runtime: "docker"
+            update_runtime: false
+            without_buildah: false
+            os_version: "ubuntu-20.04"
 
     steps:
       - uses: actions/checkout@v4
@@ -160,10 +120,10 @@ jobs:
 
       - uses: actions/cache@v4
         with:
-          path: ~/.nox
-          key: nox-${{ matrix.python_version }}-${{ hashFiles('poetry.lock') }}
+          path: ~/.tox
+          key: tox-${{ hashFiles('tox.ini') }}-${{ hashFiles('setup.cfg') }}-${{ hashFiles('test-requirements.txt') }}
 
-      - run: pip install --upgrade nox poetry nox-poetry
+      - run: pip install tox
 
       - name: update the container runtime
         if: ${{ matrix.update_runtime }}
@@ -194,15 +154,20 @@ jobs:
           chmod 1777 ./tmp
           export TMPDIR="$(pwd)/tmp"
           export PULL_ALWAYS=0
-          nox -s "test-${{ matrix.python_version }}(${{ matrix.container_runtime }})" -- -x -n auto --reruns 3 --pytest-container-log-level DEBUG
+          export CONTAINER_RUNTIME=${{ matrix.container_runtime }}
+          export TOXPYTHON=$pythonLocation
+          tox -e py$(echo $PY_VER | tr -d . ) -- -x -n auto --reruns 3
           export PULL_ALWAYS=1
-          nox -s "test-${{ matrix.python_version }}(${{ matrix.container_runtime }})" -- -x -n auto --reruns 3 --pytest-container-log-level DEBUG
-          nox -s "test-${{ matrix.python_version }}(${{ matrix.container_runtime }})" -- -x --reruns 3 --pytest-container-log-level DEBUG
-          nox -s coverage
+          tox -e py$(echo $PY_VER | tr -d . ) -- -x -n auto --reruns 3 --pytest-container-log-level DEBUG
+          tox -e py$(echo $PY_VER | tr -d . ) -- -x --reruns 3 --pytest-container-log-level DEBUG
+          unset TOXPYTHON
+          tox -e coverage
+        env:
+          PY_VER: ${{ matrix.python_version }}
 
       - name: verify that no stray containers are left
         run: |
-          [[ $(podman ps -aq|wc -l) = '0' ]] || (podman ps -aq|xargs podman inspect; exit 1)
+          [[ $(${{ matrix.container_runtime }} ps -aq|wc -l) = '0' ]] || (${{ matrix.container_runtime }} ps -aq|xargs ${{ matrix.container_runtime }} inspect; exit 1)
 
       - name: verify that no stray volumes are left
         run: |
@@ -222,16 +187,12 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: "3.x"
-      - uses: actions/cache@v4
-        with:
-          path: ~/.cache/pypoetry/virtualenvs
-          key: poetry-${{ hashFiles('poetry.lock') }}
+
+      - name: install setuptools
+        run: pip install setuptools
 
       - name: Run the build
-        run: |
-          pipx install poetry
-          poetry install
-          poetry build
+        run: python setup.py sdist bdist_wheel
 
       - uses: actions/upload-artifact@v4
         with:
@@ -247,8 +208,10 @@ jobs:
       fail-fast: false
       matrix:
         os_version: ["ubuntu-latest"]
-        python_version: ["3.7", "3.8", "3.9", "3.10", "3.11", "3.12", "3.13"]
+        python_version: ["3.8", "3.9", "3.10", "3.11", "3.12", "3.13"]
         include:
+          - os_version: "ubuntu-22.04"
+            python_version: "3.7"
           - os_version: "ubuntu-20.04"
             python_version: "3.6"
 
@@ -279,12 +242,12 @@ jobs:
           python-version: '3.x'
       - uses: actions/cache@v4
         with:
-          path: ~/.nox
-          key: nox-${{ hashFiles('poetry.lock') }}
+          path: ~/.tox
+          key: tox-${{ hashFiles('tox.ini') }}-${{ hashFiles('setup.cfg') }}-${{ hashFiles('test-requirements.txt') }}
 
-      - run: pip install --upgrade nox poetry nox-poetry
+      - run: pip install tox
 
-      - run: nox -s doc
+      - run: tox -e doc
 
       - name: upload the build directory
         uses: actions/upload-artifact@v4
@@ -321,17 +284,13 @@ jobs:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
         with:
-          # FIXME: temporary fix to python 3.11 to avoid a:
-          # AttributeError: module 'pkgutil' has no attribute 'ImpImporter'. Did you mean: 'zipimporter'?
-          # when launching pylint with python 3.12
-          python-version: '3.11'
-
+          python-version: "3.x"
       - uses: actions/cache@v4
         with:
-          path: ~/.nox
-          key: nox-${{ hashFiles('poetry.lock') }}
+          path: ~/.tox
+          key: tox-${{ hashFiles('tox.ini') }}-${{ hashFiles('setup.cfg') }}-${{ hashFiles('test-requirements.txt') }}
 
-      - run: pip install --upgrade nox poetry nox-poetry
+      - run: pip install tox
 
       # grab the previously built wheel for checking with twine
       - uses: actions/download-artifact@v4
@@ -339,4 +298,4 @@ jobs:
           name: wheel
           path: dist
 
-      - run: nox -s lint
+      - run: tox -e lint

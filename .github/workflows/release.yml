@@ -17,11 +17,11 @@ jobs:
         with:
           python-version: "3.x"
 
+      - name: install setuptools
+        run: pip install setuptools
+
       - name: Install dependencies & build wheel
-        run: |
-          pipx install poetry
-          poetry install
-          poetry build
+        run: python setup.py sdist bdist_wheel
 
       - name: Check the wheel
         run: |
