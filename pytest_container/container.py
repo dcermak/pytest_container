@@ -3,6 +3,7 @@ launching containers away. These classes are used to parametrize test cases
 using the fixtures provided by this plugin.
 
 """
+
 import contextlib
 import enum
 import functools
@@ -33,10 +34,10 @@ from typing import Collection
 from typing import Dict
 from typing import List
 from typing import Optional
-from typing import overload
 from typing import Tuple
 from typing import Type
 from typing import Union
+from typing import overload
 from uuid import uuid4
 
 import _pytest.mark
@@ -45,6 +46,7 @@ import pytest
 import testinfra
 from filelock import BaseFileLock
 from filelock import FileLock
+
 from pytest_container.helpers import get_always_pull_option
 from pytest_container.helpers import get_extra_build_args
 from pytest_container.helpers import get_extra_run_args
@@ -53,8 +55,8 @@ from pytest_container.inspect import ContainerInspect
 from pytest_container.inspect import PortForwarding
 from pytest_container.inspect import VolumeMount
 from pytest_container.logging import _logger
-from pytest_container.runtime import get_selected_runtime
 from pytest_container.runtime import OciRuntimeBase
+from pytest_container.runtime import get_selected_runtime
 
 if sys.version_info >= (3, 8):
     from importlib import metadata
@@ -384,15 +386,13 @@ class BindMountCreator:
 @overload
 def get_volume_creator(
     volume: ContainerVolume, runtime: OciRuntimeBase
-) -> VolumeCreator:
-    ...  # pragma: no cover
+) -> VolumeCreator: ...  # pragma: no cover
 
 
 @overload
 def get_volume_creator(
     volume: BindMount, runtime: OciRuntimeBase
-) -> BindMountCreator:
-    ...  # pragma: no cover
+) -> BindMountCreator: ...  # pragma: no cover
 
 
 def get_volume_creator(
@@ -936,15 +936,13 @@ def container_to_pytest_param(
 @overload
 def container_and_marks_from_pytest_param(
     ctr_or_param: Container,
-) -> Tuple[Container, Literal[None]]:
-    ...
+) -> Tuple[Container, Literal[None]]: ...
 
 
 @overload
 def container_and_marks_from_pytest_param(
     ctr_or_param: DerivedContainer,
-) -> Tuple[DerivedContainer, Literal[None]]:
-    ...
+) -> Tuple[DerivedContainer, Literal[None]]: ...
 
 
 @overload
@@ -953,8 +951,7 @@ def container_and_marks_from_pytest_param(
 ) -> Tuple[
     Union[Container, DerivedContainer],
     Optional[Collection[Union[_pytest.mark.MarkDecorator, _pytest.mark.Mark]]],
-]:
-    ...
+]: ...
 
 
 def container_and_marks_from_pytest_param(

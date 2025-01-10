@@ -1,10 +1,10 @@
 # pylint: disable=missing-function-docstring,missing-module-docstring
 from pytest import Config
+
 from pytest_container import DerivedContainer
 from pytest_container.container import ContainerData
 
 from .images import LEAP_URL
-
 
 _FNAME = "pyproject.toml"
 

@@ -2,31 +2,32 @@
 ``pytest_container``.
 
 """
+
 import sys
 from subprocess import PIPE
 from subprocess import run
 from typing import Callable
 from typing import Generator
 
-from pytest_container.container import container_and_marks_from_pytest_param
 from pytest_container.container import ContainerData
 from pytest_container.container import ContainerLauncher
+from pytest_container.container import container_and_marks_from_pytest_param
 from pytest_container.logging import _logger
-from pytest_container.pod import pod_from_pytest_param
 from pytest_container.pod import PodData
 from pytest_container.pod import PodLauncher
-from pytest_container.runtime import get_selected_runtime
+from pytest_container.pod import pod_from_pytest_param
 from pytest_container.runtime import OciRuntimeBase
+from pytest_container.runtime import get_selected_runtime
 
 if sys.version_info >= (3, 8):
     from typing import Literal
 else:
     from typing_extensions import Literal
 
-from pytest import fixture
-from pytest import skip
 from _pytest.config import Config
 from _pytest.fixtures import SubRequest
+from pytest import fixture
+from pytest import skip
 
 
 @fixture(scope="session")
@@ -57,7 +58,7 @@ def _log_container_logs(
 
 
 def _create_auto_container_fixture(
-    scope: Literal["session", "function"]
+    scope: Literal["session", "function"],
 ) -> Callable[
     [SubRequest, OciRuntimeBase, Config], Generator[ContainerData, None, None]
 ]:
@@ -110,7 +111,7 @@ def _create_auto_container_fixture(
 
 
 def _create_auto_pod_fixture(
-    scope: Literal["session", "function"]
+    scope: Literal["session", "function"],
 ) -> Callable[
     [SubRequest, OciRuntimeBase, Config], Generator[PodData, None, None]
 ]:

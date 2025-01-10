@@ -1,10 +1,10 @@
 """Module that defines all commonly used container images for testing."""
+
 from pytest_container.container import Container
 from pytest_container.container import DerivedContainer
 from pytest_container.container import ImageFormat
 from pytest_container.container import PortForwarding
 from pytest_container.pod import Pod
-
 
 LEAP_URL = "registry.opensuse.org/opensuse/leap:latest"
 OPENSUSE_BUSYBOX_URL = "registry.opensuse.org/opensuse/busybox:latest"

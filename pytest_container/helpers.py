@@ -3,6 +3,7 @@ line flags from pytest and for automatically parametrizing tests using the
 ``auto_container*`` fixtures.
 
 """
+
 import logging
 import os
 from typing import List
@@ -10,6 +11,7 @@ from typing import List
 from _pytest.config import Config
 from _pytest.config.argparsing import Parser
 from _pytest.python import Metafunc
+
 from pytest_container.logging import set_internal_logging_level
 
 

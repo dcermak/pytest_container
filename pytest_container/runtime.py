@@ -3,6 +3,7 @@ implementation details of container runtimes like :command:`docker` or
 :command:`podman`.
 
 """
+
 import json
 import re
 import sys
@@ -13,16 +14,17 @@ from dataclasses import field
 from os import getenv
 from pathlib import Path
 from subprocess import check_output
+from typing import TYPE_CHECKING
 from typing import Any
 from typing import Callable
 from typing import List
 from typing import Optional
-from typing import TYPE_CHECKING
 from typing import Union
 
 import testinfra
 from _pytest.mark.structures import ParameterSet
 from pytest import param
+
 from pytest_container.inspect import BindMount
 from pytest_container.inspect import Config
 from pytest_container.inspect import ContainerHealth
@@ -33,7 +35,6 @@ from pytest_container.inspect import HealthCheck
 from pytest_container.inspect import NetworkProtocol
 from pytest_container.inspect import PortForwarding
 from pytest_container.inspect import VolumeMount
-
 
 if sys.version_info >= (3, 8):
     from typing import Literal
@@ -152,7 +153,7 @@ class Version:
 
     @staticmethod
     def __generate_cmp(
-        cmp_func: Callable[[int, int], bool]
+        cmp_func: Callable[[int, int], bool],
     ) -> Callable[["Version", Any], bool]:
         def cmp(self: Version, other: Any) -> bool:
             if not isinstance(other, Version):
@@ -460,9 +461,9 @@ class PodmanRuntime(OciRuntimeBase):
             return ""
 
         podman_ps = LOCALHOST.run("podman ps")
-        assert (
-            not podman_ps.succeeded
-        ), "podman runtime is not functional, but 'podman ps' succeeded"
+        assert not podman_ps.succeeded, (
+            "podman runtime is not functional, but 'podman ps' succeeded"
+        )
         return str(podman_ps.stderr)
 
     def __init__(self) -> None:
@@ -564,9 +565,9 @@ class DockerRuntime(OciRuntimeBase):
         if DockerRuntime._runtime_functional:
             return ""
         docker_ps = LOCALHOST.run("docker ps")
-        assert (
-            not docker_ps.succeeded
-        ), "docker runtime is not functional, but 'docker ps' succeeded"
+        assert not docker_ps.succeeded, (
+            "docker runtime is not functional, but 'docker ps' succeeded"
+        )
         return str(docker_ps.stderr)
 
     def __init__(self) -> None:

@@ -4,6 +4,7 @@ from typing import Union
 
 import pytest
 from pytest import Config
+
 from pytest_container import Container
 from pytest_container import DerivedContainer
 from pytest_container import get_extra_build_args
@@ -306,7 +307,7 @@ def test_multistage_build_target(
         == "foobar"
     )
 
-    for (distro, target) in (
+    for distro, target in (
         ("Leap", first_target),
         ("Alpine", second_target),
     ):

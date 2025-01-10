@@ -4,10 +4,11 @@ from pathlib import Path
 from unittest.mock import patch
 
 import pytest
+
 from pytest_container.runtime import DockerRuntime
-from pytest_container.runtime import get_selected_runtime
 from pytest_container.runtime import OciRuntimeBase
 from pytest_container.runtime import PodmanRuntime
+from pytest_container.runtime import get_selected_runtime
 
 
 @pytest.fixture
