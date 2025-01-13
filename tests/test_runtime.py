@@ -12,6 +12,8 @@ from pytest_container.runtime import LOCALHOST
 from pytest_container.runtime import DockerRuntime
 from pytest_container.runtime import OciRuntimeBase
 from pytest_container.runtime import PodmanRuntime
+from pytest_container.runtime import Version
+from pytest_container.runtime import _get_buildah_version
 from pytest_container.runtime import get_selected_runtime
 
 
@@ -128,6 +130,37 @@ def test_runtime_construction_fails_if_ps_fails(
         cls()
 
     assert f"`{name} ps` failed with {stderr}" in str(rt_err_ctx.value)
+
+
+@pytest.mark.parametrize(
+    "version_str, expected_version",
+    (
+        ("1.38.0", Version(1, 38, 0)),
+        ("1.25.3", Version(1, 25, 3)),
+    ),
+)
+def test_buildah_version_parsing(
+    version_str: str,
+    expected_version: Version,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setattr(
+        LOCALHOST, "check_output", lambda _: f"buildah version {version_str}"
+    )
+
+    assert _get_buildah_version() == expected_version
+
+
+def test_get_buildah_version_fails_on_unexpected_stdout(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setattr(LOCALHOST, "check_output", lambda _: "foobar")
+    with pytest.raises(RuntimeError) as rt_err_ctx:
+        _get_buildah_version()
+
+    assert "Could not decode the buildah version from 'foobar'" in str(
+        rt_err_ctx.value
+    )
 
 
 @pytest.mark.parametrize(
