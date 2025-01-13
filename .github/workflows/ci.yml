@@ -34,81 +34,33 @@ jobs:
       matrix:
         python_version: ["3.8", "3.9", "3.10", "3.11", "3.12", "3.13"]
         container_runtime: ["podman", "docker"]
-        update_runtime: [ true, false ]
         without_buildah: [ false ]
         os_version: ["ubuntu-latest"]
-
-        exclude:
-          - container_runtime: "docker"
-            python_version: "3.8"
-            update_runtime: true
-            without_buildah: false
-            os_version: "ubuntu-latest"
-          - container_runtime: "docker"
-            python_version: "3.9"
-            update_runtime: true
-            without_buildah: false
-            os_version: "ubuntu-latest"
-          - container_runtime: "docker"
-            python_version: "3.10"
-            update_runtime: true
-            without_buildah: false
-            os_version: "ubuntu-latest"
-          - container_runtime: "docker"
-            python_version: "3.11"
-            update_runtime: true
-            without_buildah: false
-            os_version: "ubuntu-latest"
-          - container_runtime: "docker"
-            python_version: "3.12"
-            update_runtime: true
-            without_buildah: false
-            os_version: "ubuntu-latest"
-          - container_runtime: "docker"
-            python_version: "3.13"
-            update_runtime: true
-            without_buildah: false
-            os_version: "ubuntu-latest"
 
         include:
           # include python 3.7 on ubuntu 22.04
           - container_runtime: "podman"
             python_version: "3.7"
-            update_runtime: true
-            without_buildah: false
-            os_version: "ubuntu-22.04"
-          - container_runtime: "podman"
-            python_version: "3.7"
-            update_runtime: false
             without_buildah: false
             os_version: "ubuntu-22.04"
           - container_runtime: "docker"
             python_version: "3.7"
-            update_runtime: false
             without_buildah: false
             os_version: "ubuntu-22.04"
 
           # also test without buildah, but only on the latest python
           - python_version: "3.13"
             container_runtime: "podman"
-            update_runtime: true
-            without_buildah: true
-            os_version: "ubuntu-latest"
-          - python_version: "3.13"
-            container_runtime: "podman"
-            update_runtime: false
             without_buildah: true
             os_version: "ubuntu-latest"
 
           # and test python3.6 on ubuntu 20.04
           - python_version: "3.6"
             container_runtime: "podman"
-            update_runtime: false
             without_buildah: false
             os_version: "ubuntu-20.04"
           - python_version: "3.6"
             container_runtime: "docker"
-            update_runtime: false
             without_buildah: false
             os_version: "ubuntu-20.04"
 
@@ -124,20 +76,6 @@ jobs:
           key: tox-${{ hashFiles('tox.ini') }}-${{ hashFiles('setup.cfg') }}-${{ hashFiles('test-requirements.txt') }}
 
       - run: pip install tox
-
-      - name: update the container runtime
-        if: ${{ matrix.update_runtime }}
-        run: |
-          sudo mkdir -p /etc/apt/keyrings
-          curl -fsSL https://download.opensuse.org/repositories/devel:/kubic:/libcontainers:/unstable/xUbuntu_$(lsb_release -rs)/Release.key \
-            | gpg --dearmor \
-            | sudo tee /etc/apt/keyrings/devel_kubic_libcontainers_unstable.gpg > /dev/null
-          echo \
-            "deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/devel_kubic_libcontainers_unstable.gpg]\
-            https://download.opensuse.org/repositories/devel:/kubic:/libcontainers:/unstable/xUbuntu_$(lsb_release -rs)/ /" \
-            | sudo tee /etc/apt/sources.list.d/devel:kubic:libcontainers:unstable.list > /dev/null
-          sudo apt-get update -qq
-          sudo apt-get -qq -y install podman buildah
 
       - name: remove buildah
         if: ${{ matrix.without_buildah }}
