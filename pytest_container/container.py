@@ -34,10 +34,16 @@ from typing import Collection
 from typing import Dict
 from typing import List
 from typing import Optional
+from typing import TypeVar
+from typing import overload
+
+try:
+    from typing import Self
+except ImportError:
+    from typing_extensions import Self
 from typing import Tuple
 from typing import Type
 from typing import Union
-from typing import overload
 from uuid import uuid4
 
 import _pytest.mark
@@ -46,6 +52,8 @@ import pytest
 import testinfra
 from filelock import BaseFileLock
 from filelock import FileLock
+from pytest import Mark
+from pytest import MarkDecorator
 
 from pytest_container.helpers import get_always_pull_option
 from pytest_container.helpers import get_extra_build_args
@@ -60,10 +68,8 @@ from pytest_container.runtime import get_selected_runtime
 
 if sys.version_info >= (3, 8):
     from importlib import metadata
-    from typing import Literal
 else:
     import importlib_metadata as metadata
-    from typing_extensions import Literal
 
 
 @enum.unique
@@ -431,83 +437,128 @@ class EntrypointSelection(enum.Enum):
     IMAGE = enum.auto()
 
 
-@dataclass
-class ContainerBase:
+T = TypeVar("T", bound="ContainerBase")
+
+
+class ContainerBase(ABC, _pytest.mark.ParameterSet):
     """Base class for defining containers to be tested. Not to be used directly,
     instead use :py:class:`Container` or :py:class:`DerivedContainer`.
 
     """
 
-    #: Full url to this container via which it can be pulled
-    #:
-    #: If your container image is not available via a registry and only locally,
-    #: then you can use the following syntax: ``containers-storage:$local_name``
-    url: str = ""
+    def __new__(cls: Type[T], *args: Any, **kwargs: Any) -> T:
+        # Filter out all fields of ParameterSet and invoke object.__new__ only for the
+        # fields that it supports
+        parameter_set_fields = _pytest.mark.ParameterSet._fields
+        filtered_kwargs = {}
+        for f in parameter_set_fields:
+            filtered_kwargs[f] = kwargs.get(f, None)
 
-    #: id of the container if it is not available via a registry URL
-    container_id: str = ""
+        return super().__new__(cls, *args, **filtered_kwargs)
 
-    #: Defines which entrypoint of the container is used.
-    #: By default either :py:attr:`custom_entry_point` will be used (if defined)
-    #: or the container's entrypoint or cmd. If neither of the two is set, then
-    #: :file:`/bin/bash` will be used.
-    entry_point: EntrypointSelection = EntrypointSelection.AUTO
+    def __init__(
+        self,
+        url: str = "",
+        container_id: str = "",
+        entry_point: EntrypointSelection = EntrypointSelection.AUTO,
+        custom_entry_point: Optional[str] = None,
+        extra_launch_args: Optional[List[str]] = None,
+        extra_entrypoint_args: Optional[List[str]] = None,
+        healthcheck_timeout: Optional[timedelta] = None,
+        extra_environment_variables: Optional[Dict[str, str]] = None,
+        singleton: bool = False,
+        forwarded_ports: Optional[List[PortForwarding]] = None,
+        volume_mounts: Optional[
+            List[Union[ContainerVolume, BindMount]]
+        ] = None,
+        _marks: Optional[Collection[Union[MarkDecorator, Mark]]] = None,
+    ) -> None:
+        #: Full url to this container via which it can be pulled
+        #:
+        #: If your container image is not available via a registry and only locally,
+        #: then you can use the following syntax: ``containers-storage:$local_name``
+        self.url = url
 
-    #: custom entry point for this container (i.e. neither its default, nor
-    #: :file:`/bin/bash`)
-    custom_entry_point: Optional[str] = None
+        #: id of the container if it is not available via a registry URL
+        self.container_id = container_id
 
-    #: List of additional flags that will be inserted after
-    #: `docker/podman run -d` and before the image name (i.e. these arguments
-    #: are not passed to the entrypoint or ``CMD``). The list must be properly
-    #: escaped, e.g. as created by ``shlex.split``.
-    extra_launch_args: List[str] = field(default_factory=list)
+        #: Defines which entrypoint of the container is used.
+        #: By default either :py:attr:`custom_entry_point` will be used (if defined)
+        #: or the container's entrypoint or cmd. If neither of the two is set, then
+        #: :file:`/bin/bash` will be used.
+        self.entry_point = entry_point
 
-    #: List of additional arguments that are passed to the ``CMD`` or
-    #: entrypoint. These arguments are inserted after the :command:`docker/podman
-    #: run -d $image` on launching the image.
-    #: The list must be properly escaped, e.g. by passing the string through
-    #: ``shlex.split``.
-    #: The arguments must not cause the container to exit early. It must remain
-    #: active in the background, otherwise this library will not function
-    #: properly.
-    extra_entrypoint_args: List[str] = field(default_factory=list)
+        #: custom entry point for this container (i.e. neither its default, nor
+        #: :file:`/bin/bash`)
+        self.custom_entry_point = custom_entry_point
 
-    #: Time for the container to become healthy (the timeout is ignored
-    #: when the container image defines no ``HEALTHCHECK`` or when the timeout
-    #: is below zero).
-    #: When the value is ``None``, then the timeout will be inferred from the
-    #: container image's ``HEALTHCHECK`` directive.
-    healthcheck_timeout: Optional[timedelta] = None
+        #: List of additional flags that will be inserted after
+        #: `docker/podman run -d` and before the image name (i.e. these arguments
+        #: are not passed to the entrypoint or ``CMD``). The list must be properly
+        #: escaped, e.g. as created by ``shlex.split``.
+        self.extra_launch_args = extra_launch_args or []
 
-    #: additional environment variables that should be injected into the
-    #: container
-    extra_environment_variables: Optional[Dict[str, str]] = None
+        #: List of additional arguments that are passed to the ``CMD`` or
+        #: entrypoint. These arguments are inserted after the :command:`docker/podman
+        #: run -d $image` on launching the image.
+        #: The list must be properly escaped, e.g. by passing the string through
+        #: ``shlex.split``.
+        #: The arguments must not cause the container to exit early. It must remain
+        #: active in the background, otherwise this library will not function
+        #: properly.
+        self.extra_entrypoint_args = extra_entrypoint_args or []
 
-    #: Indicate whether there must never be more than one running container of
-    #: this type at all times (e.g. because it opens a shared port).
-    singleton: bool = False
+        #: Time for the container to become healthy (the timeout is ignored
+        #: when the container image defines no ``HEALTHCHECK`` or when the timeout
+        #: is below zero).
+        #: When the value is ``None``, then the timeout will be inferred from the
+        #: container image's ``HEALTHCHECK`` directive.
+        self.healthcheck_timeout = healthcheck_timeout
 
-    #: forwarded ports of this container
-    forwarded_ports: List[PortForwarding] = field(default_factory=list)
+        #: additional environment variables that should be injected into the
+        #: container
+        self.extra_environment_variables = extra_environment_variables
 
-    #: optional list of volumes that should be mounted in this container
-    volume_mounts: List[Union[ContainerVolume, BindMount]] = field(
-        default_factory=list
-    )
+        #: Indicate whether there must never be more than one running container of
+        #: this type at all times (e.g. because it opens a shared port).
+        self.singleton = singleton
 
-    _is_local: bool = False
+        #: forwarded ports of this container
+        self.forwarded_ports = forwarded_ports or []
 
-    def __post_init__(self) -> None:
+        #: optional list of volumes that should be mounted in this container
+        self.volume_mounts = volume_mounts or []
+
+        #: optional list of marks applied to this container image under test
+        self._marks = _marks or []
+
         local_prefix = "containers-storage:"
         if self.url.startswith(local_prefix):
             self._is_local = True
             # returns before_separator, separator, after_separator
             before, sep, self.url = self.url.partition(local_prefix)
             assert before == "" and sep == local_prefix
+        else:
+            self._is_local = False
+
+    def __eq__(self, value: object) -> bool:
+        if not isinstance(value, ContainerBase):
+            return False
+
+        if set(self.__dict__.keys()) != set(value.__dict__.keys()):
+            return False
+
+        for k, v in self.__dict__.items():
+            if v != value.__dict__[k]:
+                return False
+
+        return True
 
     def __str__(self) -> str:
         return self.url or self.container_id
+
+    def __bool__(self) -> bool:
+        return True
 
     @property
     def _build_tag(self) -> str:
@@ -524,6 +575,18 @@ class ContainerBase:
 
         """
         return self._is_local
+
+    @property
+    def marks(self) -> Collection[Union[MarkDecorator, Mark]]:
+        return self._marks
+
+    @property
+    def values(self) -> Tuple[Self, ...]:
+        return (self,)
+
+    @property
+    def id(self) -> str:
+        return str(self)
 
     def get_launch_cmd(
         self,
@@ -630,13 +693,6 @@ class ContainerBase:
         # that is not available on old python versions that we still support
         return f"{sha3_256((''.join(all_elements)).encode()).hexdigest()}.lock"
 
-
-class ContainerBaseABC(ABC):
-    """Abstract base class defining the methods that must be implemented by the
-    classes fed to the ``*container*`` fixtures.
-
-    """
-
     @abstractmethod
     def prepare_container(
         self,
@@ -662,8 +718,7 @@ class ContainerBaseABC(ABC):
         """
 
 
-@dataclass(unsafe_hash=True)
-class Container(ContainerBase, ContainerBaseABC):
+class Container(ContainerBase):
     """This class stores information about the Container Image under test."""
 
     def pull_container(self, container_runtime: OciRuntimeBase) -> None:
@@ -701,8 +756,7 @@ class Container(ContainerBase, ContainerBaseABC):
         return self.url
 
 
-@dataclass(unsafe_hash=True)
-class DerivedContainer(ContainerBase, ContainerBaseABC):
+class DerivedContainer(ContainerBase):
     """Class for storing information about the Container Image under test, that
     is build from a :file:`Containerfile`/:file:`Dockerfile` from a different
     image (can be any image from a registry or an instance of
@@ -710,29 +764,51 @@ class DerivedContainer(ContainerBase, ContainerBaseABC):
 
     """
 
-    base: Union[Container, "DerivedContainer", str] = ""
+    def __init__(
+        self,
+        base: Union[Container, "DerivedContainer", str],
+        containerfile: str = "",
+        image_format: Optional[ImageFormat] = None,
+        add_build_tags: Optional[List[str]] = None,
+        *args: Any,
+        **kwargs: Any,
+    ) -> None:
+        super().__init__(*args, **kwargs)
+        self.base = base
 
-    #: The :file:`Containerfile` that is used to build this container derived
-    #: from :py:attr:`base`.
-    containerfile: str = ""
+        #: The :file:`Containerfile` that is used to build this container derived
+        #: from :py:attr:`base`.
+        self.containerfile = containerfile
 
-    #: An optional image format when building images with :command:`buildah`. It
-    #: is ignored when the container runtime is :command:`docker`.
-    #: The ``oci`` image format is used by default. If the image format is
-    #: ``None`` and the base image has a ``HEALTHCHECK`` defined, then the
-    #: ``docker`` image format will be used instead.
-    #: Specifying an image format disables the auto-detection and uses the
-    #: supplied value.
-    image_format: Optional[ImageFormat] = None
+        #: An optional image format when building images with :command:`buildah`. It
+        #: is ignored when the container runtime is :command:`docker`.
+        #: The ``oci`` image format is used by default. If the image format is
+        #: ``None`` and the base image has a ``HEALTHCHECK`` defined, then the
+        #: ``docker`` image format will be used instead.
+        #: Specifying an image format disables the auto-detection and uses the
+        #: supplied value.
+        self.image_format = image_format
 
-    #: Additional build tags/names that should be added to the container once it
-    #: has been built
-    add_build_tags: List[str] = field(default_factory=list)
+        #: Additional build tags/names that should be added to the container once it
+        #: has been built
+        self.add_build_tags = add_build_tags or []
 
-    def __post_init__(self) -> None:
-        super().__post_init__()
-        if not self.base:
-            raise ValueError("A base container must be provided")
+    @staticmethod
+    def _get_recursive_marks(
+        ctr: Union[Container, "DerivedContainer", str],
+    ) -> Collection[Union[MarkDecorator, Mark]]:
+        if isinstance(ctr, str):
+            return []
+        if isinstance(ctr, Container):
+            return ctr._marks
+
+        return tuple(ctr._marks) + tuple(
+            DerivedContainer._get_recursive_marks(ctr.base)
+        )
+
+    @property
+    def marks(self) -> Collection[Union[MarkDecorator, Mark]]:
+        return DerivedContainer._get_recursive_marks(self)
 
     @property
     def baseurl(self) -> Optional[str]:
@@ -933,27 +1009,6 @@ def container_to_pytest_param(
     return pytest.param(container, marks=marks or [], id=str(container))
 
 
-@overload
-def container_and_marks_from_pytest_param(
-    ctr_or_param: Container,
-) -> Tuple[Container, Literal[None]]: ...
-
-
-@overload
-def container_and_marks_from_pytest_param(
-    ctr_or_param: DerivedContainer,
-) -> Tuple[DerivedContainer, Literal[None]]: ...
-
-
-@overload
-def container_and_marks_from_pytest_param(
-    ctr_or_param: _pytest.mark.ParameterSet,
-) -> Tuple[
-    Union[Container, DerivedContainer],
-    Optional[Collection[Union[_pytest.mark.MarkDecorator, _pytest.mark.Mark]]],
-]: ...
-
-
 def container_and_marks_from_pytest_param(
     ctr_or_param: Union[
         _pytest.mark.ParameterSet, Container, DerivedContainer
@@ -974,7 +1029,7 @@ def container_and_marks_from_pytest_param(
 
     """
     if isinstance(ctr_or_param, (Container, DerivedContainer)):
-        return ctr_or_param, None
+        return ctr_or_param, ctr_or_param.marks
 
     if len(ctr_or_param.values) > 0 and isinstance(
         ctr_or_param.values[0], (Container, DerivedContainer)

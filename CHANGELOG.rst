@@ -11,8 +11,20 @@ Breaking changes:
   the runtime is not functional (`gh#238
   <https://github.com/dcermak/pytest_container/pull/238>`_)
 
+- Remove intermediate class ``container.ContainerBaseABC``
+
+- :py:class:`~pytest_container.container.Container` and
+  :py:class:`~pytest_container.container.DerivedContainer` are no longer
+  dataclasses
+
 Improvements and new features:
 
+- :py:class:`~pytest_container.container.Container` and
+  :py:class:`~pytest_container.container.DerivedContainer` now inherit from
+  ``pytest``'s ``ParameterSet`` and can thus be directly used for test
+  parametrization including
+  marks. :py:class:`~pytest_container.container.DerivedContainer` also inherits
+  all marks from the base containers.
 
 Documentation:
 
@@ -97,7 +109,8 @@ Internal changes:
 Breaking changes:
 
 - add the parameter ``container_runtime`` to
-  :py:func:`~pytest_container.container.ContainerBaseABC.prepare_container` and
+  :py:func:`~pytest_container.container.ContainerBase.prepare_container` (was
+  ``ContainerBaseABC.prepare_container``) and
   :py:func:`~pytest_container.build.MultiStageBuild.prepare_build`.
 
 - deprecate the function ``pytest_container.container_from_pytest_param``,
@@ -105,8 +118,9 @@ Breaking changes:
   :py:func:`~pytest_container.container.container_and_marks_from_pytest_param`
   instead.
 
-- :py:func:`~pytest_container.container.ContainerBaseABC.get_base` no longer
-  returns the recursive base but the immediate base.
+- :py:func:`~pytest_container.container.ContainerBase.get_base` (was
+  ``ContainerBaseABC.get_base``) no longer returns the recursive base but the
+  immediate base.
 
 
 Improvements and new features:
@@ -153,9 +167,9 @@ Breaking changes:
 
 Improvements and new features:
 
-- Add :py:attr:`~pytest_container.container.ContainerBaseABC.baseurl` property
-  to get the registry url of the container on which any currently existing
-  container is based on.
+- Add :py:attr:`~pytest_container.container.ContainerBase.baseurl` (was
+  ``ContainerBaseABC.baseurl``) property to get the registry url of the
+  container on which any currently existing container is based on.
 
 
 Documentation:

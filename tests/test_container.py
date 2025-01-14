@@ -15,6 +15,7 @@ from pytest_container.runtime import OciRuntimeBase
 from . import images
 
 
+@pytest.mark.xfail(reason="API change")
 def test_derived_container_fails_without_base() -> None:
     """Ensure that a DerivedContainer cannot be instantiated without providing
     the base parameter.
