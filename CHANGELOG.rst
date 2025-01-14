@@ -3,6 +3,13 @@ Next Release
 
 Breaking changes:
 
+- Remove intermediate dataclass ``runtime._OciRuntimeBase`` (`gh#238
+  <https://github.com/dcermak/pytest_container/pull/238>`_)
+
+- :py:class:`~pytest_container.runtime.PodmanRuntime` and
+  :py:class:`~pytest_container.runtime.DockerRuntime` now raise exceptions if
+  the runtime is not functional (`gh#238
+  <https://github.com/dcermak/pytest_container/pull/238>`_)
 
 Improvements and new features:
 
@@ -11,6 +18,8 @@ Documentation:
 
 
 Internal changes:
+
+- Drop poetry as the build system and fallback to setuptools
 
 
 0.4.3 (December 4 2024)

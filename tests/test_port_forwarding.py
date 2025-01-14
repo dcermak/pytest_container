@@ -1,16 +1,18 @@
 """Module containing tests of the automated port exposure via
 :py:attr:`~pytest_container.container.ContainerBase.forwarded_ports`."""
+
 # pylint: disable=missing-function-docstring
 import itertools
 import socket
 from typing import List
 
 import pytest
+
 from pytest_container.container import ContainerData
 from pytest_container.container import ContainerLauncher
 from pytest_container.container import DerivedContainer
-from pytest_container.container import lock_host_port_search
 from pytest_container.container import PortForwarding
+from pytest_container.container import lock_host_port_search
 from pytest_container.inspect import NetworkProtocol
 from pytest_container.pod import Pod
 from pytest_container.pod import PodLauncher
@@ -114,18 +116,18 @@ def test_port_forward_set_up(auto_container: ContainerData, host):
     that is serving a file using Python's built in http.server module.
 
     """
-    assert (
-        len(auto_container.forwarded_ports) == 1
-    ), "exactly one forwarded port must be present"
-    assert (
-        auto_container.forwarded_ports[0].protocol == NetworkProtocol.TCP
-    ), "the default protocol must be tcp"
-    assert (
-        auto_container.forwarded_ports[0].container_port == 8000
-    ), "container port was defined as port 8000"
-    assert (
-        auto_container.forwarded_ports[0].host_port != -1
-    ), "host port must be set"
+    assert len(auto_container.forwarded_ports) == 1, (
+        "exactly one forwarded port must be present"
+    )
+    assert auto_container.forwarded_ports[0].protocol == NetworkProtocol.TCP, (
+        "the default protocol must be tcp"
+    )
+    assert auto_container.forwarded_ports[0].container_port == 8000, (
+        "container port was defined as port 8000"
+    )
+    assert auto_container.forwarded_ports[0].host_port != -1, (
+        "host port must be set"
+    )
 
     assert (
         host.check_output(
@@ -152,9 +154,9 @@ def test_multiple_open_ports(container: ContainerData, number: int, host):
     signed certificate in the container.
 
     """
-    assert (
-        len(container.forwarded_ports) == 1002
-    ), "exactly 1002 forwarded ports must be present"
+    assert len(container.forwarded_ports) == 1002, (
+        "exactly 1002 forwarded ports must be present"
+    )
 
     assert (
         container.forwarded_ports[0].protocol == NetworkProtocol.TCP

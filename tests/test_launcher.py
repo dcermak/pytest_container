@@ -10,6 +10,7 @@ from typing import Any
 from unittest.mock import patch
 
 import pytest
+
 from pytest_container import inspect
 from pytest_container.container import BindMount
 from pytest_container.container import Container
@@ -27,7 +28,6 @@ from .images import LEAP
 from .test_volumes import LEAP_WITH_BIND_MOUNT_AND_VOLUME
 from .test_volumes import LEAP_WITH_CONTAINER_VOLUMES
 from .test_volumes import LEAP_WITH_VOLUMES
-
 
 LEAP_WITH_STOPSIGNAL_SIGKILL = DerivedContainer(
     base=LEAP,
@@ -97,7 +97,6 @@ def test_launcher_creates_and_cleanes_up_volumes(
         assert container.volume_mounts
 
         for vol in container.volume_mounts:
-
             if isinstance(vol, BindMount):
                 assert vol.host_path and os.path.exists(vol.host_path)
             elif isinstance(vol, ContainerVolume):

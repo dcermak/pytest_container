@@ -3,26 +3,27 @@ implementation details of container runtimes like :command:`docker` or
 :command:`podman`.
 
 """
+
 import json
 import re
 import sys
 from abc import ABC
 from abc import abstractmethod
 from dataclasses import dataclass
-from dataclasses import field
 from os import getenv
 from pathlib import Path
 from subprocess import check_output
+from typing import TYPE_CHECKING
 from typing import Any
 from typing import Callable
 from typing import List
 from typing import Optional
-from typing import TYPE_CHECKING
 from typing import Union
 
 import testinfra
 from _pytest.mark.structures import ParameterSet
 from pytest import param
+
 from pytest_container.inspect import BindMount
 from pytest_container.inspect import Config
 from pytest_container.inspect import ContainerHealth
@@ -33,7 +34,6 @@ from pytest_container.inspect import HealthCheck
 from pytest_container.inspect import NetworkProtocol
 from pytest_container.inspect import PortForwarding
 from pytest_container.inspect import VolumeMount
-
 
 if sys.version_info >= (3, 8):
     from typing import Literal
@@ -152,11 +152,11 @@ class Version:
 
     @staticmethod
     def __generate_cmp(
-        cmp_func: Callable[[int, int], bool]
+        cmp_func: Callable[[int, int], bool],
     ) -> Callable[["Version", Any], bool]:
         def cmp(self: Version, other: Any) -> bool:
             if not isinstance(other, Version):
-                return NotImplemented
+                return NotImplemented  # type: ignore
 
             if self.major == other.major:
                 if self.minor == other.minor:
@@ -179,25 +179,28 @@ class Version:
         return Version.__generate_cmp(lambda m, n: m > n)(self, other)
 
 
-@dataclass(frozen=True)
-class _OciRuntimeBase:
-    #: command that builds the Dockerfile in the current working directory
-    build_command: List[str] = field(default_factory=list)
-    #: the "main" binary of this runtime, e.g. podman or docker
-    runner_binary: str = ""
-    _runtime_functional: bool = False
-
-
 class OciRuntimeABC(ABC):
     """The abstract base class defining the interface of a container runtime."""
 
-    @staticmethod
-    @abstractmethod
-    def _runtime_error_message() -> str:
-        """Returns a human readable error message why the runtime does not
-        function.
+    def __init__(self, build_command: List[str], runner_binary: str) -> None:
+        #: command that builds the Dockerfile in the current working directory
+        self._build_command = build_command
+
+        #: the "main" binary of this runtime, e.g. podman or docker
+        self._runner_binary: str = runner_binary
+
+    @property
+    def build_command(self) -> List[str]:
+        """Command that builds the :file:`Dockerfile` in the current working
+        directory.
 
         """
+        return self._build_command
+
+    @property
+    def runner_binary(self) -> str:
+        """The "main" binary of this runtime, e.g. podman or docker."""
+        return self._runner_binary
 
     def get_container_health(self, container_id: str) -> ContainerHealth:
         """Inspects the running container with the supplied id and returns its current
@@ -228,20 +231,8 @@ class OciRuntimeABC(ABC):
         """
 
 
-class OciRuntimeBase(_OciRuntimeBase, OciRuntimeABC, ToParamMixin):
+class OciRuntimeBase(OciRuntimeABC, ToParamMixin):
     """Base class of the Container Runtimes."""
-
-    def __post_init__(self) -> None:
-        if not self.build_command or not self.runner_binary:
-            raise ValueError(
-                f"build_command ({self.build_command}) or runner_binary "
-                f"({self.runner_binary}) were not specified"
-            )
-        if not self._runtime_functional:
-            raise RuntimeError(
-                f"The runtime {self.__class__.__name__} is not functional: "
-                + self._runtime_error_message()
-            )
 
     @staticmethod
     def get_image_id_from_iidfile(iidfile_path: str) -> str:
@@ -433,7 +424,7 @@ def _get_podman_version(version_stdout: str) -> Version:
 
 
 def _get_buildah_version() -> Version:
-    version_stdout = LOCALHOST.run_expect([0], "buildah --version").stdout
+    version_stdout = LOCALHOST.check_output("buildah --version")
     build_version_begin = "buildah version "
     if not version_stdout.startswith(build_version_begin):
         raise RuntimeError(
@@ -451,21 +442,12 @@ class PodmanRuntime(OciRuntimeBase):
 
     """
 
-    _runtime_functional = LOCALHOST.run("podman ps").succeeded
-    _buildah_functional = LOCALHOST.run("buildah").succeeded
-
-    @staticmethod
-    def _runtime_error_message() -> str:
-        if PodmanRuntime._runtime_functional:
-            return ""
-
-        podman_ps = LOCALHOST.run("podman ps")
-        assert (
-            not podman_ps.succeeded
-        ), "podman runtime is not functional, but 'podman ps' succeeded"
-        return str(podman_ps.stderr)
-
     def __init__(self) -> None:
+        podman_ps = LOCALHOST.run("podman ps")
+        if not podman_ps.succeeded:
+            raise RuntimeError(f"`podman ps` failed with {podman_ps.stderr}")
+
+        self._buildah_functional = LOCALHOST.run("buildah").succeeded
         super().__init__(
             build_command=(
                 ["buildah", "bud", "--layers", "--force-rm"]
@@ -473,7 +455,6 @@ class PodmanRuntime(OciRuntimeBase):
                 else ["podman", "build", "--layers", "--force-rm"]
             ),
             runner_binary="podman",
-            _runtime_functional=self._runtime_functional,
         )
 
     # pragma pylint: disable=used-before-assignment
@@ -557,23 +538,14 @@ class DockerRuntime(OciRuntimeBase):
     """The container runtime using :command:`docker` for building and running
     containers."""
 
-    _runtime_functional = LOCALHOST.run("docker ps").succeeded
-
-    @staticmethod
-    def _runtime_error_message() -> str:
-        if DockerRuntime._runtime_functional:
-            return ""
-        docker_ps = LOCALHOST.run("docker ps")
-        assert (
-            not docker_ps.succeeded
-        ), "docker runtime is not functional, but 'docker ps' succeeded"
-        return str(docker_ps.stderr)
-
     def __init__(self) -> None:
+        docker_ps = LOCALHOST.run("docker ps")
+        if not docker_ps.succeeded:
+            raise RuntimeError(f"`docker ps` failed with {docker_ps.stderr}")
+
         super().__init__(
             build_command=["docker", "build", "--force-rm"],
             runner_binary="docker",
-            _runtime_functional=self._runtime_functional,
         )
 
     @cached_property

@@ -3,10 +3,4 @@ pytest-xdist
 coverage
 pytest-rerunfailures
 typeguard
-twine
-mypy
-sphinx
-black
-pylint
-reorder-python-imports
 .

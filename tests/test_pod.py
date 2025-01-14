@@ -2,13 +2,14 @@
 from pathlib import Path
 
 import pytest
+
 from pytest_container.container import DerivedContainer
 from pytest_container.container import ImageFormat
 from pytest_container.container import PortForwarding
-from pytest_container.pod import infra_container_id_from_pod_inspect
 from pytest_container.pod import Pod
 from pytest_container.pod import PodData
 from pytest_container.pod import PodLauncher
+from pytest_container.pod import infra_container_id_from_pod_inspect
 from pytest_container.runtime import OciRuntimeBase
 from pytest_container.runtime import PodmanRuntime
 
@@ -19,7 +20,6 @@ from .images import LEAP_WITH_MAN
 from .images import NGINX_URL
 from .images import TEST_POD
 from .images import WEB_SERVER
-
 
 TEST_POD_WITHOUT_PORTS = Pod(containers=[LEAP, LEAP_WITH_MAN, BUSYBOX])
 
@@ -185,7 +185,12 @@ def test_launcher_pod_data_uninitialized() -> None:
           "name": "happy_beaver",
           "hostname": "happy_beaver",
           "labels": {
-               
+"""
+            # This whitespace is present in the output and should stay there,
+            # but ruff complains about it then if it's a single multiline
+            # string. But if we split it up, everything is fine ¯\_(ツ)_/¯
+            + "               "
+            + """
           },
           "cgroupParent": "machine.slice",
           "sharesCgroup": true,

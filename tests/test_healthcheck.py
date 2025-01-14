@@ -6,18 +6,18 @@ from time import sleep
 from typing import Optional
 
 import pytest
+
 from pytest_container.container import ContainerData
 from pytest_container.container import ContainerLauncher
 from pytest_container.container import DerivedContainer
 from pytest_container.container import ImageFormat
 from pytest_container.runtime import ContainerHealth
-from pytest_container.runtime import get_selected_runtime
 from pytest_container.runtime import HealthCheck
 from pytest_container.runtime import OciRuntimeBase
+from pytest_container.runtime import get_selected_runtime
 
 from .images import LEAP
 from .images import LEAP_URL
-
 
 CONTAINER_WITH_HEALTHCHECK = DerivedContainer(
     base=LEAP_URL,
@@ -180,9 +180,9 @@ def test_container_that_doesnt_run_is_reported_unhealthy(
     after = datetime.now()
 
     time_to_fail = after - before
-    assert time_to_fail < timedelta(
-        seconds=15
-    ), f"container must fail quickly (threshold 15s), but it took {time_to_fail.total_seconds()}"
+    assert time_to_fail < timedelta(seconds=15), (
+        f"container must fail quickly (threshold 15s), but it took {time_to_fail.total_seconds()}"
+    )
     assert "not running, got " in str(rt_err_ctx.value)
 
 
