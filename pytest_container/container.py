@@ -964,7 +964,9 @@ class DerivedContainer(ContainerBase):
         with tempfile.TemporaryDirectory() as tmpdirname:
             containerfile_path = join(tmpdirname, "Dockerfile")
             iidfile = join(tmpdirname, str(uuid4()))
-            with open(containerfile_path, "w") as containerfile:
+            with open(
+                containerfile_path, "w", encoding="utf8"
+            ) as containerfile:
                 from_id = (
                     self.base
                     if isinstance(self.base, str)
