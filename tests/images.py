@@ -1,5 +1,7 @@
 """Module that defines all commonly used container images for testing."""
 
+import pytest
+
 from pytest_container.container import Container
 from pytest_container.container import DerivedContainer
 from pytest_container.container import ImageFormat
@@ -57,3 +59,5 @@ TEST_POD = Pod(
 LEAP_WITH_MAN_AND_LUA = DerivedContainer(
     base=LEAP_WITH_MAN, containerfile="RUN zypper -n in lua"
 )
+
+LEAP_WITH_MARK = Container(url=LEAP_URL, marks=[pytest.mark.secretleapmark])

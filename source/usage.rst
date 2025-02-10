@@ -8,7 +8,7 @@ Sometimes it is necessary to customize the build, run or pod create parameters
 of the container runtime globally, e.g. to use the host's network with docker
 via ``--network=host``.
 
-The :py:meth:`~pytest_container.container.ContainerBaseABC.prepare_container`
+The :py:meth:`~pytest_container.container.ContainerBase.prepare_container`
 and :py:meth:`~pytest_container.container.ContainerBase.get_launch_cmd` methods
 support passing such additional arguments/flags, but this is rather cumbersome
 to use in practice. The ``*container*`` and ``pod*`` fixtures will therefore
@@ -452,3 +452,45 @@ to the container if it does not stop. But it slows the tests needlessly down, as
 the container runtime waits for 10 seconds before sending
 ``SIGKILL``. Therefore, ``pytest_container`` sets the stop signal to
 ``SIGTERM``, if used :file:`/bin/bash` as the entrypoint.
+
+
+Using pytest marks for filtering tests
+--------------------------------------
+
+Pytest supports adding custom marks to tests or test parameters for filtering
+tests for test runs. For a general introduction to marking tests, refer to the
+upstream documentation:
+<https://docs.pytest.org/en/latest/example/markers.html#mark-examples>_
+
+It can be beneficial to mark each container for a test suite with a unique
+marker, so that you can run the tests only for a single container image. This
+would involve wrapping each :py:class:`~pytest_container.container.Container`
+and :py:class:`~pytest_container.container.DerivedContainer` in a
+``pytest.param()``. This approach two disadvantages:
+
+1. you are now handling ``pytest.ParameterSet`` instance and have to unpack them
+   to access the underlying :py:class:`~pytest_container.container.Container`
+   and :py:class:`~pytest_container.container.DerivedContainer`
+
+2. :py:class:`~pytest_container.container.DerivedContainer` do not "inherit" the
+   marks from their base containers. This has proven to be a very annoying
+   limitation in practice.
+
+To remedy this, :py:class:`~pytest_container.container.ContainerBase` now
+inherits from ``pytest.ParameterSet`` and can itself take marks via the
+constructor. These marks automatically carry over into
+:py:class:`~pytest_container.container.DerivedContainer` instances:
+
+.. code-block:: python
+
+   BASE = Container(
+       url="registry.suse.com/bci/bci-base:latest",
+       marks=(pytest.mark.base,)
+   )
+
+   DERIVED = DerivedContainer(
+       base=BASE,
+       containerfile=# snip
+   )
+
+   assert pytest.mark.base in DERIVED.marks
