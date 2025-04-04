@@ -8,6 +8,7 @@ import logging
 import os
 import subprocess
 from typing import List
+from typing import Tuple
 
 from _pytest.config import Config
 from _pytest.config.argparsing import Parser
@@ -164,7 +165,7 @@ def get_always_pull_option() -> bool:
 def run_command(
     cmd: List[str],
     ignore_errors=True,
-):
+) -> Tuple[int, str, str]:
     try:
         result = subprocess.run(
             cmd,

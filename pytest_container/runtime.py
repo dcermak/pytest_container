@@ -21,7 +21,6 @@ from typing import List
 from typing import Optional
 from typing import Union
 
-
 from _pytest.mark.structures import ParameterSet
 from pytest import param
 
