@@ -3,6 +3,21 @@ Next Release
 
 Breaking changes:
 
+
+Improvements and new features:
+
+
+Documentation:
+
+
+Internal changes:
+
+
+0.4.4 (June 30 2025)
+--------------------
+
+Breaking changes:
+
 - Remove intermediate dataclass ``runtime._OciRuntimeBase`` (`gh#238
   <https://github.com/dcermak/pytest_container/pull/238>`_)
 
