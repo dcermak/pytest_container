@@ -13,8 +13,8 @@ from pytest_container.container import BindMount
 from pytest_container.container import ContainerData
 from pytest_container.container import ContainerLauncher
 from pytest_container.container import EntrypointSelection
+from pytest_container.helpers import run_command
 from pytest_container.inspect import PortForwarding
-from pytest_container.runtime import LOCALHOST
 from pytest_container.runtime import OciRuntimeBase
 
 from .images import LEAP
@@ -285,9 +285,9 @@ def test_multistage_build_target(
         extra_build_args=get_extra_build_args(pytestconfig),
     )
     assert (
-        LOCALHOST.check_output(
-            f"{container_runtime.runner_binary} run --rm {first_target}",
-        ).strip()
+        run_command(
+            [container_runtime.runner_binary, "run", "--rm", first_target]
+        )[1].strip()
         == "foobar"
     )
 
@@ -301,9 +301,15 @@ def test_multistage_build_target(
 
     assert first_target != second_target
     assert (
-        LOCALHOST.check_output(
-            f"{container_runtime.runner_binary} run --rm {second_target} /bin/test.sh",
-        ).strip()
+        run_command(
+            [
+                container_runtime.runner_binary,
+                "run",
+                "--rm",
+                second_target,
+                "/bin/test.sh",
+            ]
+        )[1].strip()
         == "foobar"
     )
 
@@ -313,10 +319,17 @@ def test_multistage_build_target(
     ):
         assert (
             distro
-            in LOCALHOST.check_output(
-                f"{container_runtime.runner_binary} run --rm --entrypoint= {target} "
-                "cat /etc/os-release",
-            ).strip()
+            in run_command(
+                [
+                    container_runtime.runner_binary,
+                    "run",
+                    "--rm",
+                    "--entrypoint=",
+                    target,
+                    "cat",
+                    "/etc/os-release",
+                ]
+            )[1].strip()
         )
 
 

@@ -2,10 +2,11 @@
 :py:attr:`~pytest_container.container.ContainerBase.forwarded_ports`."""
 
 # pylint: disable=missing-function-docstring
-import itertools
+import re
 import socket
 from typing import List
 
+import ifaddr
 import pytest
 
 from pytest_container.container import ContainerData
@@ -13,10 +14,10 @@ from pytest_container.container import ContainerLauncher
 from pytest_container.container import DerivedContainer
 from pytest_container.container import PortForwarding
 from pytest_container.container import lock_host_port_search
+from pytest_container.helpers import run_command
 from pytest_container.inspect import NetworkProtocol
 from pytest_container.pod import Pod
 from pytest_container.pod import PodLauncher
-from pytest_container.runtime import LOCALHOST
 from pytest_container.runtime import OciRuntimeBase
 from pytest_container.runtime import Version
 
@@ -65,8 +66,12 @@ RUN sed -i 's|PLACEHOLDER|Test page {number}|' /usr/share/nginx/html/index.html
 
 CONTAINER_IMAGES = [WEB_SERVER]
 
+curl_version_string = run_command(["curl", "--version"])[1]
+pattern = r"curl\s+(\d+(?:\.\d+)+)"
+match = re.search(pattern, curl_version_string)
+assert match is not None, "Curl version not found"
+_curl_version = Version.parse(match.group(1))
 
-_curl_version = Version.parse(LOCALHOST.package("curl").version)
 
 #: curl cli with additional retries as a single curl sometimes fails with docker
 #: with ``curl: (56) Recv failure: Connection reset by peer`` for reasons…
@@ -175,18 +180,18 @@ def test_multiple_open_ports(container: ContainerData, number: int, host):
     )
 
 
-_INTERFACES = [
-    name
-    for name in LOCALHOST.interface.names()
-    if name[:2] in ("en", "et", "wl")
-]
-_ADDRESSES = [
-    addr
-    for addr in itertools.chain.from_iterable(
-        LOCALHOST.interface(interface).addresses for interface in _INTERFACES
-    )
-    if not addr.startswith("169.254.") and not addr.startswith("fe80:")
-]
+def _find_all_usable_ips():
+    for adapter in ifaddr.get_adapters():
+        if not adapter.name.startswith(("en", "et", "wl")):
+            continue
+        for addr in adapter.ips:
+            if addr.is_IPv4 and not addr.ip.startswith("169.254."):
+                yield str(addr.ip)
+            elif addr.is_IPv6 and not addr.ip[0].startswith("fe80:"):
+                yield addr.ip[0]
+
+
+_ADDRESSES = list(_find_all_usable_ips())
 
 
 @pytest.mark.parametrize(

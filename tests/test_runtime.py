@@ -1,5 +1,6 @@
 # pylint: disable=missing-function-docstring,missing-module-docstring
 import os
+import shutil
 from pathlib import Path
 from typing import Callable
 from typing import Type
@@ -8,7 +9,7 @@ from unittest.mock import patch
 
 import pytest
 
-from pytest_container.runtime import LOCALHOST
+from pytest_container import helpers
 from pytest_container.runtime import DockerRuntime
 from pytest_container.runtime import OciRuntimeBase
 from pytest_container.runtime import PodmanRuntime
@@ -25,45 +26,6 @@ def container_runtime_envvar(request):
         clear=True,
     ):
         yield
-
-
-# pylint: disable-next=unused-argument
-def _mock_run_success(*args, **kwargs):
-    class Succeeded:
-        """Class that mocks the returned object of `testinfra`'s `run`."""
-
-        @property
-        def succeeded(self) -> bool:
-            return True
-
-        @property
-        def rc(self) -> int:
-            return 0
-
-    return Succeeded()
-
-
-def generate_mock_fail(*, rc: int = 1, stderr: str = "failure!!"):
-    # pylint: disable-next=unused-argument
-    def mock_run_fail(cmd: str):
-        class Failure:
-            """Class that mocks the returned object of `testinfra`'s `run`."""
-
-            @property
-            def succeeded(self) -> bool:
-                return False
-
-            @property
-            def rc(self) -> int:
-                return rc
-
-            @property
-            def stderr(self) -> str:
-                return stderr
-
-        return Failure()
-
-    return mock_run_fail
 
 
 def _create_mock_exists(
@@ -96,8 +58,7 @@ def test_runtime_selection(
     runtime: OciRuntimeBase,
     monkeypatch: pytest.MonkeyPatch,
 ):
-    monkeypatch.setattr(LOCALHOST, "run", _mock_run_success)
-    monkeypatch.setattr(LOCALHOST, "exists", _create_mock_exists(True, True))
+    monkeypatch.setattr(shutil, "which", _create_mock_exists(True, True))
 
     assert get_selected_runtime() == runtime
 
@@ -107,7 +68,7 @@ def test_value_err_when_docker_and_podman_missing(
     runtime: str, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     monkeypatch.setenv("CONTAINER_RUNTIME", runtime)
-    monkeypatch.setattr(LOCALHOST, "exists", _create_mock_exists(False, False))
+    monkeypatch.setattr(shutil, "which", _create_mock_exists(False, False))
     with pytest.raises(ValueError) as val_err_ctx:
         get_selected_runtime()
 
@@ -125,7 +86,11 @@ def test_runtime_construction_fails_if_ps_fails(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     stderr = "container runtime failed"
-    monkeypatch.setattr(LOCALHOST, "run", generate_mock_fail(stderr=stderr))
+    monkeypatch.setattr(
+        helpers,
+        "run_command",
+        lambda _: (1, "", stderr),
+    )
     with pytest.raises(RuntimeError) as rt_err_ctx:
         cls()
 
@@ -145,7 +110,9 @@ def test_buildah_version_parsing(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     monkeypatch.setattr(
-        LOCALHOST, "check_output", lambda _: f"buildah version {version_str}"
+        helpers,
+        "run_command",
+        lambda _: (0, f"buildah version {version_str}", ""),
     )
 
     assert _get_buildah_version() == expected_version
@@ -154,7 +121,7 @@ def test_buildah_version_parsing(
 def test_get_buildah_version_fails_on_unexpected_stdout(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    monkeypatch.setattr(LOCALHOST, "check_output", lambda _: "foobar")
+    monkeypatch.setattr(helpers, "run_command", lambda _: (0, "foobar", ""))
     with pytest.raises(RuntimeError) as rt_err_ctx:
         _get_buildah_version()
 

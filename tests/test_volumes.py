@@ -2,6 +2,7 @@
 import os
 from os.path import abspath
 from os.path import join
+from pathlib import Path
 from typing import List
 
 import pytest
@@ -14,7 +15,6 @@ from pytest_container.container import ContainerVolumeBase
 from pytest_container.container import DerivedContainer
 from pytest_container.container import VolumeFlag
 from pytest_container.container import get_volume_creator
-from pytest_container.runtime import LOCALHOST
 from pytest_container.runtime import OciRuntimeBase
 
 from .images import LEAP_URL
@@ -118,8 +118,8 @@ def test_container_host_volumes(container_per_test: ContainerData):
     for vol in container_per_test.container.volume_mounts:
         assert isinstance(vol, BindMount)
         assert vol.host_path
-        dir_on_host = LOCALHOST.file(vol.host_path)
-        assert dir_on_host.exists and dir_on_host.is_directory
+        dir_on_host = Path(vol.host_path)
+        assert dir_on_host.is_dir()
 
         dir_in_container = container_per_test.connection.file(
             vol.container_path
@@ -142,8 +142,8 @@ def test_container_volume_host_writing(container_per_test: ContainerData):
     assert isinstance(vol, BindMount)
     assert vol.host_path
 
-    host_dir = LOCALHOST.file(vol.host_path)
-    assert not host_dir.listdir()
+    host_dir = Path(vol.host_path)
+    assert not list(host_dir.iterdir())
 
     container_dir = container_per_test.connection.file(vol.container_path)
     assert not container_dir.listdir()
@@ -265,9 +265,14 @@ LEAP_WITH_ROOTDIR_BIND_MOUNTED = DerivedContainer(
 def test_bind_mount_cwd(container: ContainerData):
     vol = container.container.volume_mounts[0]
     assert isinstance(vol, BindMount)
+    assert vol.host_path is not None
+
     assert container.connection.file("/src/").exists and sorted(
         container.connection.file("/src/").listdir()
-    ) == sorted(LOCALHOST.file(vol.host_path).listdir())
+    ) == sorted(
+        str(p.relative_to(vol.host_path))
+        for p in Path(vol.host_path).iterdir()
+    )
 
 
 def test_bind_mount_fails_when_host_path_not_present() -> None:
