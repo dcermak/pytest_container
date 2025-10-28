@@ -43,10 +43,10 @@ from uuid import uuid4
 import _pytest.mark
 import deprecation
 import pytest
-import testinfra
 from filelock import BaseFileLock
 from filelock import FileLock
 
+from pytest_container import helpers
 from pytest_container.helpers import get_always_pull_option
 from pytest_container.helpers import get_extra_build_args
 from pytest_container.helpers import get_extra_run_args
@@ -877,7 +877,7 @@ class DerivedContainer(ContainerBase, ContainerBaseABC):
 @dataclass(frozen=True)
 class ContainerData:
     """Class returned by the ``*container*`` fixtures to the test function. It
-    contains information about the launched container and the testinfra
+    contains information about the launched container and its shell connection
     :py:attr:`connection` to the running container.
 
     """
@@ -887,7 +887,7 @@ class ContainerData:
     image_url_or_id: str
     #: ID of the started container
     container_id: str
-    #: the testinfra connection to the running container
+    #: the shell connection to the running container
     connection: Any
     #: the container data class that has been used in this test
     container: Union[Container, DerivedContainer]
@@ -1011,6 +1011,28 @@ def container_from_pytest_param(
         return param.values[0]
 
     raise ValueError(f"Invalid pytest.param values: {param.values}")
+
+
+@dataclass(frozen=True)
+class ContainerRemoteEndpoint:
+    _container_id: str
+    _runtime: OciRuntimeBase
+
+    def __post_init__(self) -> None:
+        assert self._container_id, "Container ID must not be empty"
+
+    def check_output(self, cmd: str, strip: bool = True) -> str:
+        """Run a command in the container and return its output."""
+        return helpers.run_command(
+            [
+                self._runtime.runner_binary,
+                "exec",
+                self._container_id,
+                "/bin/sh",
+                "-c",
+                cmd,
+            ],
+        )[1]
 
 
 @dataclass
@@ -1174,12 +1196,22 @@ class ContainerLauncher:
         """
         if not self._container_id:
             raise RuntimeError(f"Container {self.container} has not started")
+        connection: Any = None
+        try:
+            import testinfra
+
+            connection = testinfra.get_host(
+                f"{self.container_runtime.runner_binary}://{self._container_id}"
+            )
+        except ImportError:
+            connection = ContainerRemoteEndpoint(
+                self._container_id, self.container_runtime
+            )
+
         return ContainerData(
             image_url_or_id=self.container.url or self.container.container_id,
             container_id=self._container_id,
-            connection=testinfra.get_host(
-                f"{self.container_runtime.runner_binary}://{self._container_id}"
-            ),
+            connection=connection,
             container=self.container,
             forwarded_ports=self._new_port_forwards,
             _container_runtime=self.container_runtime,
