@@ -180,7 +180,7 @@ jobs:
       - name: Run the build
         run: python setup.py sdist bdist_wheel
 
-      - uses: actions/upload-artifact@v5
+      - uses: actions/upload-artifact@v6
         with:
           name: wheel
           path: dist/pytest_container*whl
@@ -274,7 +274,7 @@ jobs:
       - run: tox -e doc
 
       - name: upload the build directory
-        uses: actions/upload-artifact@v5
+        uses: actions/upload-artifact@v6
         with:
           name: build
           path: ./build/html
