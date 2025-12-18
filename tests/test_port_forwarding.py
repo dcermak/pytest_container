@@ -46,7 +46,10 @@ COPY tests/files/foobar.crt /root/certs/
 COPY tests/files/foobar.key /root/certs/
 COPY tests/files/index.html /usr/share/nginx/html/
 EXPOSE 80 443
-RUN sed -i 's|PLACEHOLDER|Test page {number}|' /usr/share/nginx/html/index.html
+RUN set -euox pipefail; \
+    file="/usr/share/nginx/html/index.html"; tmp="${{file}}.tmp"; \
+    awk '{{ sub("PLACEHOLDER", "Test page {number}"); print }}' "$file" > "$tmp"; \
+    mv "$tmp" "$file"
 """,
         forwarded_ports=[
             PortForwarding(container_port=80),
