@@ -27,9 +27,8 @@ TEST_POD_WITHOUT_PORTS = Pod(containers=[LEAP, LEAP_WITH_MAN, BUSYBOX])
 NGINX_PROXY = DerivedContainer(
     base=NGINX_URL,
     containerfile=r"""COPY tests/files/nginx.conf /etc/nginx/nginx.conf
-RUN set -eu; zypper -n ref; zypper -n in netcat; zypper -n clean; rm -rf /var/log/{zypp,zypper.log,lastlog}
 
-HEALTHCHECK --interval=5s --timeout=1s CMD echo "GET /" | nc localhost 80
+HEALTHCHECK --interval=5s --timeout=1s CMD curl http://localhost/
 """,
     image_format=ImageFormat.DOCKER,
 )
