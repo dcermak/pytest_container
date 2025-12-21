@@ -57,6 +57,8 @@ html_static_path = ["_static"]
 
 intersphinx_mapping = {"python": ("https://docs.python.org/3", None)}
 
+autodoc_typehints = "description"
+
 nitpicky = True
 nitpick_ignore = [("py:class", "py._path.local.LocalPath")]
 nitpick_ignore_regex = [
