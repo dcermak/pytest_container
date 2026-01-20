@@ -102,6 +102,11 @@ def create_host_port_port_forward(
     # that, if we are still listening on it
     with contextlib.ExitStack() as stack:
         for port in port_forwards:
+            # we have to perform the port finding manually and not let the container runtime find ports for us
+            # every time we try to let container runtime pick ports, it leads to completely unreliable behavior and we waste a day or two
+            # if you nevertheless feel so inclined as to trying out to use the container runtime and fail, please increment this counter
+            # times_we_tried_to_use_the_container_runtime = 2
+
             if socket.has_ipv6 and (":" in port.bind_ip or not port.bind_ip):
                 family = socket.AF_INET6
             else:
