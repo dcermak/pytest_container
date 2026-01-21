@@ -186,6 +186,7 @@ class HealthCheck:
 
 
 @dataclass(frozen=True)
+# pylint: disable-next=too-many-instance-attributes
 class ContainerState:
     """State of the container, it is populated from the ``State`` attribute in
     the inspect of a container.
@@ -211,6 +212,7 @@ class ContainerState:
 
 
 @dataclass(frozen=True)
+# pylint: disable-next=too-many-instance-attributes
 class Config:
     """Container configuration obtained from the ``Config`` attribute in the
     inspect of a container. It features the most useful attributes and those
@@ -292,6 +294,7 @@ class VolumeMount(Mount):
 
 
 @dataclass(frozen=True)
+# pylint: disable-next=too-many-instance-attributes
 class ContainerInspect:
     """Common subset of the information exposed via :command:`podman inspect`
     and :command:`docker inspect`.

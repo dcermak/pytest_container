@@ -1,6 +1,7 @@
 # pylint: disable=missing-function-docstring,missing-module-docstring
 from pathlib import Path
 from tempfile import gettempdir
+from typing import Any
 from typing import Optional
 from typing import Union
 
@@ -8,22 +9,13 @@ import pytest
 
 from pytest_container import Container
 from pytest_container import DerivedContainer
+from pytest_container.container import ContainerBase
 from pytest_container.container import ContainerLauncher
+from pytest_container.container import EntrypointSelection
 from pytest_container.container import ImageFormat
 from pytest_container.runtime import OciRuntimeBase
 
 from . import images
-
-
-def test_derived_container_fails_without_base() -> None:
-    """Ensure that a DerivedContainer cannot be instantiated without providing
-    the base parameter.
-
-    """
-    with pytest.raises(ValueError) as val_err_ctx:
-        DerivedContainer()
-
-    assert str(val_err_ctx.value) == "A base container must be provided"
 
 
 def test_get_base_of_derived_container() -> None:
@@ -35,10 +27,84 @@ def test_get_base_of_derived_container() -> None:
     assert DerivedContainer(base=url).get_base() == Container(url=url)
 
 
+@pytest.mark.parametrize(
+    "ctr1, ctr2",
+    [
+        (images.LEAP, images.LEAP),
+        (Container(url=images.LEAP_URL), images.LEAP),
+    ],
+)
+def test_equality(ctr1: ContainerBase, ctr2: ContainerBase) -> None:
+    assert ctr1 == ctr2
+    assert not ctr1 != ctr2
+
+
+@pytest.mark.parametrize(
+    "ctr1, ctr2",
+    [
+        (images.LEAP, images.LEAP_WITH_MAN),
+        (Container(url=images.LEAP_URL), "foobar"),
+        (
+            images.LEAP,
+            Container(
+                url=images.LEAP_URL, entry_point=EntrypointSelection.BASH
+            ),
+        ),
+    ],
+)
+def test_ctr_inequality(ctr1: ContainerBase, ctr2: Any) -> None:
+    assert ctr1 != ctr2
+    assert not ctr1 == ctr2
+
+
 def test_image_format() -> None:
     """Check that the string representation of the ImageFormat enum is correct."""
     assert str(ImageFormat.DOCKER) == "docker"
     assert str(ImageFormat.OCIv1) == "oci"
+
+
+@pytest.mark.parametrize(
+    "ctr",
+    [
+        images.LEAP,
+        images.LEAP_WITH_MAN,
+        images.LEAP_WITH_MAN,
+        images.BUSYBOX,
+        images.LEAP_WITH_MAN_AND_LUA,
+        Container(url="containers-storage:foo.com/baz:latest"),
+        images.LEAP_WITH_MARK,
+    ],
+)
+def test_dict_can_be_passed_into_constructor(ctr: ContainerBase) -> None:
+    assert type(ctr)(**ctr.dict()) == ctr
+
+
+@pytest.mark.parametrize(
+    "ctr, new_url, expected_url, expected_local_image",
+    (
+        (
+            Container(url="foobar.com:latest"),
+            "baz.com:latest",
+            "baz.com:latest",
+            False,
+        ),
+        (
+            Container(url="foobar.com:latest"),
+            "containers-storage:baz.com:latest",
+            "baz.com:latest",
+            True,
+        ),
+    ),
+)
+def test_url_setting(
+    ctr: ContainerBase,
+    new_url: str,
+    expected_url: str,
+    expected_local_image: bool,
+) -> None:
+    ctr.url = new_url
+    assert ctr.url == expected_url
+    assert ctr.local_image == expected_local_image
 
 
 def test_local_image_url(container_runtime: OciRuntimeBase) -> None:

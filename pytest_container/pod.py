@@ -7,13 +7,24 @@ from dataclasses import field
 from pathlib import Path
 from subprocess import check_output
 from types import TracebackType
+from typing import Any
+from typing import Collection
 from typing import List
 from typing import Optional
+from typing import TypeVar
+
+try:
+    from typing import Self
+except ImportError:
+    from typing_extensions import Self
+from typing import Tuple
 from typing import Type
 from typing import Union
 
 from _pytest.mark import ParameterSet
 from pytest import Config
+from pytest import Mark
+from pytest import MarkDecorator
 
 from pytest_container.container import Container
 from pytest_container.container import ContainerData
@@ -29,9 +40,10 @@ from pytest_container.logging import _logger
 from pytest_container.runtime import PodmanRuntime
 from pytest_container.runtime import get_selected_runtime
 
+T = TypeVar("T", bound="Pod")
 
-@dataclass
-class Pod:
+
+class Pod(ParameterSet):
     """A pod is a collection of containers that share the same network and port
     forwards. Currently only :command:`podman` supports creating pods.
 
@@ -40,11 +52,71 @@ class Pod:
 
     """
 
-    #: containers belonging to the pod
-    containers: List[Union[DerivedContainer, Container]]
+    def __new__(
+        cls: Type[T],
+        *args: Any,
+        values: Optional[Tuple[object, ...]] = None,
+        marks: Optional[Collection[Union[MarkDecorator, Mark]]] = None,
+        id: Optional[str] = None,  # pylint: disable=redefined-builtin
+        **kwargs: Any,
+    ) -> T:
+        # ParameterSet.__new__ expects positional arguments in exact order
+        param_values = values or ()
+        param_marks = marks or ()
+        param_id = id
 
-    #: ports exposed by the pod
-    forwarded_ports: List[PortForwarding] = field(default_factory=list)
+        # Call ParameterSet.__new__ directly with positional args to ensure
+        # Python 3.8 compatibility as ParameterSet.__new__ expects arguments to
+        # be in exact order
+        return ParameterSet.__new__(cls, param_values, param_marks, param_id)
+
+    def __init__(
+        self,
+        containers: List[Union[DerivedContainer, Container]],
+        forwarded_ports: Optional[List[PortForwarding]] = None,
+        marks: Optional[Collection[Union[MarkDecorator, Mark]]] = None,
+    ) -> None:
+        #: containers belonging to the pod
+        self.containers = containers
+
+        #: ports exposed by the pod
+        self.forwarded_ports = forwarded_ports or []
+
+        self._marks = marks or []
+
+    @property
+    def values(self) -> Tuple[Self]:
+        """Returns a tuple with itself as the only element. This property is for
+        compatibility with pytest's ``ParameterSet``.
+
+        """
+        return (self,)
+
+    @property
+    def marks(self) -> Collection[Union[MarkDecorator, Mark]]:
+        """Returns all marks of this pod concatenated with all marks of all
+        containers.
+
+        """
+        marks = tuple(self._marks)
+        for ctr in self.containers:
+            marks += tuple(ctr.marks)
+        return marks
+
+    @property
+    def id(self) -> str:
+        """Textual representation of this pod for tests.
+
+        **NOT** the pod's id!
+
+        """
+
+        return "Pod with containers: " + ",".join(
+            str(c) for c in self.containers
+        )
+
+    def __bool__(self) -> bool:
+        return True
 
 
 @dataclass(frozen=True)
