@@ -21,7 +21,7 @@ Find the latest documentation on `dcermak.github.io/pytest_container
 <https://dcermak.github.io/pytest_container/>`_.
 
 ``pytest_container`` is a `pytest <https://pytest.org>`_ plugin
-to test container images via pytest fixtures and `testinfra
+to test container images via pytest fixtures and optionally `testinfra
 <https://testinfra.readthedocs.io/en/latest/>`_. It takes care of all the boring
 tasks, like spinning up containers, finding free ports and cleaning up after
 tests, and allows you to focus on implementing the actual tests.
@@ -55,8 +55,7 @@ instantiating a ``Container`` and parametrizing a test function with the
 The fixture automatically pulls and spins up the container, stops it and removes
 it after the test is completed. Your test function receives an instance of
 ``ContainerData`` with the ``ContainerData.connection`` attribute. The
-``ContainerData.connection`` attribute is a `testinfra
-<https://testinfra.readthedocs.io/en/latest/>`_ connection object. It can be
+``ContainerData.connection`` attribute is a shell connection object. It can be
 used to run basic tests inside the container itself. For example, you can check
 whether files are present, packages are installed, etc.
 

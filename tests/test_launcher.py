@@ -19,7 +19,7 @@ from pytest_container.container import ContainerLauncher
 from pytest_container.container import ContainerVolume
 from pytest_container.container import DerivedContainer
 from pytest_container.container import EntrypointSelection
-from pytest_container.runtime import LOCALHOST
+from pytest_container.helpers import run_command
 from pytest_container.runtime import OciRuntimeBase
 
 from .images import CMDLINE_APP_CONTAINER
@@ -101,9 +101,17 @@ def test_launcher_creates_and_cleanes_up_volumes(
                 assert vol.host_path and os.path.exists(vol.host_path)
             elif isinstance(vol, ContainerVolume):
                 assert vol.volume_id
-                assert LOCALHOST.run_expect(
-                    [0],
-                    f"{container_runtime.runner_binary} volume inspect {vol.volume_id}",
+                assert (
+                    run_command(
+                        [
+                            container_runtime.runner_binary,
+                            "volume",
+                            "inspect",
+                            vol.volume_id,
+                        ],
+                        ignore_errors=False,
+                    )[0]
+                    == 0
                 )
             else:
                 assert False, f"invalid volume type {type(vol)}"

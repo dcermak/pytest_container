@@ -6,12 +6,15 @@ line flags from pytest and for automatically parametrizing tests using the
 
 import logging
 import os
+import subprocess
 from typing import List
+from typing import Tuple
 
 from _pytest.config import Config
 from _pytest.config.argparsing import Parser
 from _pytest.python import Metafunc
 
+from pytest_container.logging import _logger
 from pytest_container.logging import set_internal_logging_level
 
 
@@ -157,3 +160,26 @@ def get_always_pull_option() -> bool:
 
     """
     return bool(int(os.getenv("PULL_ALWAYS", "1")))
+
+
+def run_command(
+    cmd: List[str],
+    ignore_errors=True,
+) -> Tuple[int, str, str]:
+    try:
+        result = subprocess.run(
+            cmd,
+            capture_output=True,
+            text=True,
+            check=not ignore_errors,
+        )
+
+        _logger.debug(
+            f"RUN CMD: {cmd} RC: {result.returncode} STDOUT: {result.stdout} STDERR:{result.stderr}"
+        )
+        return result.returncode, result.stdout, result.stderr
+    except subprocess.CalledProcessError as exc:
+        _logger.debug(
+            f"RUN(Failed) CMD: {cmd} RC: {exc.returncode} STDOUT:{exc.stdout} STDERR:{exc.stderr}"
+        )
+        raise exc

@@ -3,4 +3,5 @@ pytest-xdist
 coverage
 pytest-rerunfailures
 typeguard
+ifaddr
 .
