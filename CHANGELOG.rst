@@ -6,6 +6,11 @@ Breaking changes:
 
 Improvements and new features:
 
+- :py:class:`~pytest_container.container.ContainerLauncher` no longer appends
+  its own arguments (``--cidfile``, ``--name`` and port forwards) to the passed
+  ``extra_run_args``. Previously they accumulated in the list shared via
+  ``--extra-run-args``, which could cause port conflicts on later launches.
+
 
 Documentation:
 
