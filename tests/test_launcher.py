@@ -397,3 +397,52 @@ def test_launcher_does_not_modify_extra_run_args(
             assert launcher.container_data.forwarded_ports
 
     assert extra_run_args == ["--env", "FOO=bar"]
+
+
+def test_launcher_removes_container_that_fails_to_start(
+    container_runtime: OciRuntimeBase, pytestconfig: pytest.Config, host
+) -> None:
+    """Regression test: if ``run -d`` fails after the runtime created the
+    container (e.g. the entrypoint does not exist or the host port is already
+    taken), then the launcher must still remove the container.
+
+    """
+    container_name = "container_that_fails_to_start"
+    with pytest.raises(subprocess.CalledProcessError):
+        with ContainerLauncher.from_pytestconfig(
+            container=Container(
+                url=LEAP.url, custom_entry_point="/does/not/exist"
+            ),
+            container_runtime=container_runtime,
+            pytestconfig=pytestconfig,
+            container_name=container_name,
+        ) as launcher:
+            launcher.launch_container()
+            assert False, "The container must not have launched"
+
+    err_msg = host.run_expect(
+        [1, 125],
+        f"{container_runtime.runner_binary} container inspect {container_name}",
+    ).stderr.lower()
+    assert "no such container" in err_msg
+    assert container_name in err_msg
+
+
+def test_launcher_propagates_error_if_container_is_not_created(
+    container_runtime: OciRuntimeBase, pytestconfig: pytest.Config
+) -> None:
+    """If ``run -d`` fails before the runtime created the container (here due
+    to an invalid cli flag), then no cidfile exists and the launcher must
+    re-raise the original error instead of failing to read the cidfile.
+
+    """
+    with pytest.raises(subprocess.CalledProcessError):
+        with ContainerLauncher.from_pytestconfig(
+            container=Container(
+                url=LEAP.url, extra_launch_args=["--this-flag-does-not-exist"]
+            ),
+            container_runtime=container_runtime,
+            pytestconfig=pytestconfig,
+        ) as launcher:
+            launcher.launch_container()
+            assert False, "The container must not have launched"
