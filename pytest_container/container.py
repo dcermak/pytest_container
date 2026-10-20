@@ -1128,7 +1128,9 @@ class ContainerLauncher:
 
         forwarded_ports = self.container.forwarded_ports
 
-        extra_run_args = self.extra_run_args
+        # copy the list, it may be shared with other launchers (e.g. the one
+        # from get_extra_run_args) and must not accumulate our arguments
+        extra_run_args = list(self.extra_run_args)
 
         if self.container_name:
             extra_run_args.extend(("--name", self.container_name))

@@ -19,6 +19,7 @@ from pytest_container.container import ContainerLauncher
 from pytest_container.container import ContainerVolume
 from pytest_container.container import DerivedContainer
 from pytest_container.container import EntrypointSelection
+from pytest_container.container import PortForwarding
 from pytest_container.runtime import LOCALHOST
 from pytest_container.runtime import OciRuntimeBase
 
@@ -367,3 +368,32 @@ def test_extra_command_args(container: ContainerData, port_num: int) -> None:
     assert container.connection.check_output(
         f"curl -sf --retry 5 --retry-connrefused http://localhost:{port_num}"
     )
+
+
+def test_launcher_does_not_modify_extra_run_args(
+    pytestconfig: pytest.Config, container_runtime: OciRuntimeBase
+) -> None:
+    """Regression test: the launcher must not append its own arguments
+    (``--cidfile``, ``--name``, port forwards) to the passed
+    ``extra_run_args``. The list returned by
+    :py:func:`~pytest_container.helpers.get_extra_run_args` is shared between
+    all tests, so these arguments would otherwise accumulate across launches.
+
+    """
+    extra_run_args = ["--env", "FOO=bar"]
+    cont = Container(
+        url=LEAP.url, forwarded_ports=[PortForwarding(container_port=8000)]
+    )
+
+    for i in range(2):
+        with ContainerLauncher(
+            container=cont,
+            container_runtime=container_runtime,
+            rootdir=pytestconfig.rootpath,
+            extra_run_args=extra_run_args,
+            container_name=f"extra_run_args_{i}",
+        ) as launcher:
+            launcher.launch_container()
+            assert launcher.container_data.forwarded_ports
+
+    assert extra_run_args == ["--env", "FOO=bar"]
