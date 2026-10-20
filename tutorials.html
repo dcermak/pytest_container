@@ -47,12 +47,12 @@ Command-line interface.</p>
 dependencies. If the <code class="file docutils literal notranslate"><span class="pre">pyproject.toml</span></code> doesn’t already exist, create it
 using the <strong class="command">poetry init</strong> command.</p>
 <p>Start by adding <code class="docutils literal notranslate"><span class="pre">pytest_container</span></code> as a development dependency:</p>
-<div class="highlight-shell-session notranslate"><div class="highlight"><pre><span></span><span class="go">❯ poetry add --group dev pytest_container</span>
+<div class="highlight-shell-session notranslate"><div class="highlight"><pre><span></span><span class="gp">❯ </span>poetry<span class="w"> </span>add<span class="w"> </span>--group<span class="w"> </span>dev<span class="w"> </span>pytest_container
 </pre></div>
 </div>
 <p>Add <a class="reference external" href="https://github.com/pytest-dev/pytest-xdist">pytest-xdist</a>, so that tests can be executed in
 parallel:</p>
-<div class="highlight-shell-session notranslate"><div class="highlight"><pre><span></span><span class="go">❯ poetry add --group dev pytest-xdist</span>
+<div class="highlight-shell-session notranslate"><div class="highlight"><pre><span></span><span class="gp">❯ </span>poetry<span class="w"> </span>add<span class="w"> </span>--group<span class="w"> </span>dev<span class="w"> </span>pytest-xdist
 </pre></div>
 </div>
 <p>It is recommended to create a new directory <code class="file docutils literal notranslate"><span class="pre">tests</span></code> for your tests to keep
@@ -88,12 +88,12 @@ python project into the image and install it in the container:</p>
 
 
 <span class="n">TW_WITH_PKG</span> <span class="o">=</span> <span class="n">DerivedContainer</span><span class="p">(</span>
-    <span class="n">base</span><span class="o">=</span><span class="s2">&quot;registry.opensuse.org/opensuse/tumbleweed&quot;</span><span class="p">,</span>
-    <span class="n">containerfile</span><span class="o">=</span><span class="n">dedent</span><span class="p">(</span><span class="s2">&quot;&quot;&quot;</span>
+    <span class="n">base</span><span class="o">=</span><span class="s2">"registry.opensuse.org/opensuse/tumbleweed"</span><span class="p">,</span>
+    <span class="n">containerfile</span><span class="o">=</span><span class="n">dedent</span><span class="p">(</span><span class="s2">"""</span>
 <span class="s2">    RUN zypper -n in python3-pip</span>
 <span class="s2">    COPY dist/*whl .</span>
 <span class="s2">    RUN pip install *whl</span>
-<span class="s2">    &quot;&quot;&quot;</span><span class="p">)</span>
+<span class="s2">    """</span><span class="p">)</span>
 <span class="p">)</span>
 </pre></div>
 </div>
@@ -105,8 +105,8 @@ the following test function along with a global variable:</p>
 <div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">CONTAINER_IMAGES</span> <span class="o">=</span> <span class="p">[</span><span class="n">TW_WITH_PKG</span><span class="p">]</span>
 
 <span class="k">def</span><span class="w"> </span><span class="nf">test_help_works</span><span class="p">(</span><span class="n">auto_container</span><span class="p">):</span>
-    <span class="n">res</span> <span class="o">=</span> <span class="n">auto_container</span><span class="o">.</span><span class="n">connection</span><span class="o">.</span><span class="n">run_expect</span><span class="p">([</span><span class="mi">0</span><span class="p">],</span> <span class="s2">&quot;my-binary --help&quot;</span><span class="p">)</span>
-    <span class="k">assert</span> <span class="s2">&quot;My cool project&quot;</span> <span class="ow">in</span> <span class="n">res</span><span class="o">.</span><span class="n">stdout</span>
+    <span class="n">res</span> <span class="o">=</span> <span class="n">auto_container</span><span class="o">.</span><span class="n">connection</span><span class="o">.</span><span class="n">run_expect</span><span class="p">([</span><span class="mi">0</span><span class="p">],</span> <span class="s2">"my-binary --help"</span><span class="p">)</span>
+    <span class="k">assert</span> <span class="s2">"My cool project"</span> <span class="ow">in</span> <span class="n">res</span><span class="o">.</span><span class="n">stdout</span>
 </pre></div>
 </div>
 <p>The global variable <code class="docutils literal notranslate"><span class="pre">CONTAINER_IMAGES</span></code> instructs <code class="docutils literal notranslate"><span class="pre">pytest_container</span></code> to run
@@ -188,7 +188,7 @@ function is used to execute the binary and check that its exit code is
       &#169;Dan Čermák.
       
       |
-      Powered by <a href="https://www.sphinx-doc.org/">Sphinx 9.0.4</a>
+      Powered by <a href="https://www.sphinx-doc.org/">Sphinx 9.1.1</a>
       &amp; <a href="https://alabaster.readthedocs.io">Alabaster 1.0.0</a>
       
       |

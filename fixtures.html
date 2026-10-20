@@ -54,12 +54,12 @@ as if it had no <code class="docutils literal notranslate"><span class="pre">HEA
 using the function
 <a class="reference internal" href="api.html#pytest_container.runtime.OciRuntimeABC.get_container_health" title="pytest_container.runtime.OciRuntimeABC.get_container_health"><code class="xref py py-meth docutils literal notranslate"><span class="pre">get_container_health()</span></code></a>:</p>
 <div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">CONTAINER_WITH_HEALTHCHECK</span> <span class="o">=</span> <span class="n">DerivedContainer</span><span class="p">(</span>
-    <span class="n">base</span><span class="o">=</span><span class="s2">&quot;registry.opensuse.org/opensuse/leap:latest&quot;</span><span class="p">,</span>
-    <span class="n">containerfile</span><span class="o">=</span><span class="s2">&quot;HEALTHCHECK CMD true&quot;</span><span class="p">,</span>
-    <span class="n">healthcheck_timeout</span><span class="o">=</span><span class="n">timedelta</span><span class="p">(</span><span class="n">seconds</span><span class="o">=-</span><span class="mi">1</span><span class="p">),</span>  <span class="c1"># don&#39;t check the container&#39;s health</span>
+    <span class="n">base</span><span class="o">=</span><span class="s2">"registry.opensuse.org/opensuse/leap:latest"</span><span class="p">,</span>
+    <span class="n">containerfile</span><span class="o">=</span><span class="s2">"HEALTHCHECK CMD true"</span><span class="p">,</span>
+    <span class="n">healthcheck_timeout</span><span class="o">=</span><span class="n">timedelta</span><span class="p">(</span><span class="n">seconds</span><span class="o">=-</span><span class="mi">1</span><span class="p">),</span>  <span class="c1"># don't check the container's health</span>
 <span class="p">)</span>
 
-<span class="nd">@pytest</span><span class="o">.</span><span class="n">mark</span><span class="o">.</span><span class="n">parametrize</span><span class="p">(</span><span class="s2">&quot;container&quot;</span><span class="p">,</span> <span class="p">[</span><span class="n">CONTAINER_WITH_HEALTHCHECK</span><span class="p">],</span> <span class="n">indirect</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+<span class="nd">@pytest</span><span class="o">.</span><span class="n">mark</span><span class="o">.</span><span class="n">parametrize</span><span class="p">(</span><span class="s2">"container"</span><span class="p">,</span> <span class="p">[</span><span class="n">CONTAINER_WITH_HEALTHCHECK</span><span class="p">],</span> <span class="n">indirect</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
 <span class="k">def</span><span class="w"> </span><span class="nf">test_leap</span><span class="p">(</span><span class="n">container</span><span class="p">,</span> <span class="n">container_runtime</span><span class="p">):</span>
     <span class="k">assert</span> <span class="p">(</span>
         <span class="n">container_runtime</span><span class="o">.</span><span class="n">get_container_health</span><span class="p">(</span><span class="n">container</span><span class="o">.</span><span class="n">container_id</span><span class="p">)</span>
@@ -140,7 +140,7 @@ created container includes the <code class="docutils literal notranslate"><span 
       &#169;Dan Čermák.
       
       |
-      Powered by <a href="https://www.sphinx-doc.org/">Sphinx 9.0.4</a>
+      Powered by <a href="https://www.sphinx-doc.org/">Sphinx 9.1.1</a>
       &amp; <a href="https://alabaster.readthedocs.io">Alabaster 1.0.0</a>
       
       |

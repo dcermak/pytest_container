@@ -65,11 +65,11 @@ tests, and allows you to focus on implementing the actual tests.</p>
 for testing containers. Spinning up a container image can be as simple as
 instantiating a <code class="docutils literal notranslate"><span class="pre">Container</span></code> and parametrizing a test function with the
 <code class="docutils literal notranslate"><span class="pre">container</span></code> fixture:</p>
-<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">TW</span> <span class="o">=</span> <span class="n">Container</span><span class="p">(</span><span class="n">url</span><span class="o">=</span><span class="s2">&quot;registry.opensuse.org/opensuse/tumbleweed:latest&quot;</span><span class="p">)</span>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">TW</span> <span class="o">=</span> <span class="n">Container</span><span class="p">(</span><span class="n">url</span><span class="o">=</span><span class="s2">"registry.opensuse.org/opensuse/tumbleweed:latest"</span><span class="p">)</span>
 
-<span class="nd">@pytest</span><span class="o">.</span><span class="n">mark</span><span class="o">.</span><span class="n">parametrize</span><span class="p">(</span><span class="s2">&quot;container&quot;</span><span class="p">,</span> <span class="p">[</span><span class="n">TW</span><span class="p">],</span> <span class="n">indirect</span><span class="o">=</span><span class="p">[</span><span class="s2">&quot;container&quot;</span><span class="p">])</span>
+<span class="nd">@pytest</span><span class="o">.</span><span class="n">mark</span><span class="o">.</span><span class="n">parametrize</span><span class="p">(</span><span class="s2">"container"</span><span class="p">,</span> <span class="p">[</span><span class="n">TW</span><span class="p">],</span> <span class="n">indirect</span><span class="o">=</span><span class="p">[</span><span class="s2">"container"</span><span class="p">])</span>
 <span class="k">def</span><span class="w"> </span><span class="nf">test_etc_os_release_present</span><span class="p">(</span><span class="n">container</span><span class="p">:</span> <span class="n">ContainerData</span><span class="p">):</span>
-    <span class="k">assert</span> <span class="n">container</span><span class="o">.</span><span class="n">connection</span><span class="o">.</span><span class="n">file</span><span class="p">(</span><span class="s2">&quot;/etc/os-release&quot;</span><span class="p">)</span><span class="o">.</span><span class="n">exists</span>
+    <span class="k">assert</span> <span class="n">container</span><span class="o">.</span><span class="n">connection</span><span class="o">.</span><span class="n">file</span><span class="p">(</span><span class="s2">"/etc/os-release"</span><span class="p">)</span><span class="o">.</span><span class="n">exists</span>
 </pre></div>
 </div>
 <p>The fixture automatically pulls and spins up the container, stops it and removes
@@ -208,7 +208,7 @@ whether files are present, packages are installed, etc.</p>
       &#169;Dan Čermák.
       
       |
-      Powered by <a href="https://www.sphinx-doc.org/">Sphinx 9.0.4</a>
+      Powered by <a href="https://www.sphinx-doc.org/">Sphinx 9.1.1</a>
       &amp; <a href="https://alabaster.readthedocs.io">Alabaster 1.0.0</a>
       
       |
