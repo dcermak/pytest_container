@@ -1167,7 +1167,7 @@ class ContainerLauncher:
             # created. If starting it fails afterwards (e.g. because the host
             # port is already in use), the container still exists and we have
             # to record its id so that __exit__ removes it.
-            if exists(self._cidfile):  # pragma: no branch
+            if exists(self._cidfile):
                 with open(self._cidfile, "r", encoding="utf8") as cidfile:
                     self._container_id = cidfile.read(-1).strip() or None
 
