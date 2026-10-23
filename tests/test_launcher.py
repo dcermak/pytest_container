@@ -410,7 +410,7 @@ def test_launcher_removes_container_if_host_port_is_taken(
     """
     container_name = "container_with_taken_host_port"
     with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as sock:
-        sock.bind(("", 0))
+        sock.bind(("127.0.0.1", 0))
         sock.listen()
         taken_port = sock.getsockname()[1]
 
@@ -418,7 +418,11 @@ def test_launcher_removes_container_if_host_port_is_taken(
         with patch(
             "pytest_container.container.create_host_port_port_forward",
             return_value=[
-                PortForwarding(container_port=8000, host_port=taken_port)
+                PortForwarding(
+                    container_port=8000,
+                    host_port=taken_port,
+                    bind_ip="127.0.0.1",
+                )
             ],
         ), pytest.raises(subprocess.CalledProcessError):
             with ContainerLauncher.from_pytestconfig(
