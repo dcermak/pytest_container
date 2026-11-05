@@ -11,6 +11,10 @@ Improvements and new features:
   ``extra_run_args``. Previously they accumulated in the list shared via
   ``--extra-run-args``, which could cause port conflicts on later launches.
 
+- :py:attr:`~pytest_container.inspect.ContainerNetworkSettings.ip_address` is
+  now also populated with Docker 29, which no longer provides the top-level
+  ``NetworkSettings.IPAddress`` in :command:`docker inspect`.
+
 
 Documentation:
 

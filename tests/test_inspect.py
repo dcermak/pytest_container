@@ -84,10 +84,21 @@ def test_inspect(
         and inspect.mounts[0].destination == "/src"
     )
 
-    assert inspect.network.ip_address or "" == host.check_output(
-        f"{container_runtime.runner_binary} inspect --format "
-        '"{{ .NetworkSettings.IPAddress }}" ' + _CTR_NAME
+    # Docker 29 removed the top-level .NetworkSettings.IPAddress, the address
+    # is only available per network. Use the json output, as Docker 29 renders
+    # an unset address as "invalid IP" in Go templates.
+    net_settings = json.loads(
+        host.check_output(
+            f"{container_runtime.runner_binary} inspect --format "
+            '"{{ json .NetworkSettings }}" ' + _CTR_NAME
+        )
     )
+    ip_addresses = [net_settings.get("IPAddress")] + [
+        network.get("IPAddress")
+        for network in (net_settings.get("Networks") or {}).values()
+    ]
+    expected_ip = next((ip for ip in ip_addresses if ip), None)
+    assert inspect.network.ip_address == expected_ip
 
 
 @pytest.mark.parametrize("container", [LEAP], indirect=True)
