@@ -35,8 +35,10 @@ def _create_nginx_container(number: int) -> DerivedContainer:
     directly inside it so that https works. This is achieved via the script
     :file:`tests/base/files/mk_certs.sh`.
 
-    The Container includes additional 500 TCP and 500 UDP port forwards to
-    stress test the random port finder.
+    The Container includes additional 200 TCP and 200 UDP port forwards to
+    stress test the random port finder. We stay below 255 forwards per
+    protocol, as pasta (podman's rootless network backend) refuses to launch
+    containers with more port forwarding rules than that.
 
     """
     return DerivedContainer(
@@ -58,10 +60,10 @@ RUN set -euox pipefail; \
         # create an insane number of additional port forwards, that makes it
         # much more likely for any bugs in the host port assignment logic to
         # surface
-        + [PortForwarding(container_port=n) for n in range(500, 1000)]
+        + [PortForwarding(container_port=n) for n in range(500, 700)]
         + [
             PortForwarding(container_port=n, protocol=NetworkProtocol.UDP)
-            for n in range(200, 700)
+            for n in range(200, 400)
         ],
     )
 
@@ -157,8 +159,8 @@ def test_multiple_open_ports(container: ContainerData, number: int, host):
     signed certificate in the container.
 
     """
-    assert len(container.forwarded_ports) == 1002, (
-        "exactly 1002 forwarded ports must be present"
+    assert len(container.forwarded_ports) == 402, (
+        "exactly 402 forwarded ports must be present"
     )
 
     assert (
