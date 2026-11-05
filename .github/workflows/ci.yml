@@ -32,7 +32,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        python_version: ["3.8", "3.9", "3.10", "3.11", "3.12", "3.13"]
+        python_version: ["3.10", "3.11", "3.12", "3.13"]
         container_runtime: ["podman", "docker"]
         without_buildah: [false]
 
@@ -55,6 +55,24 @@ jobs:
             without_buildah: false
             use_pyenv: true
 
+          - python_version: "3.8"
+            container_runtime: "podman"
+            without_buildah: false
+            use_pyenv: true
+          - python_version: "3.8"
+            container_runtime: "docker"
+            without_buildah: false
+            use_pyenv: true
+
+          - python_version: "3.9"
+            container_runtime: "podman"
+            without_buildah: false
+            use_pyenv: true
+          - python_version: "3.9"
+            container_runtime: "docker"
+            without_buildah: false
+            use_pyenv: true
+
           # also test without buildah, but only on the latest python
           - python_version: "3.13"
             container_runtime: "podman"
@@ -63,13 +81,13 @@ jobs:
     steps:
       - uses: actions/checkout@v6
 
-      # Use standard setup-python for python 3.8+
+      # Use standard setup-python for python 3.10+
       - uses: actions/setup-python@v6
         if: ${{ !matrix.use_pyenv }}
         with:
           python-version: ${{ matrix.python_version }}
 
-      # Install python 3.6/3.7 via pyenv
+      # Install python 3.6-3.9 via pyenv (setup-python has no builds for them on modern Ubuntu)
       - name: Install python via pyenv
         if: ${{ matrix.use_pyenv }}
         run: |
@@ -193,7 +211,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        python_version: ["3.8", "3.9", "3.10", "3.11", "3.12", "3.13"]
+        python_version: ["3.10", "3.11", "3.12", "3.13"]
         use_pyenv: [false]
 
         include:
@@ -201,15 +219,19 @@ jobs:
             use_pyenv: true
           - python_version: "3.7"
             use_pyenv: true
+          - python_version: "3.8"
+            use_pyenv: true
+          - python_version: "3.9"
+            use_pyenv: true
 
     steps:
-      # Use standard setup-python for python 3.8+
+      # Use standard setup-python for python 3.10+
       - uses: actions/setup-python@v6
         if: ${{ !matrix.use_pyenv }}
         with:
           python-version: ${{ matrix.python_version }}
 
-      # Install python 3.6/3.7 via pyenv (since deadsnakes doesn't support 3.6 on modern Ubuntu)
+      # Install python 3.6-3.9 via pyenv (setup-python has no builds for them on modern Ubuntu)
       - name: Install python via pyenv
         if: ${{ matrix.use_pyenv }}
         run: |
