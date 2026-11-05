@@ -1140,30 +1140,36 @@ class ContainerLauncher:
         # We must perform the launches in separate branches, as containers with
         # port forwards must be launched while the lock is being held. Otherwise
         # another container could pick the same ports before this one launches.
-        if forwarded_ports and self._expose_ports:
-            with lock_host_port_search(self.rootdir):
-                self._new_port_forwards = create_host_port_port_forward(
-                    forwarded_ports
-                )
-                for new_forward in self._new_port_forwards:
-                    extra_run_args += new_forward.forward_cli_args
+        try:
+            if forwarded_ports and self._expose_ports:
+                with lock_host_port_search(self.rootdir):
+                    self._new_port_forwards = create_host_port_port_forward(
+                        forwarded_ports
+                    )
+                    for new_forward in self._new_port_forwards:
+                        extra_run_args += new_forward.forward_cli_args
 
+                    launch_cmd = self.container.get_launch_cmd(
+                        self.container_runtime, extra_run_args=extra_run_args
+                    )
+
+                    _logger.debug("Launching container via: %s", launch_cmd)
+                    check_output(launch_cmd)
+            else:
                 launch_cmd = self.container.get_launch_cmd(
                     self.container_runtime, extra_run_args=extra_run_args
                 )
 
                 _logger.debug("Launching container via: %s", launch_cmd)
                 check_output(launch_cmd)
-        else:
-            launch_cmd = self.container.get_launch_cmd(
-                self.container_runtime, extra_run_args=extra_run_args
-            )
-
-            _logger.debug("Launching container via: %s", launch_cmd)
-            check_output(launch_cmd)
-
-        with open(self._cidfile, "r", encoding="utf8") as cidfile:
-            self._container_id = cidfile.read(-1).strip()
+        finally:
+            # The runtime writes the cidfile once the container has been
+            # created. If starting it fails afterwards (e.g. because the host
+            # port is already in use), the container still exists and we have
+            # to record its id so that __exit__ removes it.
+            if exists(self._cidfile):
+                with open(self._cidfile, "r", encoding="utf8") as cidfile:
+                    self._container_id = cidfile.read(-1).strip() or None
 
         self._wait_for_container_to_become_healthy()
 
