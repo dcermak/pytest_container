@@ -443,3 +443,40 @@ def test_launcher_removes_container_if_host_port_is_taken(
     ).stderr.lower()
     assert "no such container" in err_msg
     assert container_name in err_msg
+
+
+def test_launcher_propagates_error_if_container_is_not_created(
+    container_runtime: OciRuntimeBase, pytestconfig: pytest.Config, host
+) -> None:
+    """If ``run -d`` fails before the runtime created the container (here
+    because the container name is already in use), then no cidfile exists and
+    the launcher must re-raise the original error instead of failing to read
+    the cidfile. It must also leave the container that holds the name alone.
+
+    """
+    container_name = "container_with_taken_name"
+    with ContainerLauncher.from_pytestconfig(
+        container=LEAP,
+        container_runtime=container_runtime,
+        pytestconfig=pytestconfig,
+        container_name=container_name,
+    ) as first_launcher:
+        first_launcher.launch_container()
+        first_container_id = first_launcher.container_data.container_id
+
+        with pytest.raises(subprocess.CalledProcessError):
+            with ContainerLauncher.from_pytestconfig(
+                container=LEAP,
+                container_runtime=container_runtime,
+                pytestconfig=pytestconfig,
+                container_name=container_name,
+            ) as second_launcher:
+                second_launcher.launch_container()
+                assert False, "The container must not have launched"
+
+        # the failed launch must not have removed the existing container
+        host.run_expect(
+            [0],
+            f"{container_runtime.runner_binary} container inspect "
+            f"{first_container_id}",
+        )
