@@ -381,6 +381,14 @@ class OciRuntimeBase(OciRuntimeABC, ToParamMixin):
         net_settings = container_inspect["NetworkSettings"]
         ip = net_settings.get("IPAddress") or None
 
+        # Docker 29 removed the deprecated top-level IPAddress, it is only
+        # present in the settings of each network the container is attached to
+        if not ip:
+            for network in (net_settings.get("Networks") or {}).values():
+                if network.get("IPAddress"):
+                    ip = network["IPAddress"]
+                    break
+
         return ContainerNetworkSettings(ports=ports, ip_address=ip)
 
     @staticmethod

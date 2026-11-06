@@ -206,3 +206,47 @@ def test_get_image_id_from_iidfile_with_invalid_format(
         OciRuntimeBase.get_image_id_from_iidfile(iidfile_path)
 
     assert "Invalid" in str(val_err_ctx.value)
+
+
+@pytest.mark.parametrize(
+    "network_settings,expected_ip",
+    [
+        # podman and Docker before 29 provide the top-level IPAddress
+        (
+            {
+                "IPAddress": "10.88.0.2",
+                "Networks": {"podman": {"IPAddress": "10.88.0.2"}},
+            },
+            "10.88.0.2",
+        ),
+        # Docker 29 only provides the IPAddress per network
+        (
+            {"Networks": {"bridge": {"IPAddress": "172.17.0.2"}}},
+            "172.17.0.2",
+        ),
+        # networks without an address are skipped
+        (
+            {
+                "IPAddress": "",
+                "Networks": {
+                    "none": {"IPAddress": ""},
+                    "bridge": {"IPAddress": "172.17.0.3"},
+                },
+            },
+            "172.17.0.3",
+        ),
+        # no address at all, e.g. rootless podman with pasta
+        ({"IPAddress": "", "Networks": {"pasta": {}}}, None),
+        ({"Networks": None}, None),
+        ({}, None),
+    ],
+)
+def test_ip_address_from_inspect(
+    network_settings: dict, expected_ip: Union[str, None]
+) -> None:
+    # pylint: disable-next=protected-access
+    net = OciRuntimeBase._network_settings_from_inspect(
+        {"HostConfig": {}, "NetworkSettings": network_settings}
+    )
+    assert net.ip_address == expected_ip
+    assert net.ports == []
